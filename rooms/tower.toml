@@ -1,0 +1,363 @@
+# Verticality Tower: a three-storey building for the full vertical toolkit: stairs, a ladder,
+# a lift, ledge grabs, a crawl vent, a duck corridor with turrets, and a floor you can blow up
+# and drop through. The camera's "walls down" cutaway shows the floor you are on.
+name = "Verticality Tower"
+about = "Three floors of verticality: stairs, a ladder and a lift up, a crawl vent, a corridor of turrets to duck and jump, a ledge to grab, and a destructible floor to bomb and drop through. Race from the lobby to the top floor."
+try = [
+  "Race from START (lobby) to FINISH (top floor, north-west)",
+  "Take the stairs, the ladder or the lift up to the first floor",
+  "First floor corridor: crouch (C) under the high shots, jump the low ones",
+  "Jump at the tall block east of the corridor and hold toward it to grab the ledge",
+  "Bomb the cracked floor on the first floor (F / click) and drop through",
+  "Crawl (Z) through the vent between the two ground-floor rooms",
+]
+wing = "movement"
+order = 7
+primary_device = "keyboard_mouse"
+movement_model = "instant"
+entrance = { at = [12, 21], facing = "south" }
+
+[camera]
+tilt = 60.0
+distance = 20.0
+
+[params]
+"movement.ledge_grab" = true
+
+# Station guide (H in the game): what you see, how it works, where games use it, how to ask.
+[learn]
+what = "A three-storey building to race from START in the lobby to FINISH on the TOP FLOOR: the STAIRS, the LADDER or the LIFT take you to the first floor, the VENT (crawl: Z) links the ground-floor rooms, and upstairs wait a DUCK (C) · JUMP corridor with two turrets, a LEDGE block to grab, a cracked floor marked BOMB IT (F) and a second ladder to the top. The camera cuts away whatever is above you, so you always see the floor you are on."
+how = [
+  "Walls down: every frame the vertex shader lowers anything within 9 m of you to 2.4 m above your feet and hides pieces that sit entirely above that, so walls become low outlines and the floors overhead vanish. The cut follows your feet, so climbing a floor brings that floor back.",
+  "When something still stands between the camera and you, a see-through tunnel opens: pixels near the line from the lens to you (1.6 m radius) are thrown away, all of them in the middle and a 4x4 Bayer dither pattern at the rim, so the hole has a soft edge.",
+  "The stairs rise 3.5 m in 14 steps of 0.25 m with one corner: five steps west, then nine north. Each step is under the 0.32 m the character controller climbs by itself (auto-step), so you walk straight up. The ladder (3.5 m) climbs the same height, and the lift rises 3.2 m on a 9 s cycle and waits about 1.6 s at each end.",
+  "Ledge grab is on in this room: falling against a wall while pressing toward it casts rays at chest and waist height to find the wall, one down behind its face to find the top, and checks there is room to stand up there before you hang.",
+  "The cracked tiles are destructible static blocks: a bomb removes every one within 1.35 m of the blast (collider and all) and throws debris boxes, opening a hole down to the ground floor.",
+  "The corridor turrets fire west along it, every 0.9 s at 1.4 m and every 1.35 s at 0.35 m above the floor: crouch under the first, jump the second.",
+]
+uses = [
+  "Cutaway views: walls down so you can see inside a building (The Sims, XCOM).",
+  "Climbing and ledges: grab, shimmy and pull up (Tomb Raider, Uncharted).",
+  "Destructible floors: blow a hole and drop in for a new route (Rainbow Six Siege).",
+  "Lifts: platforms that carry you between floors on their own timing (Doom).",
+]
+ask = [
+  "walls-down cutaway that hides floors above the player",
+  "dithered see-through for walls between camera and player",
+  "ledge grab and mantle",
+  "destructible floor you can bomb and drop through",
+  "elevator platform on a timer",
+  "multi-storey level with stairs, ladders and lifts",
+]
+cost = "The cutaway is GPU shader work: a few extra instructions per vertex to lower walls and per pixel for the see-through test, whatever the room. Ledge checks are a few ray casts on the CPU, and only while you are in the air pressing toward a wall."
+knobs = ["view.cutaway.height_cut", "view.cutaway.cut_above", "view.cutaway.cut_radius", "view.cutaway.fade_radius", "movement.ledge_grab", "bombs.radius"]
+terms = ["vertex shader", "fragment shader", "dithering", "uniform", "raycast", "game feel"]
+
+[[learn.code]]
+title = "Walls down, in the vertex shader"
+file = "crates/pav_render/src/shaders/scene.wgsl"
+lang = "wgsl"
+src = """
+if (g.cut2.y > 0.5 && (i.params.y & FLAG_CUT_VERTEX) != 0u) {
+    // Large meshes (terrain): lower each vertex near the player instead of the whole mesh.
+    if (length(world.xz - g.cut.xz) < g.cut2.x) {
+        world.y = min(world.y, g.cut.w);
+    }
+} else if (g.cut2.y > 0.5 && (i.params.y & FLAG_NO_CUT) == 0u) {
+    // "Walls down": instances whose footprint touches the cut circle are lowered to the
+    // cut height; instances entirely above it are hidden.
+    let ext = 0.5 * (abs(c0) + abs(c1) + abs(c2));
+    let c = i.m3.xyz;
+    let d = max(abs(g.cut.xz - c.xz) - ext.xz, vec2<f32>(0.0));
+    if (length(d) < g.cut2.x) {
+        if (c.y - ext.y >= g.cut.w - 0.01) {
+            o.clip = vec4<f32>(0.0, 0.0, 2.0, 1.0);
+            return o;
+        }
+        world.y = min(world.y, g.cut.w);
+    }
+}
+"""
+
+[[learn.code]]
+title = "A dithered see-through tunnel"
+file = "crates/pav_render/src/shaders/scene.wgsl"
+lang = "wgsl"
+src = """
+if (g.cut2.w > 0.5) {
+    let f = g.cut.xyz;
+    var ro: vec3<f32>;
+    var rd: vec3<f32>;
+    if (g.eye.w > 0.5) {
+        ro = g.eye.xyz;
+        rd = normalize(f - ro);
+    } else {
+        rd = g.forward.xyz;
+        ro = f - rd * 1000.0;
+    }
+    let t_f = dot(f - ro, rd);
+    let t_p = dot(p - ro, rd);
+    if (t_p < t_f - 0.75) {
+        let d = length((p - ro) - rd * t_p);
+        let r = g.cut2.z;
+        if (d < r) {
+            let alpha = smoothstep(0.8, 1.0, d / r);
+            if (bayer4(frag) > alpha) {
+                return true;
+            }
+        }
+    }
+}
+"""
+
+[[learn.code]]
+title = "Finding a ledge with ray casts"
+file = "crates/pav_core/src/character.rs"
+lang = "rust"
+src = """
+// A wall in front at chest height, or at the waist when the top is close.
+let hit = [1.25f32, 0.55].into_iter().find_map(|h| {
+    let from = feet + Vec3::Y * h;
+    qp.cast_ray_and_get_normal(&Ray::new(from, dir), reach as Real, true).map(|(_, hit)| (from, hit))
+});
+let (chest, hit) = hit?;
+let n = hit.normal;
+if n.y.abs() > 0.3 {
+    return None;
+}
+let n = Vec3::new(n.x, 0.0, n.z).normalize_or(-dir);
+let wall = chest + dir * hit.time_of_impact as f32;
+// The top: cast down just behind the wall face, from above the highest reachable point.
+let start = Vec3::new(wall.x, feet.y + 2.15, wall.z) - n * 0.15;
+let span = 2.15 - 0.35;
+let (_, down) = qp.cast_ray_and_get_normal(&Ray::new(start, Vec3::NEG_Y), span as Real, true)?;
+if down.time_of_impact < 0.02 || down.normal.y < 0.7 {
+    return None; // the wall continues above: no ledge
+}
+let top = start.y - down.time_of_impact as f32;
+if top < feet.y + 0.4 {
+    return None;
+}
+"""
+
+[layout]
+origin = [-13.0, 0.0, -11.0]
+
+# Ground floor: lobby, stairs (south-west corner, turning north), ladder, lift (east), two rooms
+# under the first floor.
+[[layout.layer]]
+y = 0
+map = '''
+##########################
+#..........W.............#
+#..........W........o....#
+#..........W.........o...#
+#..........v.............#
+#..........W.............#
+#..........W.............#
+#..........W.............#
+#..........W.............#
+#PPPPP..PPPPPPPP..PPPPPPP#
+#LLL..........l..........#
+#DD......................#
+#CC......................#
+#BB......................#
+#AA......................#
+#99......................#
+#88......................#
+#77......................#
+#66........SSSS..........#
+#554321....SSSS..........#
+#554321..................#
+############..############
+'''
+
+# First floor (3.5 m): cracked floor (x), duck corridor, ladder up, ledge block.
+[[layout.layer]]
+y = 3.5
+map = '''
+                          
+ ======================== 
+ ====xxxxx=============== 
+ ====xxxxx=============== 
+ ====xxxxx===uuuuuuu===== 
+ ====xxxxx=====k====GGGGG 
+ ====xxxxx==========GGGGG 
+ ===rrrrrrrrrrrrrrr===ccc 
+ =====================ccc 
+ cccrrrrrrrrrrrrrrr====== 
+                          
+                          
+'''
+
+# Top floor (7 m).
+[[layout.layer]]
+y = 7.0
+map = '''
+                          
+             FF========== 
+             FF========== 
+             FF========== 
+             FF========== 
+                          
+
+'''
+
+[layout.legend.'.']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cdbfa8" }]
+
+[layout.legend.'#']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cdbfa8" }, { y0 = 0, y1 = 10.5, color = "#e0d4bd" }]
+
+# Ground-floor walls up to the first floor's underside.
+[layout.legend.'P']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cdbfa8" }, { y0 = 0, y1 = 3.2, color = "#d6c7ad" }]
+[layout.legend.'W']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cdbfa8" }, { y0 = 0, y1 = 3.2, color = "#d6c7ad" }]
+
+# Crawl vent: a wall with a 0.8 m opening at the bottom.
+[layout.legend.'v']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cdbfa8" }, { y0 = 0.8, y1 = 3.2, color = "#d6c7ad" }]
+
+# Stairs: step n is n x 0.25 m (1-9, then A-D = 10-13), under the 0.32 m auto-step, so you
+# walk up. Five steps west along the south wall to the corner, then nine north to the landing.
+[layout.legend.'1']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cdbfa8" }, { y0 = 0, y1 = 0.25, color = "#c99f74" }]
+[layout.legend.'2']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cdbfa8" }, { y0 = 0, y1 = 0.5, color = "#c99f74" }]
+[layout.legend.'3']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cdbfa8" }, { y0 = 0, y1 = 0.75, color = "#c99f74" }]
+[layout.legend.'4']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cdbfa8" }, { y0 = 0, y1 = 1.0, color = "#c99f74" }]
+[layout.legend.'5']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cdbfa8" }, { y0 = 0, y1 = 1.25, color = "#c99f74" }]
+[layout.legend.'6']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cdbfa8" }, { y0 = 0, y1 = 1.5, color = "#c99f74" }]
+[layout.legend.'7']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cdbfa8" }, { y0 = 0, y1 = 1.75, color = "#c99f74" }]
+[layout.legend.'8']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cdbfa8" }, { y0 = 0, y1 = 2.0, color = "#c99f74" }]
+[layout.legend.'9']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cdbfa8" }, { y0 = 0, y1 = 2.25, color = "#c99f74" }]
+[layout.legend.'A']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cdbfa8" }, { y0 = 0, y1 = 2.5, color = "#c99f74" }]
+[layout.legend.'B']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cdbfa8" }, { y0 = 0, y1 = 2.75, color = "#c99f74" }]
+[layout.legend.'C']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cdbfa8" }, { y0 = 0, y1 = 3.0, color = "#c99f74" }]
+[layout.legend.'D']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cdbfa8" }, { y0 = 0, y1 = 3.25, color = "#c99f74" }]
+
+# Stair landing, level with the first floor.
+[layout.legend.'L']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cdbfa8" }, { y0 = 0, y1 = 3.5, color = "#c99f74" }]
+
+[layout.legend.'l']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cdbfa8" }]
+ladder = { facing = "north", height = 3.5 }
+
+[layout.legend.'S']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cdbfa8" }]
+zone = { kind = "start", course = "climb", facing = "north" }
+
+[layout.legend.'o']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cdbfa8" }]
+prop = { shape = { type = "box", half = [0.4, 0.4, 0.4] }, color = "#e8704a", name = "crate" }
+
+# Upper floors (heights relative to each layer).
+[layout.legend.'=']
+blocks = [{ y0 = -0.3, y1 = 0, color = "#bba98f" }]
+
+[layout.legend.'x']
+blocks = [{ y0 = -0.3, y1 = 0, color = "#a8875f", destructible = true }]
+
+# Corridor walls: too tall to grab (no skipping the turrets).
+[layout.legend.'r']
+blocks = [{ y0 = -0.3, y1 = 0, color = "#bba98f" }, { y0 = 0, y1 = 3.6, color = "#cdb99a" }]
+
+[layout.legend.'c']
+blocks = [{ y0 = -0.3, y1 = 0, color = "#bba98f" }]
+zone = { kind = "checkpoint" }
+
+[layout.legend.'u']
+blocks = [{ y0 = -0.3, y1 = 0, color = "#bba98f" }, { y0 = 0, y1 = 3.2, color = "#cdb99a" }]
+
+[layout.legend.'k']
+blocks = [{ y0 = -0.3, y1 = 0, color = "#bba98f" }]
+ladder = { facing = "north", height = 3.5 }
+
+[layout.legend.'G']
+blocks = [{ y0 = -0.3, y1 = 0, color = "#bba98f" }, { y0 = 0, y1 = 2.4, color = "#b59a7b" }]
+
+[layout.legend.'F']
+blocks = [{ y0 = -0.3, y1 = 0, color = "#bba98f" }]
+zone = { kind = "finish", course = "climb" }
+
+# Signs.
+[[label]]
+text = "STAIRS"
+pos = [5.0, 0.03, 17.6]
+size = 0.45
+
+[[label]]
+text = "LADDER"
+pos = [14.5, 0.03, 12.0]
+size = 0.4
+
+[[label]]
+text = "LIFT"
+pos = [21.5, 0.03, 14.2]
+size = 0.5
+
+[[label]]
+text = "VENT (crawl: Z)"
+pos = [8.5, 0.03, 5.0]
+size = 0.35
+
+[[label]]
+text = "BOMB IT (F)"
+pos = [7.5, 3.53, 4.5]
+size = 0.45
+
+[[label]]
+text = "DUCK (C) · JUMP"
+pos = [6.0, 3.53, 8.5]
+size = 0.35
+
+[[label]]
+text = "LEDGE"
+pos = [22.0, 3.53, 9.3]
+size = 0.4
+
+[[label]]
+text = "TOP FLOOR"
+pos = [19.0, 7.03, 2.5]
+size = 0.6
+
+# The lift: a platform that rises to the first floor, waits, and comes back down.
+[[object]]
+name = "lift"
+shape = { type = "box", half = [1.5, 0.15, 1.5] }
+pos = [21.5, 0.15, 11.5]
+color = "#7a8796"
+body = "kinematic"
+behavior = { type = "move", offset = [0.0, 3.2, 0.0], period = 9.0, hold = 0.35 }
+
+# Duck corridor turrets at its east end, firing west along the corridor.
+[[object]]
+name = "turret_high"
+shape = { type = "cylinder", half_height = 0.22, radius = 0.3 }
+pos = [19.5, 4.9, 8.5]
+yaw = -90.0
+color = "#5b5f66"
+body = "fixed"
+behavior = { type = "emitter", pattern = "forward", interval = 0.9, speed = 7.0, radius = 0.16, range = 16.0, color = "#ff5a3c" }
+
+[[object]]
+name = "turret_low"
+shape = { type = "cylinder", half_height = 0.22, radius = 0.3 }
+pos = [19.5, 3.85, 8.5]
+yaw = -90.0
+color = "#5b5f66"
+body = "fixed"
+behavior = { type = "emitter", pattern = "forward", interval = 1.35, delay = 0.45, speed = 6.0, radius = 0.16, range = 16.0, color = "#ffb13c" }

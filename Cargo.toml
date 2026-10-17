@@ -1,0 +1,75 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace.dependencies]
+ab_glyph = "0.2"
+epaint_default_fonts = "0.36"
+pav_core = { path = "crates/pav_core" }
+pav_render = { path = "crates/pav_render" }
+pav_view = { path = "crates/pav_view" }
+pav_tools = { path = "crates/pav_tools" }
+pav_audio = { path = "crates/pav_audio" }
+glam = { version = "0.33", features = ["serde", "bytemuck"] }
+# Vulkan + DX12 only (no OpenGL); "webgpu" is for the later browser build.
+wgpu = { version = "30", default-features = false, features = ["std", "parking_lot", "dx12", "vulkan", "wgsl", "webgpu"] }
+winit = "0.30.13"
+egui = "0.36.2"
+egui-wgpu = { version = "0.36.2", default-features = false }
+egui-winit = { version = "0.36.2", default-features = false, features = ["links"] }
+gilrs = "0.11"
+cpal = "0.18"
+png = "0.18"
+# The asset importer (pav_tools): Wavefront OBJ/MTL. 4.0.3 is the newest release at least 12
+# months old (doctrine 9); no default features, so no dependencies.
+tobj = { version = "4.0.3", default-features = false }
+serde = { version = "1", features = ["derive", "rc"] }
+serde_json = "1"
+toml = "1"
+notify = "8"
+ciborium = "0.2"
+anyhow = "1"
+# The motion importer (pav_tools): fdlibm's trigonometry, as JavaScript engines use it, and
+# inflate for single files out of zip archives on the web.
+libm = "0.2"
+miniz_oxide = "0.8"
+log = "0.4"
+bytemuck = { version = "1", features = ["derive"] }
+pollster = "1"
+web-time = "1"
+# Browser build only.
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys = "0.3"
+
+[workspace.lints.clippy]
+# Style lints that fight readable game code.
+collapsible_if = "allow"
+collapsible_match = "allow"
+type_complexity = "allow"
+too_many_arguments = "allow"
+
+[profile.dev]
+opt-level = 1
+# Keeps the target folder small (cloud containers have a fixed disk allowance); backtraces
+# still show file:line.
+debug = "line-tables-only"
+incremental = false
+
+[profile.dev.package."*"]
+opt-level = 3
+debug = false
+
+[profile.release]
+debug = "line-tables-only"
+
+# Distribution build (what gets sent to the user): smaller, still has function names in crash reports.
+[profile.dist]
+inherits = "release"
+debug = false
+strip = "debuginfo"

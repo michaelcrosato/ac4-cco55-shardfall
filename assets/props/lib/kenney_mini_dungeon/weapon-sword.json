@@ -1,0 +1,9 @@
+{"format":2,"name":"weapon-sword","unit":"cm","color":"#9ca4c4",
+"tags":["sword","dungeon"],
+"category":"weapon",
+"source":{"library":"kenney/mini_dungeon","license":"CC0-1.0","title":"weapon-sword"},
+"fit":{"mean_mm":5.2,"worst_mm":32,"iou":0.91,"de":3.2,"mesh_pct":0},
+"parts":{
+"blue_extrude":{"type":"extrude","points":[[-9,-9],[9,-9],[15,0],[14,2],[13,3],[12,4],[12,5],[11,6],[9,9],[-9,9],[-10,7],[-12,5],[-12,5],[-13,3],[-13,2],[-14,2],[-15,0],[-12,-4],[-12,-5],[-11,-6]],"depth":61,"pos":[0,46,0],"pitch":-90},
+"grey_extrude":{"type":"extrude","points":[[-16,-12],[16,-12],[17,-10],[17,-9],[20,-7],[20,-6],[22,-4],[22,-3],[25,-1],[26,0],[23,2],[23,3],[21,5],[21,6],[18,9],[18,10],[16,12],[-16,12],[-26,0]],"depth":16,"pos":[0,8,0],"pitch":-90,"color":"#74768c"},
+"red_lathe":{"type":"lathe","profile":[[5,-11],[12,-6],[9,11]],"segments":8,"pos":[0,-11,0],"color":"#cb724f"}}}

@@ -1,0 +1,12 @@
+{"format":2,"name":"table","unit":"cm","color":"#844e47",
+"description":"A low, wide wooden table: a thick plank top on four stubby legs, 70 cm tall.",
+"tags":["table","desk","wood","tavern","dungeon"],
+"category":"furniture",
+"source":{"library":"kenney/mini_dungeon","license":"CC0-1.0","title":"table"},
+"fit":{"mean_mm":4.9,"worst_mm":23,"iou":0.94,"de":1.2,"mesh_pct":0},
+"parts":{
+"brown_box":{"type":"box","size":[146,25,96],"pos":[0,31,0]},
+"brown_extrude":{"type":"extrude","points":[[20,-21],[12,21],[-20,21],[-6,-21]],"depth":32,"pos":[70,21,45],"yaw":-11,"mirror":"z"},
+"brown_extrude2":{"type":"extrude","points":[[-20,-21],[6,-21],[20,21],[-11,21]],"depth":32,"pos":[-70,21,45],"yaw":11},
+"brown_extrude3":{"type":"extrude","points":[[-20,-21],[6,-21],[9,-10],[10,-9],[16,9],[17,10],[20,21],[20,21],[-11,21]],"depth":32,"pos":[-70,21,-45],"yaw":-11},
+"red_extrude":{"type":"extrude","points":[[-41,-72],[37,-72],[49,-60],[61,-66],[88,-64],[96,8],[90,39],[90,55],[88,63],[82,65],[68,65],[43,71],[-27,71],[-33,63],[-37,63],[-41,69],[-55,69],[-88,63],[-96,-8],[-88,-64]],"depth":26,"pos":[0,56,0],"pitch":-90,"color":"#d07b54"}}}

@@ -1,0 +1,8 @@
+{"format":2,"name":"trap","unit":"cm","color":"#67687b",
+"tags":["trap","kenney"],
+"category":"dungeon",
+"source":{"library":"kenney/mini_dungeon","license":"CC0-1.0","title":"trap"},
+"fit":{"mean_mm":19,"worst_mm":95,"iou":0.95,"de":5.3,"mesh_pct":0},
+"parts":{
+"spikes":{"type":"lathe","profile":[[25,-21],[19,-4],[5,21]],"segments":8,"pos":[49,42,50],"color":"#99a0c0","mirror":["x","z"]},
+"trap":{"type":"cylinder","radius":38,"radius_end":32,"height":21,"segments":8,"pos":[50,10,49],"mirror":["x","z"]}}}

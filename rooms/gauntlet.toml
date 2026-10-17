@@ -1,0 +1,514 @@
+# Dodge Gauntlet: a timed course from the south entrance to the FINISH through five lanes of
+# projectile turrets. The HUD counts hits (a hit = knockback + a short stun); the goal is to
+# finish fast with as few hits as possible. Every turret is a fixed [[object]] with an emitter
+# behaviour: `height` is the muzzle height above the object's centre, `range` keeps a turret
+# silent until you are near, `delay` and different intervals desynchronise the streams.
+#
+# Path (the course snakes through three bands):
+#   band 1 (south, east-bound)   START -> 1 JUMP -> CP 1 -> 2 DUCK -> CP 2
+#   band 2 (middle, west-bound)  3 CRAWL -> CP 3 -> 4 AIMED -> (gap) -> CP 4
+#   garden (north)               5 BULLET GARDEN -> FINISH (north-east corner)
+# Turret rows sit on the lane edges (north edge fires south = yaw 0, south edge fires north =
+# yaw 180). Muzzle heights (floor = 0): JUMP 0.35 m, DUCK 1.4 m (a crouched character is
+# 1.15 m tall), CRAWL 1.1 m between slabs with a 0.8 m slot underneath (crawling is 0.66 m),
+# AIMED 0.7 m, GARDEN 0.7 m. Speeds are 3.5-7 m/s and each turret only fires while you are within
+# `range` metres, so the lanes wake up as you arrive.
+name = "Dodge Gauntlet"
+about = "A timed gauntlet through five projectile lanes: jump the floor shots, crouch under head-height shots, crawl under the slabs, outrun aimed turrets from behind cover and weave through the bullet garden. The HUD counts your hits."
+try = [
+  "Run START to FINISH and watch the hit counter: fewer hits and a faster time are better",
+  "1 JUMP: low shots skim the floor, jump (Space) just before one reaches you",
+  "2 DUCK: head-height shots, hold C to crouch under them (slower, but safe)",
+  "3 CRAWL: press Z to crawl through the low slots under the amber slabs while slow shots fly over your back (Z again to stand up)",
+  "4 AIMED: the turrets track you, so keep moving and break their line of sight behind the pillars",
+  "5 BULLET GARDEN: rings and spirals of slow bullets, weave through the gaps",
+  "Step on the ROLL pad (start area): with the committed model, crouching while running is a dodge-roll; the INSTANT pad switches back",
+]
+wing = "movement"
+order = 5
+primary_device = "keyboard_mouse"
+movement_model = "instant"
+entrance = { at = [3, 29], facing = "south" }
+
+[camera]
+tilt = 64.0
+distance = 18.0
+
+# Station guide (H in the game): what you see, how it works, where games use it, how to ask.
+[learn]
+what = "Five turret lanes between START and FINISH, each asking for a different move: 1 JUMP (shots skimming the floor at 0.35 m), 2 DUCK (head height, 1.4 m), 3 CRAWL (shots at 1.1 m between the amber slabs), 4 AIMED (three-shot fans aimed at you, with pillars for cover) and 5 BULLET GARDEN (rings and spirals). The course HUD counts your hits, CP 1 to CP 4 split the run, and the ROLL and INSTANT pads at the start swap the movement model."
+how = [
+  "A turret is a fixed object with an emitter behaviour: it keeps a timer, stays silent until you are within its range (10 to 16 m here) and then fires every interval seconds. A start delay puts neighbours out of step, so the lanes wake up as you arrive.",
+  "Each shot is a set of directions: forward fires along the turret's facing, aimed turns toward where you are right now (it does not lead you, so moving sideways makes it miss), ring spaces bullets evenly round a circle, and spiral is a ring that turns a few degrees every shot.",
+  "Bullets are not physics bodies but plain data moved in a straight line each tick, so thousands are cheap. Each one measures its distance to the centre line of your capsule, and casts a ray against fixed geometry, which is why pillars and slabs stop them.",
+  "Your hitbox is that centre line plus movement.hitbox (0.32 m), and it shrinks with your posture: standing it reaches 1.7 m, crouching 1.15 m, crawling 0.66 m. So the 1.4 m shots pass over a crouch, the 1.1 m shots only over a crawl, and a floor shot misses only while your feet are about 0.5 m up.",
+  "A hit knocks you back, takes away control for hit_stun (0.35 s) and makes you untouchable for 0.6 s, and the course counts it. It never sends you back to a checkpoint; it only costs time.",
+  "On the ROLL pad (committed model) crouch while running is a 0.42 s roll at 8.5 m/s in the crawl posture: it passes under the DUCK and CRAWL shots at speed, but it has no invincibility frames, so it still has to dodge.",
+]
+uses = [
+  "Bullet hell: rings and spirals of slow bullets against a tiny hitbox (Touhou Project, Enter the Gungeon).",
+  "Run-and-gun: jump the low shots, duck the high ones (Contra, Metal Slug).",
+  "Dodge rolls: a quick, low move through danger, usually with invincibility frames (Dark Souls, Enter the Gungeon).",
+  "Cover: put something solid between you and the guns (Gears of War).",
+]
+ask = [
+  "projectile turrets with aimed, ring and spiral patterns",
+  "cheap non-physics bullets that stop at walls",
+  "hitbox that shrinks when crouching or crawling",
+  "dodge roll with a low profile",
+  "knockback and hit stun with brief invulnerability",
+  "turrets that only fire when the player is in range",
+]
+cost = "Bullets are stepped on the CPU: each tick each one does a distance test against every character and one ray cast against fixed geometry, so the cost grows with bullets times characters, and a hard cap of 6000 bullets stops a runaway emitter. Each bullet is drawn as one small SDF sphere on the GPU."
+knobs = ["movement.hitbox", "movement.hit_stun", "movement.model", "movement.roll_time", "movement.roll_speed", "movement.crouch_mult"]
+terms = ["game feel", "raycast", "sdf", "rigid body", "interpolation", "fixed timestep"]
+
+[[learn.code]]
+title = "Turrets wake up when you come near"
+file = "crates/pav_core/src/behaviors.rs"
+lang = "rust"
+src = """
+Behavior::Emitter(mut em) => {
+    let near = player.is_some_and(|p| p.distance(epos) < em.range);
+    em.timer += dt;
+    if near && em.timer >= em.delay {
+        let wait = if em.burst > 0 && em.shots > 0 && em.shots % em.burst == 0 { em.pause } else { 0.0 };
+        if em.timer - em.delay >= em.interval + wait {
+            em.timer = em.delay;
+            self.fire(id, epos, erot, &mut em, player);
+        }
+    } else if !near {
+        em.timer = em.timer.min(em.delay);
+    }
+    if let Some(e) = self.state.entities.get_mut(id) {
+        e.behavior = Behavior::Emitter(em);
+    }
+}
+"""
+
+[[learn.code]]
+title = "Aimed fans, rings and spirals"
+file = "crates/pav_core/src/behaviors.rs"
+lang = "rust"
+src = """
+let base = match em.pattern {
+    Pattern::Aimed => player.map(|p| flat(p + Vec3::Y * 0.9 - muzzle)).unwrap_or(flat(fwd)),
+    _ => flat(fwd),
+};
+    // ...
+    Pattern::Ring | Pattern::Spiral => {
+        if em.pattern == Pattern::Spiral {
+            em.angle += em.spin;
+        }
+        for i in 0..n {
+            let a = yaw0 + (em.angle + 360.0 * i as f32 / n as f32).to_radians();
+            dirs.push(Vec3::new(a.sin(), 0.0, a.cos()));
+        }
+    }
+    // ...
+    Pattern::Aimed | Pattern::Forward => {
+        for i in 0..n {
+            let f = if n == 1 { 0.0 } else { i as f32 / (n - 1) as f32 - 0.5 };
+            let a = yaw0 + (f * em.spread).to_radians();
+            dirs.push(Vec3::new(a.sin(), 0.0, a.cos()));
+        }
+    }
+"""
+
+[[learn.code]]
+title = "A bullet against your capsule"
+file = "crates/pav_core/src/projectile.rs"
+lang = "rust"
+src = """
+for t in targets {
+    if Some(t.id) == p.owner {
+        continue;
+    }
+    let a = t.feet + Vec3::Y * RADIUS;
+    let b = t.feet + Vec3::Y * (t.height - RADIUS).max(RADIUS);
+    // Test the midpoint and the end so fast bullets don't skip through.
+    let d = segment_distance(next, a, b).min(segment_distance(p.pos + step * 0.5, a, b));
+    if d < t.radius + p.radius {
+        out.hits.push((t.id, next, p.vel.normalize_or(Vec3::X), p.knockback));
+        return false;
+    }
+}
+"""
+
+# Map key: # wall (4 m), . floor, S START, F FINISH, 1-4 checkpoints, R/I model pads,
+# j/d/k/a/g floor tints of the JUMP/DUCK/CRAWL/AIMED/GARDEN sections, b crawl slab (0.8 m slot),
+# p cover pillar (AIMED), q pillar (GARDEN). Turrets are the [[object]]s at the end.
+[layout]
+origin = [-18.0, 0.0, -15.0]
+
+[[layout.layer]]
+y = 0
+map = '''
+####################################
+#gggggggggggggggggggggggggggggggFFF#
+#gggggggggggggggggggggggggggggggFFF#
+#gggggggggggggggggggggggggggggggFFF#
+#ggggggggggggggggggggggggqggggggFFF#
+#gggggqggggggggqggggggggggggggggggg#
+#gggggggggggggggggggggggggggggggggg#
+#gggggggggggggggggggggggggggggggggg#
+#ggggggggggggggggggqggggggggggggggg#
+#gggggggggggggggggggggggggggggqgggg#
+#gggggqgggggggggggggggggggggggggggg#
+#gggggggggggggggggggggggggggggggggg#
+#444ggggggggggqggggggggggqggggggggg#
+#444ggggggggggggggggggggggggggggggg#
+#444ggggggggggggggggggggggggggggggg#
+#...################################
+#aaaaaaaaaaaaaaaaa333kbkbkbkbkbk...#
+#aaapaaaaapaaaaaaa333kbkbkbkbkbk...#
+#aaaaaaaaaaaapaaaa333kbkbkbkbkbk...#
+#aaaaaapaaaaaaaaaa333kbkbkbkbkbk...#
+#aaapaaaaapaaaaaaa333kbkbkbkbkbk...#
+#aaaaaaaaaaaaaaaaa333kbkbkbkbkbk...#
+################################...#
+#RRRSSjjjjjjjjjjjj111ddddddddddd222#
+#RRRSSjjjjjjjjjjjj111ddddddddddd222#
+#...SSjjjjjjjjjjjj111ddddddddddd222#
+#IIISSjjjjjjjjjjjj111ddddddddddd222#
+#IIISSjjjjjjjjjjjj111ddddddddddd222#
+#...SSjjjjjjjjjjjj111ddddddddddd222#
+###.################################
+'''
+
+
+# Neutral floor and the 4 m wall (outer wall and the dividers between the lanes). Ledge grab
+# reaches up to ~3.4 m, so anything lower could be climbed and walked along, skipping lanes.
+[layout.legend.'.']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cfd6c4" }]
+
+[layout.legend.'#']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cfd6c4" }, { y0 = 0, y1 = 4.0, color = "#b9c3cf" }]
+
+# Movement model pads in the hub: ROLL switches to the committed model, INSTANT back.
+[layout.legend.'R']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cfd6c4" }]
+zone = { kind = "pad", label = "ROLL", color = "#9b5de5", params = { "movement.model" = "committed" }, note = "Committed model: C while running is a 0.42 s roll at 8.5 m/s, only 0.66 m tall, under the DUCK and CRAWL shots. Rolls have no invincibility, so time them between bullets." }
+
+[layout.legend.'I']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cfd6c4" }]
+zone = { kind = "pad", label = "INSTANT", color = "#5b8def", params = { "movement.model" = "instant" }, note = "Back to the instant model: C is a crouch-walk at 45% speed again and you can steer in the air. Z toggles crawling in both models." }
+
+# START (leaving it starts the timer) and FINISH (stops it) of the "gauntlet" course.
+[layout.legend.'S']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cfd6c4" }]
+zone = { kind = "start", course = "gauntlet", label = "START", facing = "east" }
+
+[layout.legend.'F']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cfd6c4" }]
+zone = { kind = "finish", course = "gauntlet", label = "FINISH" }
+
+# Checkpoints between the sections (the respawn point; `facing` = the way you look after).
+[layout.legend.'1']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#b9c9dd" }]
+zone = { kind = "checkpoint", course = "gauntlet", label = "CP 1", facing = "east" }
+
+[layout.legend.'2']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#b9c9dd" }]
+zone = { kind = "checkpoint", course = "gauntlet", label = "CP 2", facing = "north" }
+
+[layout.legend.'3']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#b9c9dd" }]
+zone = { kind = "checkpoint", course = "gauntlet", label = "CP 3", facing = "west" }
+
+[layout.legend.'4']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#b9c9dd" }]
+zone = { kind = "checkpoint", course = "gauntlet", label = "CP 4", facing = "north" }
+
+# Section floors, tinted so you can tell the lanes apart from above.
+[layout.legend.'j']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#e6d8b8" }]
+
+[layout.legend.'d']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#d8c8e2" }]
+
+[layout.legend.'k']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#bcd9d3" }]
+
+# Crawl bars: a slab with a 0.8 m slot underneath (a crawling character is 0.66 m tall, a crouching
+# one 1.15 m). The slab is tall so it cannot be climbed and walked over.
+[layout.legend.'b']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#bcd9d3" }, { y0 = 0.8, y1 = 4.0, color = "#e0a458", rounded = true }]
+
+[layout.legend.'a']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#e5c6c0" }]
+
+# Cover pillars for the aimed turrets (bullets stop at them).
+[layout.legend.'p']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#e5c6c0" }, { y0 = 0, y1 = 1.6, color = "#c9a27a", rounded = true }]
+
+[layout.legend.'g']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#c6d3ea" }]
+
+[layout.legend.'q']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#c6d3ea" }, { y0 = 0, y1 = 1.6, color = "#9aa5b1", rounded = true }]
+
+# Section signs.
+[[label]]
+text = "1  JUMP  (Space)"
+pos = [12.0, 0.03, 25.5]
+size = 0.55
+
+[[label]]
+text = "2  DUCK  (hold C)"
+pos = [26.5, 0.03, 25.5]
+size = 0.55
+
+[[label]]
+text = "3  CRAWL  (Z)"
+pos = [33.0, 0.03, 18.5]
+size = 0.42
+
+[[label]]
+text = "4  AIMED"
+pos = [16.0, 0.03, 18.5]
+size = 0.5
+
+[[label]]
+text = "5  BULLET GARDEN"
+pos = [9.5, 0.03, 12.6]
+size = 0.55
+
+[[label]]
+text = "ROLL pad: C while"
+pos = [2.5, 0.03, 25.35]
+size = 0.26
+
+[[label]]
+text = "running = dodge-roll"
+pos = [2.5, 0.03, 25.75]
+size = 0.26
+
+# Free-placed objects: the turrets (kept at the end of the file).
+# ---- 1 JUMP: floor-skimming shots (muzzle 0.35 m). North drums fire south, south drums fire north.
+
+[[object]]
+name = "jump_n8"
+shape = { type = "cylinder", half_height = 0.35, radius = 0.22 }
+pos = [8.5, 0.35, 23.5]
+color = "#f2a33a"
+body = "fixed"
+behavior = { type = "emitter", pattern = "forward", interval = 0.7, speed = 5.0, radius = 0.14, height = 0.0, range = 13.0, delay = 0.0, color = "#ffb23e", knockback = 6.0, life = 4.0 }
+
+[[object]]
+name = "jump_s8"
+shape = { type = "cylinder", half_height = 0.35, radius = 0.22 }
+pos = [8.5, 0.35, 28.5]
+yaw = 180
+color = "#f2a33a"
+body = "fixed"
+behavior = { type = "emitter", pattern = "forward", interval = 0.8, speed = 5.0, radius = 0.14, height = 0.0, range = 13.0, delay = 0.35, color = "#ffb23e", knockback = 6.0, life = 4.0 }
+
+[[object]]
+name = "jump_n12"
+shape = { type = "cylinder", half_height = 0.35, radius = 0.22 }
+pos = [12.5, 0.35, 23.5]
+color = "#f2a33a"
+body = "fixed"
+behavior = { type = "emitter", pattern = "forward", interval = 0.7, speed = 5.0, radius = 0.14, height = 0.0, range = 13.0, delay = 0.2, color = "#ffb23e", knockback = 6.0, life = 4.0 }
+
+[[object]]
+name = "jump_s12"
+shape = { type = "cylinder", half_height = 0.35, radius = 0.22 }
+pos = [12.5, 0.35, 28.5]
+yaw = 180
+color = "#f2a33a"
+body = "fixed"
+behavior = { type = "emitter", pattern = "forward", interval = 0.8, speed = 5.0, radius = 0.14, height = 0.0, range = 13.0, delay = 0.55, color = "#ffb23e", knockback = 6.0, life = 4.0 }
+
+[[object]]
+name = "jump_n16"
+shape = { type = "cylinder", half_height = 0.35, radius = 0.22 }
+pos = [16.5, 0.35, 23.5]
+color = "#f2a33a"
+body = "fixed"
+behavior = { type = "emitter", pattern = "forward", interval = 0.7, speed = 5.0, radius = 0.14, height = 0.0, range = 13.0, delay = 0.4, color = "#ffb23e", knockback = 6.0, life = 4.0 }
+
+[[object]]
+name = "jump_s16"
+shape = { type = "cylinder", half_height = 0.35, radius = 0.22 }
+pos = [16.5, 0.35, 28.5]
+yaw = 180
+color = "#f2a33a"
+body = "fixed"
+behavior = { type = "emitter", pattern = "forward", interval = 0.8, speed = 5.0, radius = 0.14, height = 0.0, range = 13.0, delay = 0.75, color = "#ffb23e", knockback = 6.0, life = 4.0 }
+
+# ---- 2 DUCK: head-height shots (muzzle 1.4 m, 1.6 m pillars) from both edges. Crouch (C) to pass under.
+
+[[object]]
+name = "duck_n22"
+shape = { type = "cylinder", half_height = 0.8, radius = 0.22 }
+pos = [22.5, 0.8, 23.5]
+color = "#a45cd6"
+body = "fixed"
+behavior = { type = "emitter", pattern = "forward", interval = 0.6, speed = 7.0, radius = 0.12, height = 0.6, range = 13.0, delay = 0.0, color = "#ff5fa2", knockback = 6.0, life = 4.0 }
+
+[[object]]
+name = "duck_s22"
+shape = { type = "cylinder", half_height = 0.8, radius = 0.22 }
+pos = [22.5, 0.8, 28.5]
+yaw = 180
+color = "#a45cd6"
+body = "fixed"
+behavior = { type = "emitter", pattern = "forward", interval = 0.7, speed = 7.0, radius = 0.12, height = 0.6, range = 13.0, delay = 0.3, color = "#ff5fa2", knockback = 6.0, life = 4.0 }
+
+[[object]]
+name = "duck_n25"
+shape = { type = "cylinder", half_height = 0.8, radius = 0.22 }
+pos = [25.5, 0.8, 23.5]
+color = "#a45cd6"
+body = "fixed"
+behavior = { type = "emitter", pattern = "forward", interval = 0.6, speed = 7.0, radius = 0.12, height = 0.6, range = 13.0, delay = 0.15, color = "#ff5fa2", knockback = 6.0, life = 4.0 }
+
+[[object]]
+name = "duck_s25"
+shape = { type = "cylinder", half_height = 0.8, radius = 0.22 }
+pos = [25.5, 0.8, 28.5]
+yaw = 180
+color = "#a45cd6"
+body = "fixed"
+behavior = { type = "emitter", pattern = "forward", interval = 0.7, speed = 7.0, radius = 0.12, height = 0.6, range = 13.0, delay = 0.45, color = "#ff5fa2", knockback = 6.0, life = 4.0 }
+
+[[object]]
+name = "duck_n28"
+shape = { type = "cylinder", half_height = 0.8, radius = 0.22 }
+pos = [28.5, 0.8, 23.5]
+color = "#a45cd6"
+body = "fixed"
+behavior = { type = "emitter", pattern = "forward", interval = 0.6, speed = 7.0, radius = 0.12, height = 0.6, range = 13.0, delay = 0.3, color = "#ff5fa2", knockback = 6.0, life = 4.0 }
+
+[[object]]
+name = "duck_s28"
+shape = { type = "cylinder", half_height = 0.8, radius = 0.22 }
+pos = [28.5, 0.8, 28.5]
+yaw = 180
+color = "#a45cd6"
+body = "fixed"
+behavior = { type = "emitter", pattern = "forward", interval = 0.7, speed = 7.0, radius = 0.12, height = 0.6, range = 13.0, delay = 0.6, color = "#ff5fa2", knockback = 6.0, life = 4.0 }
+
+[[object]]
+name = "duck_n31"
+shape = { type = "cylinder", half_height = 0.8, radius = 0.22 }
+pos = [31.5, 0.8, 23.5]
+color = "#a45cd6"
+body = "fixed"
+behavior = { type = "emitter", pattern = "forward", interval = 0.6, speed = 7.0, radius = 0.12, height = 0.6, range = 13.0, delay = 0.45, color = "#ff5fa2", knockback = 6.0, life = 4.0 }
+
+[[object]]
+name = "duck_s31"
+shape = { type = "cylinder", half_height = 0.8, radius = 0.22 }
+pos = [31.5, 0.8, 28.5]
+yaw = 180
+color = "#a45cd6"
+body = "fixed"
+behavior = { type = "emitter", pattern = "forward", interval = 0.7, speed = 7.0, radius = 0.12, height = 0.6, range = 13.0, delay = 0.75, color = "#ff5fa2", knockback = 6.0, life = 4.0 }
+
+# ---- 3 CRAWL: slow shots at 1.1 m cross the gaps between the slabs. Crawl (Z) and they fly over you.
+
+[[object]]
+name = "crawl_n29"
+shape = { type = "cylinder", half_height = 0.75, radius = 0.22 }
+pos = [29.5, 0.75, 16.5]
+color = "#2fa7a0"
+body = "fixed"
+behavior = { type = "emitter", pattern = "forward", interval = 1.1, speed = 3.5, radius = 0.12, height = 0.35, range = 12.0, delay = 0.0, color = "#4cd9ff", knockback = 6.0, life = 5.0 }
+
+[[object]]
+name = "crawl_s27"
+shape = { type = "cylinder", half_height = 0.75, radius = 0.22 }
+pos = [27.5, 0.75, 21.5]
+yaw = 180
+color = "#2fa7a0"
+body = "fixed"
+behavior = { type = "emitter", pattern = "forward", interval = 1.25, speed = 3.5, radius = 0.12, height = 0.35, range = 12.0, delay = 0.3, color = "#4cd9ff", knockback = 6.0, life = 5.0 }
+
+[[object]]
+name = "crawl_n25"
+shape = { type = "cylinder", half_height = 0.75, radius = 0.22 }
+pos = [25.5, 0.75, 16.5]
+color = "#2fa7a0"
+body = "fixed"
+behavior = { type = "emitter", pattern = "forward", interval = 1.1, speed = 3.5, radius = 0.12, height = 0.35, range = 12.0, delay = 0.6, color = "#4cd9ff", knockback = 6.0, life = 5.0 }
+
+[[object]]
+name = "crawl_s23"
+shape = { type = "cylinder", half_height = 0.75, radius = 0.22 }
+pos = [23.5, 0.75, 21.5]
+yaw = 180
+color = "#2fa7a0"
+body = "fixed"
+behavior = { type = "emitter", pattern = "forward", interval = 1.25, speed = 3.5, radius = 0.12, height = 0.35, range = 12.0, delay = 0.9, color = "#4cd9ff", knockback = 6.0, life = 5.0 }
+
+# ---- 4 AIMED: these track you (muzzle 0.7 m, three-shot fans). Pillars block their bullets.
+
+[[object]]
+name = "aimed_16_16"
+shape = { type = "capsule", half_height = 0.25, radius = 0.24 }
+pos = [16.5, 0.5, 16.5]
+color = "#d94c3a"
+body = "fixed"
+behavior = { type = "emitter", pattern = "aimed", interval = 1.3, count = 3, spread = 20.0, speed = 6.0, radius = 0.14, height = 0.2, range = 10.0, delay = 0.0, color = "#ff5a3c", knockback = 6.0, life = 4.0 }
+
+[[object]]
+name = "aimed_11_21"
+shape = { type = "capsule", half_height = 0.25, radius = 0.24 }
+pos = [11.5, 0.5, 21.5]
+color = "#d94c3a"
+body = "fixed"
+behavior = { type = "emitter", pattern = "aimed", interval = 1.45, count = 3, spread = 20.0, speed = 6.0, radius = 0.14, height = 0.2, range = 10.0, delay = 0.4, color = "#ff5a3c", knockback = 6.0, life = 4.0 }
+
+[[object]]
+name = "aimed_6_16"
+shape = { type = "capsule", half_height = 0.25, radius = 0.24 }
+pos = [6.5, 0.5, 16.5]
+color = "#d94c3a"
+body = "fixed"
+behavior = { type = "emitter", pattern = "aimed", interval = 1.6, count = 3, spread = 20.0, speed = 6.0, radius = 0.14, height = 0.2, range = 10.0, delay = 0.8, color = "#ff5a3c", knockback = 6.0, life = 4.0 }
+
+[[object]]
+name = "aimed_2_21"
+shape = { type = "capsule", half_height = 0.25, radius = 0.24 }
+pos = [2.5, 0.5, 21.5]
+color = "#d94c3a"
+body = "fixed"
+behavior = { type = "emitter", pattern = "aimed", interval = 1.3, count = 3, spread = 20.0, speed = 6.0, radius = 0.14, height = 0.2, range = 10.0, delay = 1.2, color = "#ff5a3c", knockback = 6.0, life = 4.0 }
+
+# ---- 5 BULLET GARDEN: slow rings and spirals (muzzle 0.7 m); the last spiral rests 1.2 s after every 6 shots. Weave through the gaps.
+
+[[object]]
+name = "ring_10_9"
+shape = { type = "cylinder", half_height = 0.5, radius = 0.25 }
+pos = [10.5, 0.5, 9.5]
+color = "#8a4fd0"
+body = "fixed"
+behavior = { type = "emitter", pattern = "ring", interval = 1.5, count = 12, speed = 3.5, radius = 0.15, height = 0.2, range = 16.0, delay = 0.0, color = "#c77dff", knockback = 6.0, life = 6.0 }
+
+[[object]]
+name = "spiral_17_4"
+shape = { type = "cylinder", half_height = 0.5, radius = 0.25 }
+pos = [17.5, 0.5, 4.5]
+color = "#8a4fd0"
+body = "fixed"
+behavior = { type = "emitter", pattern = "spiral", interval = 0.8, count = 8, spin = 12.0, speed = 4.0, radius = 0.15, height = 0.2, range = 16.0, delay = 0.3, color = "#c77dff", knockback = 6.0, life = 6.0 }
+
+[[object]]
+name = "ring_22_10"
+shape = { type = "cylinder", half_height = 0.5, radius = 0.25 }
+pos = [22.5, 0.5, 10.5]
+color = "#8a4fd0"
+body = "fixed"
+behavior = { type = "emitter", pattern = "ring", interval = 1.5, count = 16, speed = 3.0, radius = 0.15, height = 0.2, range = 16.0, delay = 0.7, color = "#c77dff", knockback = 6.0, life = 6.0 }
+
+[[object]]
+name = "spiral_28_6"
+shape = { type = "cylinder", half_height = 0.5, radius = 0.25 }
+pos = [28.5, 0.5, 6.5]
+color = "#8a4fd0"
+body = "fixed"
+behavior = { type = "emitter", pattern = "spiral", interval = 0.9, count = 8, spin = 9.0, speed = 4.5, radius = 0.15, height = 0.2, range = 16.0, delay = 0.5, burst = 6, pause = 1.2, color = "#c77dff", knockback = 6.0, life = 6.0 }
+
