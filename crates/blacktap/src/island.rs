@@ -126,7 +126,7 @@ pub fn shape_mesh(s: &IslandShape, i: u64) -> Arc<Mesh> {
     if let Some(m) = cache.get(&i) {
         return m.clone();
     }
-    let mut m = Mesh::new(0x15_1a_0000 + i);
+    let mut m = Mesh::new(0x151a_0000 + i);
     let c = Vec2::from(s.center);
     let r = Vec2::from(s.radii) + Vec2::splat(s.shelf * 0.5);
     let cell = 4.0;

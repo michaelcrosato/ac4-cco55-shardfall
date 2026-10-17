@@ -17,7 +17,7 @@ use crate::stealth::Leap;
 pub const SURVEY_SECONDS: f32 = 4.5;
 
 /// The perch the player stands on, if any.
-pub fn perch_here<'a>(g: &'a BlackTap, sim: &Sim) -> Option<crate::world::Perch> {
+pub fn perch_here(g: &BlackTap, sim: &Sim) -> Option<crate::world::Perch> {
     let p = BlackTap::player_feet(sim)?;
     let w = g.world();
     // On it, or on the top just under it (a belfry floor under its roof's plank).

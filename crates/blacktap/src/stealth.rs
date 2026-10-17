@@ -249,7 +249,7 @@ fn spawn(g: &mut BlackTap, sim: &mut Sim, s: &crate::world::NpcSpawn, offset: Ve
     id
 }
 
-fn spawn_group(g: &mut BlackTap, sim: &mut Sim, group: &str) {
+pub(crate) fn spawn_group(g: &mut BlackTap, sim: &mut Sim, group: &str) {
     if g.flags.contains(&format!("spawned_{group}")) {
         return;
     }
@@ -336,7 +336,7 @@ fn ring_alarm(g: &mut BlackTap, sim: &mut Sim) {
         g.stealth.reinforcements += 1;
         let s = crate::world::NpcSpawn {
             group: "fort".into(),
-            kind: if i % 2 == 0 { "guard".into() } else { "musketeer".into() },
+            kind: if i.is_multiple_of(2) { "guard".into() } else { "musketeer".into() },
             at: [keep.x + i as f32 * 1.5 - 2.0, keep.y, keep.z + 6.0],
             ..Default::default()
         };

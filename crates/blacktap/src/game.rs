@@ -545,7 +545,7 @@ impl Game for BlackTap {
         let pressed;
         let input = if self.tool_press != 0 {
             let tp = std::mem::take(&mut self.tool_press);
-            pressed = InputFrame { held: input.held | tp, pressed: input.pressed | tp, ..input.clone() };
+            pressed = InputFrame { held: input.held | tp, pressed: input.pressed | tp, ..*input };
             &pressed
         } else {
             input

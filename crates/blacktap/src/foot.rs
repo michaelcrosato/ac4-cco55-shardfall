@@ -170,7 +170,7 @@ impl Land {
                 swing: None,
                 cooldown: 1.0 + (id.0 % 7) as f32 * 0.3,
                 target: None,
-                circle: if id.0 % 2 == 0 { 1.0 } else { -1.0 },
+                circle: if id.0.is_multiple_of(2) { 1.0 } else { -1.0 },
                 surrendered: false,
                 step: 0.0,
                 idle: false,
@@ -579,7 +579,7 @@ pub fn pre(
         let left = left - dt;
         let progress = 1.0 - (left / 0.32).clamp(0.0, 1.0);
         if let Some(ch) = sim.state.entities.get_mut(pid).and_then(|e| e.character.as_mut()) {
-            ch.anim.set_action(MoveId::of(&mv), progress, 0.7, if g.land.hero.combo % 2 == 0 { 1.0 } else { -1.0 });
+            ch.anim.set_action(MoveId::of(&mv), progress, 0.7, if g.land.hero.combo.is_multiple_of(2) { 1.0 } else { -1.0 });
         }
         if left <= 0.0 {
             g.land.hero.attack = None;
@@ -893,7 +893,7 @@ fn fighters(g: &mut BlackTap, sim: &mut Sim, dt: f32, events: &mut Vec<SimEvent>
 }
 
 /// After physics: the player's health, death, falls.
-pub fn post(g: &mut BlackTap, sim: &mut Sim, dt: f32, events: &mut Vec<SimEvent>) {
+pub fn post(g: &mut BlackTap, sim: &mut Sim, dt: f32, events: &mut [SimEvent]) {
     g.land.slow = (g.land.slow - dt).max(0.0);
     let in_fight = g.land.enemies_left() > 0;
     g.land.hero.vitals.tick(dt, if in_fight { 0.0 } else { 6.0 }, 4.0);

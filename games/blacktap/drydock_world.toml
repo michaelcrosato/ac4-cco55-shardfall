@@ -1,13 +1,340 @@
-# The Drydock's geometry: a compact cay and lagoon (pav_core::island format, see yard.toml).
-[markers]
-spawn = [0.0, 0.0, 0.0]
+# The Drydock's geometry (PLAN §9.19): a compact cay about 150 × 110 m whose south side opens on
+# a deep lagoon with a quay and a pier, plus two rocks for the sea stations. Format: the island
+# generator (pav_core::island), [[structure]] (pav_core::structures) and [vegetation]; see
+# crates/pav_core/src/yard.toml. The stations themselves (signs, pads, people) are rules data
+# in drydock.toml. x east, z south, metres; sea level 0; the station plateaus sit at 2 m.
+#
+# Map:   north body  — stealth yard (NW), haystack tower, climbing wall, rope run (NE)
+#        north strip — market, quay + pier + map table, poster wall
+#        west arm    — combat ring, tool range
+#        east arm    — presentation rows (theatre, jukebox, weather, UI gallery, camera, rumble)
+#        lagoon      — the Black Tap at the pier; open sea to the south
 
+# ---------------------------------------------------------------- islands
 [[island]]
 name = "drydock"
 seed = 3
-outline = [[-60, -20], [-40, -50], [0, -60], [40, -50], [60, -20], [55, 20], [30, 40], [-30, 40], [-55, 20]]
-beach = 10
-shelf = 20
-rise = 3
-peaks = [{ at = [0, -20], height = 6, radius = 40 }]
-noise = { scale = 20, amp = 0.6, seed = 1 }
+outline = [[-74, -38], [-62, -50], [-36, -55], [0, -57], [36, -55], [62, -50], [74, -38],
+           [78, -12], [77, 16], [73, 40], [62, 53], [46, 57], [33, 51],
+           [29, 34], [26, 14], [18, 2], [0, -2], [-18, 2], [-26, 14], [-29, 34],
+           [-33, 51], [-46, 57], [-62, 53], [-73, 40], [-77, 16], [-78, -12]]
+beach = 6
+shelf = 8
+rise = 1.5
+noise = { scale = 20, amp = 0.4, seed = 1 }
+flatten = [
+  # The north body, the west arm and the east arm: flat station ground at 2 m.
+  { polygon = [[-62, -40], [-56, -46], [-36, -48], [0, -50], [36, -48], [56, -46], [62, -40], [70, -14], [22, -9], [-22, -9], [-70, -14]], height = 2.0, blend = 5, ground = "grass", color = "#7fae55" },
+  { polygon = [[-70, -14], [-36, -11], [-33, 12], [-36, 36], [-40, 46], [-48, 50], [-60, 46], [-66, 38], [-70, 16]], height = 2.0, blend = 5, ground = "grass", color = "#7fae55" },
+  { polygon = [[70, -14], [36, -11], [33, 12], [36, 36], [40, 46], [48, 50], [60, 46], [66, 38], [70, 16]], height = 2.0, blend = 5, ground = "grass", color = "#7fae55" },
+  # The lagoon: carved deep enough for the Black Tap (draft 3.2 m) right up to the pier.
+  { polygon = [[-14, 9], [14, 9], [20, 46], [22, 70], [-22, 70], [-20, 46]], height = -7.0, blend = 7 },
+]
+# Stalk grass in the stealth yard (hiding).
+grass = [[[-63, -40], [-55, -40], [-55, -30.5], [-63, -30.5]],
+         [[-58, -26], [-52, -26], [-52, -21], [-58, -21]],
+         [[-62, -17], [-54, -17], [-54, -13.5], [-62, -13.5]]]
+
+[[island]]
+name = "mortar_rock"
+seed = 5
+outline = [[108, 22], [114, 18], [122, 19], [128, 26], [126, 35], [118, 39], [110, 35]]
+beach = 2
+shelf = 6
+rise = 2
+peaks = [{ at = [118, 28], height = 3.5, radius = 9 }]
+noise = { scale = 8, amp = 0.5, seed = 2 }
+
+[[island]]
+name = "gun_rock"
+seed = 9
+outline = [[-198, 136], [-193, 131], [-185, 132], [-181, 139], [-185, 147], [-193, 148]]
+beach = 2
+shelf = 6
+rise = 2
+peaks = [{ at = [-190, 140], height = 3.0, radius = 8 }]
+noise = { scale = 8, amp = 0.5, seed = 3 }
+
+# ---------------------------------------------------------------- vegetation
+[vegetation]
+seed = 23
+grass = { spacing = 1.0, height = [1.0, 1.3], width = 1.15, color = "#a9b552", color2 = "#7c9a3e" }
+
+# Beach palms only (the station ground stays clear for pads).
+[[vegetation.rule]]
+asset = "LIB/core/palm"
+ground = ["sand"]
+height = [0.6, 1.8]
+slope = 18
+spacing = 11
+chance = 0.5
+patchy = 0.3
+scale = [0.8, 1.15]
+seeds = 6
+pole = { radius = 0.17, height = 7.0, lean = 2.2 }
+
+[[vegetation.rule]]
+asset = "LIB/core/rock_cluster"
+ground = ["rock", "cliff", "sand"]
+height = [0.3, 6.0]
+slope = 48
+spacing = 16
+chance = 0.3
+patchy = 0.35
+scale = [0.8, 1.4]
+seeds = 4
+solid = true
+align = true
+
+[[vegetation.rule]]
+asset = "LIB/core/driftwood"
+ground = ["wet_sand", "sand"]
+height = [0.1, 1.2]
+slope = 14
+spacing = 10
+chance = 0.4
+scale = [0.8, 1.2]
+seeds = 3
+align = true
+
+# Climbing wall: two palm trunks to climb all round (poles).
+[[vegetation.place]]
+asset = "LIB/core/palm"
+at = [-14, -28]
+yaw = 40
+seed = 1
+pole = { radius = 0.17, height = 7.0, lean = 0.6 }
+
+[[vegetation.place]]
+asset = "LIB/core/palm"
+at = [16, -26]
+yaw = 220
+seed = 2
+pole = { radius = 0.17, height = 7.0, lean = 0.6 }
+
+# Shade by the market.
+[[vegetation.place]]
+asset = "LIB/core/palm"
+at = [-22, -13]
+yaw = 120
+seed = 3
+pole = { radius = 0.17, height = 7.0, lean = 2.2 }
+
+# ---------------------------------------------------------------- docks (paving first)
+[[structure]]
+kind = "paving"
+name = "ring_floor"
+at = [-52, 6]
+size = [18, 18]
+style = "limestone"
+
+[[structure]]
+kind = "paving"
+name = "market_square"
+at = [-33, -10]
+size = [18, 12]
+
+[[structure]]
+kind = "quay"
+name = "quay"
+at = [0, -6]
+yaw = 180
+size = [36, 6]
+base = 2.0
+
+[[structure]]
+kind = "pier"
+name = "pier"
+at = [0, 12.5]
+yaw = 180
+size = [4, 31]
+base = 2.0
+
+# ---------------------------------------------------------------- climbing wall
+[[structure]]
+kind = "fort_wall"
+name = "climb_wall"
+at = [6, -45]
+yaw = 180
+size = [22, 3]
+height = 8
+stairs = "left"
+
+[[structure]]
+kind = "house"
+name = "climb_house_a"
+at = [-6, -33]
+size = [8, 6]
+floors = 2
+style = "ochre"
+seed = 1
+balcony = "front"
+
+[[structure]]
+kind = "house"
+name = "climb_house_b"
+at = [8, -33]
+size = [8, 6]
+floors = 2
+style = "sky"
+seed = 2
+balcony = "front"
+awning = true
+
+[[structure]]
+kind = "house"
+name = "climb_house_c"
+at = [24, -34]
+size = [7, 7]
+floors = 3
+style = "coral"
+seed = 3
+balcony = "front"
+awning = true
+
+[[structure]]
+kind = "laundry_line"
+name = "climb_line"
+at = [-4, -34.5]
+to = [6, -34.5]
+seed = 4
+
+[[structure]]
+kind = "beam"
+name = "climb_beam"
+at = [-4, -31.5]
+to = [6, -31.5]
+
+[[structure]]
+kind = "hay_cart"
+name = "climb_cart"
+at = [24, -25.5]
+seed = 5
+
+# ---------------------------------------------------------------- haystack tower
+[[structure]]
+kind = "lighthouse"
+name = "hay_tower"
+at = [-30, -40]
+height = 18
+seed = 6
+
+[[structure]]
+kind = "hay_cart"
+name = "tower_cart"
+at = [-30, -29]
+seed = 7
+
+# ---------------------------------------------------------------- rope run (four roofs, a loop of lines)
+[[structure]]
+kind = "house"
+name = "run_a"
+at = [44, -38]
+size = [8, 6]
+floors = 2
+style = "seafoam"
+seed = 8
+
+[[structure]]
+kind = "house"
+name = "run_b"
+at = [56, -38]
+size = [8, 6]
+floors = 2
+style = "lime"
+seed = 9
+
+[[structure]]
+kind = "house"
+name = "run_c"
+at = [56, -24]
+size = [8, 6]
+floors = 2
+style = "ochre"
+seed = 10
+
+[[structure]]
+kind = "house"
+name = "run_d"
+at = [44, -24]
+size = [8, 6]
+floors = 2
+style = "sky"
+seed = 11
+
+[[structure]]
+kind = "laundry_line"
+name = "run_line_ab"
+at = [46, -38]
+to = [54, -38]
+seed = 12
+
+[[structure]]
+kind = "beam"
+name = "run_beam_bc"
+at = [56, -36]
+to = [56, -26]
+
+[[structure]]
+kind = "laundry_line"
+name = "run_line_cd"
+at = [54, -24]
+to = [46, -24]
+seed = 13
+
+[[structure]]
+kind = "beam"
+name = "run_beam_da"
+at = [44, -26]
+to = [44, -36]
+
+[[structure]]
+kind = "crate_stack"
+name = "run_crates"
+at = [38.5, -31]
+size = [2, 3]
+seed = 14
+
+# ---------------------------------------------------------------- stealth yard
+[[structure]]
+kind = "palisade"
+name = "yard_fence"
+at = [-46, -26]
+yaw = 90
+size = [30, 0.4]
+
+[[structure]]
+kind = "crate_stack"
+name = "yard_crates"
+at = [-50, -36]
+size = [2, 2]
+seed = 15
+
+# ---------------------------------------------------------------- market and poster wall
+[[structure]]
+kind = "stall"
+name = "stall_fish"
+at = [-38, -13]
+style = "sky"
+seed = 16
+
+[[structure]]
+kind = "stall"
+name = "stall_fruit"
+at = [-29, -13]
+seed = 17
+
+[[structure]]
+kind = "palisade"
+name = "poster_fence"
+at = [30, -16]
+size = [14, 0.4]
+height = 2.6
+
+# ---------------------------------------------------------------- the mortar yard's rock
+[[structure]]
+kind = "mortar_tower"
+name = "mortar_tower"
+at = [118, 28]
+yaw = 270
+size = [7, 7]
