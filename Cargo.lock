@@ -2289,6 +2289,7 @@ dependencies = [
  "pav_core",
  "pav_render",
  "pav_tools",
+ "pav_ui",
  "pav_view",
  "serde",
  "serde_json",

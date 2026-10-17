@@ -2,7 +2,7 @@
 """Packs the browser build into one self-contained HTML page: no other files, no network loads.
 
 usage: python3 -I scripts/pack_single_html.py BINDGEN_DIR [--title T] [--description D]
-           [--theme-color C] [--scene NAME] [--out PATH]
+           [--theme-color C] [--icon FILE.svg] [--scene NAME] [--out PATH]
 
 BINDGEN_DIR is wasm-bindgen's output (shardfall.js, shardfall_bg.wasm); scripts/build-web.sh
 --single-file makes it and runs this. The page is web/index.html with the options written into
@@ -93,6 +93,7 @@ def main():
     ap.add_argument("--title", help="<title> (default: index.html's)")
     ap.add_argument("--description", help="<meta name=description> (default: index.html's)")
     ap.add_argument("--theme-color", help="<meta name=theme-color> (default: index.html's)")
+    ap.add_argument("--icon", type=pathlib.Path, help="an SVG file inlined as the page's favicon (data: URL)")
     ap.add_argument("--scene", help="start scene when the address names no room or scene (default: the game's)")
     ap.add_argument("--out", type=pathlib.Path, help="output file (default: target/web/<title>.html)")
     a = ap.parse_args()
@@ -123,6 +124,10 @@ def main():
                 lambda m, name=name, value=value: f'<meta name="{name}" content="{html.escape(value)}">',
                 f"<meta name={name}>",
             )
+    if a.icon is not None:
+        svg = a.icon.read_text(encoding="utf-8").strip()
+        href = "data:image/svg+xml;base64," + base64.b64encode(svg.encode()).decode()
+        page = replace_one(page, r'<link rel="icon" href="[^"]*">', lambda m: f'<link rel="icon" type="image/svg+xml" href="{href}">', "icon link")
     # A manifest is another file to load: the single page goes without one.
     page = replace_one(page, r'[ \t]*<link rel="manifest"[^>]*>\n', lambda m: "", "manifest link")
 

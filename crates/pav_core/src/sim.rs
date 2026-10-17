@@ -132,6 +132,10 @@ pub struct SimState {
     /// A game from `crate::games` (the starter, or one an agent added), when this scene is one.
     #[serde(default)]
     pub play: Option<crate::games::GameBox>,
+    /// The open sea, when a game has one: characters swim in its waves. The game sets it
+    /// every tick (its sea state and time).
+    #[serde(default)]
+    pub ocean: Option<crate::ocean::Ocean>,
     /// The animation stage freezes this world and publishes its own render frame.
     #[serde(default)]
     pub animation_preview: Option<crate::animation_preview::PreviewState>,
@@ -213,6 +217,7 @@ impl Sim {
                 crumbles: Vec::new(),
                 game: None,
                 play: None,
+                ocean: None,
                 animation_preview: None,
                 studio_mode: Some(crate::prop_preview::StudioMode::World),
                 prop_preview: None,

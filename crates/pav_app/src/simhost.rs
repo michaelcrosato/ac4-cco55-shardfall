@@ -30,11 +30,14 @@ pub struct TimeControl {
     pub rewind_speed: u32,
     /// Jump to this tick (timeline scrubbing), keeping the future until play resumes.
     pub scrub: Option<u64>,
+    /// Attract mode: each tick takes the game's bot input (`Sim::bot_input`) instead of the
+    /// player's, so the demo is the real game played deterministically by the AI.
+    pub autopilot: bool,
 }
 
 impl Default for TimeControl {
     fn default() -> Self {
-        Self { paused: false, speed: 1.0, step_requests: 0, rewinding: false, rewind_speed: 1, scrub: None }
+        Self { paused: false, speed: 1.0, step_requests: 0, rewinding: false, rewind_speed: 1, scrub: None, autopilot: false }
     }
 }
 
@@ -76,6 +79,9 @@ pub struct Shared {
     pub latency_probe: Mutex<Option<(Instant, Instant, u64)>>,
     /// Menu commands waiting for a tick (one rides along with each tick's input).
     pub cmds: Mutex<std::collections::VecDeque<pav_core::arpg::GameCmd>>,
+    /// Camera turn from the mouse (degrees) waiting for the next tick: added to that tick's
+    /// `InputFrame::look` once (the stick's look is a rate and stays in `input`).
+    pub look_impulse: Mutex<glam::Vec2>,
 }
 
 impl Shared {
@@ -115,6 +121,7 @@ fn shared_for(sim: &mut Sim) -> Arc<Shared> {
         input_stamp: Mutex::new(None),
         latency_probe: Mutex::new(None),
         cmds: Mutex::new(Default::default()),
+        look_impulse: Mutex::new(glam::Vec2::ZERO),
     })
 }
 
@@ -268,11 +275,16 @@ impl Clock {
         let mut tick_once = |sim: &mut Sim, at: Instant| {
             let input = if previewing {
                 InputFrame::default()
+            } else if ctl.autopilot {
+                // Real input is the front end's (it only ends the demo).
+                sh.input.lock().unwrap().pressed = 0;
+                sim.bot_input()
             } else {
                 let mut i = sh.input.lock().unwrap();
                 let mut frame = *i;
                 i.pressed = 0;
                 frame.cmd = sh.cmds.lock().unwrap().pop_front();
+                frame.look += std::mem::take(&mut *sh.look_impulse.lock().unwrap());
                 frame
             };
             let stamp = if previewing { None } else { sh.input_stamp.lock().unwrap().take() };

@@ -30,6 +30,20 @@ pub struct Settings {
     /// A scripted gamepad to play (command line only: --pad-script FILE).
     #[serde(skip)]
     pub pad_script: String,
+    /// Developer mode: the engine's overlays, F-keys, rewind, scene list and studios in a
+    /// game with a front end (`--dev`, `?dev=1`).
+    #[serde(skip)]
+    pub dev: bool,
+    /// Store-display kiosk: start in attract mode and return to it after 60 s without input
+    /// (`--kiosk`, `?kiosk=1`).
+    #[serde(skip)]
+    pub kiosk: bool,
+}
+
+/// The start scene when none is named: the first game with a front end (its title screen),
+/// else Shardfall's town.
+fn default_scene() -> String {
+    pav_core::games::all().into_iter().find(|g| g.front_end.is_some()).map(|g| g.key.to_string()).unwrap_or_else(|| "town".into())
 }
 
 impl Default for Settings {
@@ -50,6 +64,8 @@ impl Default for Settings {
             creature_studio: false,
             creature_name: String::new(),
             pad_script: String::new(),
+            dev: false,
+            kiosk: false,
         }
     }
 }
@@ -79,13 +95,15 @@ impl Settings {
             s.asset_name = p.get("asset").unwrap_or_default();
             s.creature_studio = p.get("creature_studio").is_some_and(|v| v != "false");
             s.creature_name = p.get("creature").unwrap_or_default();
+            s.dev = p.get("dev").is_some_and(|v| v != "0" && v != "false");
+            s.kiosk = p.get("kiosk").is_some_and(|v| v != "0" && v != "false");
         }
         if (s.animation_studio || s.asset_studio || s.creature_studio) && s.scene.is_empty() {
             s.scene = "empty".into();
         }
         if s.scene.is_empty() {
-            // Shardfall's town; the engine's pavilion is the `world` scene (pause menu).
-            s.scene = "town".into();
+            // The game's title screen (or Shardfall's town); the engine's pavilion is `world`.
+            s.scene = default_scene();
         }
         (s, "page address (?room=NAME&seed=N)".into())
     }
@@ -155,6 +173,8 @@ impl Settings {
                 "--vsync" => s.vsync = true,
                 "--fullscreen" => s.fullscreen = true,
                 "--windowed" => s.fullscreen = false,
+                "--dev" => s.dev = true,
+                "--kiosk" => s.kiosk = true,
                 _ => {}
             }
         }
@@ -170,8 +190,8 @@ impl Settings {
             }
         }
         if s.scene.is_empty() {
-            // Shardfall's town; the engine's pavilion is the `world` scene (pause menu).
-            s.scene = "town".into();
+            // The game's title screen (or Shardfall's town); the engine's pavilion is `world`.
+            s.scene = default_scene();
         }
         (s, note)
     }

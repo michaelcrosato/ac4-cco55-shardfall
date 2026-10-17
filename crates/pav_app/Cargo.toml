@@ -15,6 +15,7 @@ pav_view.workspace = true
 pav_tools.workspace = true
 pav_audio.workspace = true
 blacktap.workspace = true
+pav_ui.workspace = true
 glam.workspace = true
 winit.workspace = true
 egui.workspace = true

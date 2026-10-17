@@ -14,10 +14,10 @@ pack=()
 while (($#)); do
 	case $1 in
 	--single-file) single=true ;;
-	--title | --description | --theme-color | --scene | --out)
+	--title | --description | --theme-color | --icon | --scene | --out)
 		(($# > 1)) || { echo "build-web.sh: $1 needs a value" >&2; exit 2; }
 		value=$2
-		[[ $1 == --out && $value != /* ]] && value=$caller/$value
+		[[ ($1 == --out || $1 == --icon) && $value != /* ]] && value=$caller/$value
 		pack+=("$1" "$value")
 		shift
 		;;

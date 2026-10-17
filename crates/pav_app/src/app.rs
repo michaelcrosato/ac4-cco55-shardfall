@@ -30,6 +30,8 @@ use crate::simhost::SimHost;
 use crate::ui::{self, MenuAction};
 use crate::uiinput::UiInput;
 
+mod play;
+
 #[cfg(not(target_arch = "wasm32"))]
 pub fn run(settings: Settings) -> Result<()> {
     let event_loop = stage("event loop", || Ok((EventLoop::new()?, String::new())))?;
@@ -207,6 +209,9 @@ pub struct App {
     audio_resumed: bool,
     init_started: bool,
     pub fatal: Option<String>,
+    /// The game's own front end (title, menus, attract, HUD) when the start scene is a game
+    /// with one and the app is not in developer mode.
+    play: Option<play::PlayApp>,
 }
 
 impl App {
@@ -289,6 +294,7 @@ impl App {
             audio_resumed: false,
             init_started: false,
             fatal: None,
+            play: play::PlayApp::for_scene(&settings.scene, settings.dev, settings.kiosk),
             settings,
         };
         if touch_screen {
@@ -420,8 +426,10 @@ impl App {
         if let Err(error) = pav_tools::creature_tools::initialize_authored() {
             self.creature_ui.report(Err(format!("Could not load saved creatures: {error:#}")));
         }
+        // The game's front end starts on its title backdrop.
+        let start_scene = self.play.as_ref().map(|p| p.start_scene()).unwrap_or_else(|| s.scene.clone());
         let mut sim = stage("simulation", || {
-            let mut sim = Sim::new(&s.scene, s.seed)?;
+            let mut sim = Sim::new(&start_scene, s.seed)?;
             let mut d = format!(
                 "scene '{}', seed {}, {} entities, {} blocks",
                 s.scene,
@@ -946,6 +954,10 @@ impl App {
 
     fn frame(&mut self) {
         if self.gfx.is_none() || self.host.is_none() {
+            return;
+        }
+        if self.play.is_some() {
+            self.frame_play();
             return;
         }
         // Touch screens draw at most 60 frames a second (a phone with a faster screen would
@@ -2127,6 +2139,20 @@ impl ApplicationHandler for App {
     }
 
     fn window_event(&mut self, el: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
+        if self.play.is_some() {
+            // The game's front end: no engine touch controls, F-keys or demo shortcuts.
+            if let WindowEvent::Touch(_) = &event {
+                if let (Some(st), Some(g)) = (&mut self.egui_state, &self.gfx) {
+                    st.on_window_event(&g.window, &event);
+                }
+            }
+            if self.play_window_event(el, &event) {
+                return;
+            }
+            if let WindowEvent::Touch(_) = &event {
+                return;
+            }
+        }
         if let WindowEvent::Touch(t) = &event {
             self.on_touch(t, &event);
             return;
@@ -2228,6 +2254,12 @@ impl ApplicationHandler for App {
                 self.input.cursor = p;
             }
             _ => {}
+        }
+    }
+
+    fn device_event(&mut self, _el: &ActiveEventLoop, _id: winit::event::DeviceId, event: winit::event::DeviceEvent) {
+        if let (Some(p), winit::event::DeviceEvent::MouseMotion { delta }) = (self.play.as_mut(), event) {
+            p.mouse_motion(Vec2::new(delta.0 as f32, delta.1 as f32));
         }
     }
 

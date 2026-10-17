@@ -208,6 +208,19 @@ impl Default for SeaState {
     }
 }
 
+/// The sea in a simulation (`SimState::ocean`): the waves and the sea's own clock.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Ocean {
+    pub sea: SeaState,
+    pub time: f32,
+}
+
+impl Ocean {
+    pub fn height(&self, p: Vec2) -> f32 {
+        self.sea.height(p, self.time)
+    }
+}
+
 /// The sea surface at a point.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Surface {

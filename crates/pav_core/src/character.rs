@@ -382,6 +382,43 @@ pub struct Character {
     /// wanted one, and how far a knockback slides.
     #[serde(default)]
     pub slide: f32,
+    /// Game control: the game places this character itself for the next tick (free-climbing,
+    /// vaults, assisted leaps, a helm seat, a cutscene). Used once, then cleared: set it every
+    /// tick the game wants control (from `Game::pre`).
+    #[serde(default)]
+    pub scripted: Option<Scripted>,
+}
+
+/// A pose and place the game gives a character for one tick (`Character::scripted`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Scripted {
+    /// Where the feet are.
+    pub feet: Vec3,
+    /// Yaw in radians (0 = facing +Z).
+    pub facing: f32,
+    /// The velocity to report (animation, landing speed, sounds).
+    pub vel: Vec3,
+    pub pose: ScriptPose,
+    /// Climbing: how far the hands and feet have moved this tick (m), so the climb cycle runs.
+    #[serde(default)]
+    pub climb_step: f32,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ScriptPose {
+    /// On a surface, walking or standing.
+    #[default]
+    Ground,
+    /// Climbing a wall or a pole.
+    Climb,
+    /// Hanging from a ledge.
+    Hang,
+    /// In the air (leaps, dives).
+    Air,
+    Swim,
+    /// Sitting or standing still at a post (the helm): no walk cycle.
+    Seated,
 }
 
 impl Character {
@@ -512,6 +549,52 @@ pub fn tick(
             None => ch.riding = None,
         }
     }
+    if let Some(s) = ch.scripted.take() {
+        // Placed by the game: no physics of our own, only the animation follows.
+        let half = Posture::Stand.half_height() + RADIUS;
+        ch.posture = Posture::Stand;
+        let center = s.feet + Vec3::Y * half;
+        let accel = (s.vel - ch.vel) / dt.max(1e-4);
+        let landed = if !ch.grounded && matches!(s.pose, ScriptPose::Ground) { (-ch.vel.y).max(0.0) } else { 0.0 };
+        ch.vel = s.vel;
+        ch.facing = s.facing;
+        ch.grounded = matches!(s.pose, ScriptPose::Ground | ScriptPose::Seated);
+        ch.swimming = s.pose == ScriptPose::Swim;
+        ch.climbing = None;
+        ch.hang = None;
+        let climbing = matches!(s.pose, ScriptPose::Climb | ScriptPose::Hang);
+        let anim_vel = if s.pose == ScriptPose::Seated { Vec3::ZERO } else { s.vel };
+        ch.anim.update(
+            puppet,
+            &AnimInput {
+                vel: anim_vel,
+                accel,
+                grounded: ch.grounded,
+                crouch: false,
+                crawl: false,
+                climbing,
+                facing: s.facing,
+                landed,
+                jumped: false,
+                swimming: ch.swimming,
+                rolling: false,
+            },
+            dt,
+        );
+        match s.pose {
+            ScriptPose::Hang => ch.anim.climb_phase = 0.25,
+            ScriptPose::Climb => ch.anim.climb_phase = (ch.anim.climb_phase + s.climb_step * 0.9).rem_euclid(1.0),
+            _ => {}
+        }
+        if let Some(b) = st.physics.bodies.get_mut(body_h) {
+            b.set_next_kinematic_translation(center);
+        }
+        if let Some(e) = st.entities.map.get_mut(&id) {
+            e.pos = center;
+            e.character = Some(ch);
+        }
+        return;
+    }
     let last_vel = ch.vel;
     let was_grounded = ch.grounded;
     let filter = QueryFilter::default().exclude_rigid_body(body_h).exclude_sensors();
@@ -602,6 +685,13 @@ pub fn tick(
             ZoneKind::Conveyor => conveyor += z.conveyor_velocity(),
             ZoneKind::Bounce => bounce = bounce.max(z.speed),
             _ => {}
+        }
+    }
+    // The open sea (a game's ocean): the surface rises and falls with the waves.
+    if let Some(o) = &st.ocean {
+        let surface = o.sea.height(Vec2::new(feet0.x, feet0.z), o.time);
+        if feet0.y < surface {
+            ch.water_depth = ch.water_depth.max(surface - feet0.y);
         }
     }
     let was_swimming = ch.swimming;

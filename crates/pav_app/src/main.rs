@@ -27,6 +27,7 @@ mod rooms;
 mod save;
 mod settings;
 mod simhost;
+mod store;
 mod touch;
 mod ui;
 mod uiinput;
