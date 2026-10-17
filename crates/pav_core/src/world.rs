@@ -1193,6 +1193,18 @@ impl Sim {
         Some(RayHit { point, normal: hit.normal, entity })
     }
 
+    /// Like [`Sim::raycast`] against everything, and the static block it hit, if any (tools).
+    pub fn raycast_block(&self, origin: Vec3, dir: Vec3, max: f32) -> Option<(RayHit, Option<crate::statics::Block>)> {
+        let filter = QueryFilter::default().exclude_sensors();
+        let ray = Ray::new(origin, dir.normalize_or(Vec3::NEG_Y));
+        let qp = self.state.physics.query_filtered(filter);
+        let (h, hit) = qp.cast_ray_and_get_normal(&ray, max as Real, true)?;
+        let point = origin + dir.normalize_or(Vec3::NEG_Y) * hit.time_of_impact as f32;
+        let entity = self.state.physics.colliders.get(h).and_then(|c| crate::physics::entity_from_tag(c.user_data)).map(EntityId);
+        let block = self.state.statics.block_of(&self.state.physics, h).map(|(_, b)| b.clone());
+        Some((RayHit { point, normal: hit.normal, entity }, block))
+    }
+
     /// The room's free objects as they are now (for saving sandbox edits), in room space.
     pub fn room_objects(&self, id: u16) -> Vec<crate::room::ObjectDef> {
         let Some(slot) = self.state.world.rooms.get(id as usize) else { return Vec::new() };

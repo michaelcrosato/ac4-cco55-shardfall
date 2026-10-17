@@ -20,7 +20,8 @@ pub const SURVEY_SECONDS: f32 = 4.5;
 pub fn perch_here<'a>(g: &'a BlackTap, sim: &Sim) -> Option<crate::world::Perch> {
     let p = BlackTap::player_feet(sim)?;
     let w = g.world();
-    w.perches.iter().find(|q| Vec2::new(q.at[0] - p.x, q.at[2] - p.z).length() < 2.6 && (q.at[1] - p.y).abs() < 2.0).cloned()
+    // On it, or on the top just under it (a belfry floor under its roof's plank).
+    w.perches.iter().find(|q| Vec2::new(q.at[0] - p.x, q.at[2] - p.z).length() < 3.0 && (-2.0..4.8).contains(&(q.at[1] - p.y))).cloned()
 }
 
 /// Perches, the survey and the leap: from `BlackTap::pre` while on foot. Returns an input

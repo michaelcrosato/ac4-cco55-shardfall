@@ -164,6 +164,12 @@ pub static TOOLS: &[Tool] = &[
         run: crate::kit_tools::t_level_check,
     },
     Tool {
+        name: "ray",
+        help: "What a ray hits: point, normal, entity, static block and its flags.",
+        args: &[arg("from", "array", "[x, y, z] start"), arg("dir", "array", "[x, y, z] direction (default down)"), arg("max", "number", "length (default 50)")],
+        run: crate::kit_tools::t_ray,
+    },
+    Tool {
         name: "markers",
         help: "The running game's named world markers (name= filters).",
         args: &[arg("name", "string", "only markers whose name contains this")],
@@ -1465,6 +1471,9 @@ pub fn player_json(s: &Session) -> Value {
         "hanging": ch.hang.map(|h| h.climb >= 0.0).map(|c| if c { "climbing up" } else { "hanging" }),
         "swimming": ch.swimming,
         "water_depth": round3(ch.water_depth),
+        "traversal": format!("{:?}", ch.traversal_state()),
+        "vault": ch.vault.is_some(),
+        "freerun": ch.freerun,
         "rolling": ch.roll > 0.0,
         "stunned": ch.stun > 0.0,
         "model": pav_core::params::ChoiceParam::name(s.sim.config.movement.model),

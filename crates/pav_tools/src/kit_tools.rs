@@ -401,6 +401,30 @@ pub fn t_perception(s: &mut Session, a: &Args) -> Result<Output> {
     Ok(Output::Json(game_command(s, "perception", a)?))
 }
 
+/// `ray`: what a ray from a point hits (tools for laying out levels and bot routes).
+pub fn t_ray(s: &mut Session, a: &Args) -> Result<Output> {
+    let from = crate::tools::vec_arg(a, "from")?.ok_or_else(|| anyhow!("from=[x,y,z]"))?;
+    let dir = crate::tools::vec_arg(a, "dir")?.unwrap_or(vec![0.0, -1.0, 0.0]);
+    if from.len() != 3 || dir.len() != 3 {
+        bail!("from and dir are [x, y, z]");
+    }
+    let max = crate::tools::get_f32(a, "max", 50.0)?;
+    let o = glam::Vec3::new(from[0], from[1], from[2]);
+    let d = glam::Vec3::new(dir[0], dir[1], dir[2]);
+    let r = |x: f32| (x * 1000.0).round() / 1000.0;
+    Ok(Output::Json(match s.sim.raycast_block(o, d, max) {
+        None => json!({ "hit": false }),
+        Some((h, b)) => json!({
+            "hit": true,
+            "point": [r(h.point.x), r(h.point.y), r(h.point.z)],
+            "normal": [r(h.normal.x), r(h.normal.y), r(h.normal.z)],
+            "distance": r((h.point - o).length()),
+            "entity": h.entity.map(|e| e.0),
+            "block": b.map(|b| json!({ "min": [r(b.min.x), r(b.min.y), r(b.min.z)], "max": [r(b.max.x), r(b.max.y), r(b.max.z)], "flags": b.flags, "material": b.material })),
+        }),
+    }))
+}
+
 pub fn t_markers(s: &mut Session, a: &Args) -> Result<Output> {
     Ok(Output::Json(game_command(s, "markers", a)?))
 }

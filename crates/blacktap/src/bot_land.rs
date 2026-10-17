@@ -57,6 +57,31 @@ fn go(g: &BlackTap, sim: &Sim, to: Vec3, run: bool) -> InputFrame {
     i
 }
 
+/// The direction into the nearest climbable wall within 1.6 m (rays every 30° at chest
+/// height), preferring walls in the direction of `toward`.
+fn wall_dir(sim: &Sim, feet: Vec3, toward: Vec2) -> Option<Vec2> {
+    let from = feet + Vec3::Y * 1.0;
+    let want = toward.normalize_or_zero();
+    let mut best: Option<(f32, Vec2)> = None;
+    for k in 0..12 {
+        let a = k as f32 * std::f32::consts::TAU / 12.0;
+        let d = Vec2::new(a.sin(), a.cos());
+        let dir = Vec3::new(d.x, 0.0, d.y);
+        if let Some(h) = sim.raycast(from, dir, 1.6, None) {
+            // A wall that goes on above the head (not a cart or a crate).
+            let tall = sim.raycast(feet + Vec3::Y * 3.2, dir, 2.2, None).is_some();
+            if h.normal.y.abs() < 0.4 && tall {
+                let dist = (h.point - from).length();
+                let score = dist - 0.6 * d.dot(want);
+                if best.is_none_or(|b| score < b.0) {
+                    best = Some((score, -Vec2::new(h.normal.x, h.normal.z).normalize_or(d)));
+                }
+            }
+        }
+    }
+    best.map(|b| b.1)
+}
+
 /// Follows a bot hint: the point after the nearest segment, and that point's action.
 pub fn follow(g: &BlackTap, sim: &Sim, name: &str) -> Option<InputFrame> {
     let w = g.world();
@@ -66,11 +91,11 @@ pub fn follow(g: &BlackTap, sim: &Sim, name: &str) -> Option<InputFrame> {
         return None;
     }
     let pts: Vec<Vec3> = h.points.iter().map(|q| Vec3::from(*q)).collect();
-    // The segment the player is nearest to (3D, so climbs count height) → aim for its end.
-    let mut best = (f32::MAX, 0usize);
-    for k in 0..pts.len() {
-        let a = if k == 0 { p } else { pts[k - 1] };
-        let bpt = pts[k];
+    // The route segment the player is nearest to (3D, so climbs count height) → aim for its
+    // end; before the route starts, its first point.
+    let mut best = (pts[0].distance(p), 0usize);
+    for k in 1..pts.len() {
+        let (a, bpt) = (pts[k - 1], pts[k]);
         let ab = bpt - a;
         let t = ((p - a).dot(ab) / ab.length_squared().max(1e-3)).clamp(0.0, 1.0);
         let d = (a + ab * t).distance(p);
@@ -79,7 +104,8 @@ pub fn follow(g: &BlackTap, sim: &Sim, name: &str) -> Option<InputFrame> {
         }
     }
     let mut k = best.1;
-    while k + 1 < pts.len() && pts[k].distance(p) < 1.4 {
+    let reached = |q: Vec3| flat(q - p).length() < 1.4 && (q.y - p.y).abs() < 2.5;
+    while k + 1 < pts.len() && reached(pts[k]) {
         k += 1;
     }
     let target = pts[k];
@@ -89,14 +115,32 @@ pub fn follow(g: &BlackTap, sim: &Sim, name: &str) -> Option<InputFrame> {
     let mut i = go(g, sim, target, matches!(action, "run" | "climb" | "jump" | "dive"));
     match action {
         "climb" => {
-            // Free-run into the wall and Parkour Up; keep pushing at it while climbing.
+            // At the foot of the wall: free-run into it toward the top (the next point) and
+            // Parkour Up; keep pushing at it while climbing.
             i.held |= b::SPRINT;
-            if flat(target - p).length() < 2.2 && !climbing && tap(sim, 10) {
-                press(&mut i, b::JUMP);
-            }
-            if climbing && i.move_dir == Vec2::ZERO {
-                let d = flat(target - p).normalize_or(Vec2::Y);
-                i.move_dir = d;
+            let top = pts.get(k + 1).copied().unwrap_or(target);
+            if flat(target - p).length() < 3.2 || climbing {
+                // Into the nearest wall (probed with rays; ties go to the side facing the
+                // top), else from the climb point toward the top.
+                let toward = if flat(top - target).length() > 0.3 { flat(top - target) } else { flat(top - p) };
+                let into = wall_dir(sim, p, toward).unwrap_or(toward).normalize_or_zero();
+                // Up the wall, drifting sideways to line up with the top (the stick's
+                // sideways part climbs sideways).
+                let side = Vec2::new(-into.y, into.x);
+                let lateral = (flat(top - p).dot(side) * 0.8).clamp(-1.0, 1.0);
+                let d = into + side * lateral;
+                if d.length() > 0.05 {
+                    i.move_dir = d.normalize();
+                    i.look = look_at(g, heading_of(d), 2.5);
+                }
+                if !climbing && tap(sim, 10) {
+                    press(&mut i, b::JUMP);
+                }
+                // Stalled on the wall (a cornice, a gap in the holds): a climb leap.
+                let still = ch.is_some_and(|c| c.vel.length() < 0.2);
+                if climbing && still && tap(sim, 45) {
+                    press(&mut i, b::JUMP);
+                }
             }
         }
         "jump" | "dive" => {
@@ -183,7 +227,20 @@ pub fn land(g: &BlackTap, sim: &Sim, skill: &str) -> InputFrame {
     let (head, arg) = skill.split_once(':').unwrap_or((skill, ""));
     let showcase = g.showcase.is_some();
     match head {
-        "swim_ashore" => follow(g, sim, "r4_swim").unwrap_or_default(),
+        "swim_ashore" => {
+            // Off the deck (free-running: no ledge safety), swim, walk up the beach.
+            let beach = g.world().marker("r4_beach").unwrap_or_default();
+            let mut i = go(g, sim, beach, true);
+            let ch = sim.state.player.and_then(|id| sim.state.entities.get(id)).and_then(|e| e.character.as_ref());
+            let swimming = ch.is_some_and(|c| c.swimming);
+            if g.land.deck.is_some() && !swimming {
+                i.held |= b::SPRINT;
+                if tap(sim, 20) {
+                    press(&mut i, b::JUMP);
+                }
+            }
+            i
+        }
         "climb_to" => follow(g, sim, &format!("r4_climb_{arg}")).unwrap_or_default(),
         "survey" => {
             let mut i = InputFrame::default();
