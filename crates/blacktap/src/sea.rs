@@ -493,11 +493,15 @@ impl Sea {
         };
         let Some(dir) = side else { return (0.03, None) };
         let mut best: Option<(f32, Vec3)> = None;
+        // Ships are led: where they will be when the ball arrives (the ball keeps our way).
+        let mine = v.forward() * v.speed;
         for s in self.ships.iter().filter(|s| s.id != v.id && s.alive() && s.faction != v.faction) {
             let d = s.pos - v.pos;
             let dist = d.length();
             if dist < 260.0 && dir.dot(d / dist.max(1e-3)) > 0.7 && best.is_none_or(|b| dist < b.0) {
-                best = Some((dist, s.world(Vec3::Y * 1.0)));
+                let flight = dist / c.muzzle.max(1.0);
+                let lead = (s.forward() * s.speed - mine) * flight;
+                best = Some((dist, s.world(Vec3::Y * 1.0) + Vec3::new(lead.x, 0.0, lead.y)));
             }
         }
         for b in self.batteries.iter().filter(|b| !b.destroyed) {
@@ -508,11 +512,11 @@ impl Sea {
             }
         }
         match best {
-            Some((dist, at)) => {
+            Some((_, at)) => {
                 let from_y = c.freeboard * 0.6 + v.heave;
-                let el = ballistics::elevation_for(dist, at.y - from_y, c.muzzle).unwrap_or(0.12);
-                let yaw = (w == Weapon::Chain).then(|| heading_of(Vec2::new(at.x, at.z) - v.pos));
-                (el, yaw)
+                let flat = Vec2::new(at.x, at.z) - v.pos;
+                let el = ballistics::elevation_for(flat.length(), at.y - from_y, c.muzzle).unwrap_or(0.12);
+                (el, Some(heading_of(flat)))
             }
             None => (0.04, None),
         }

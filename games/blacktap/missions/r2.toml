@@ -20,6 +20,7 @@ objective = "Disable the TS Restraint"
 markers = ["ship:restraint"]
 on_start = [{ line = "r2_restraint" }, { game = "restraint_engage" }, { game = "teach:brace" }]
 done = { game = "restraint_disabled" }
+checkpoint = true
 bot = "fight_ships"
 
 [[step]]

@@ -65,6 +65,16 @@ pub struct LevelFile {
     /// an optional offset: `"keep.flagpole+0,0,1.5"`.
     #[serde(default)]
     pub marker_from: BTreeMap<String, String>,
+    /// Place names on the map.
+    #[serde(default)]
+    pub map_label: Vec<MapLabel>,
+}
+
+/// A place name on the map, at (x, z).
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct MapLabel {
+    pub at: [f32; 2],
+    pub text: String,
 }
 
 /// People placed by the mission actions (`spawn_town`, `spawn_fort_guards`...), by group.
@@ -170,6 +180,7 @@ pub struct World {
     pub zones: Vec<pav_core::structures::Area>,
     /// The geometry file this world was built from.
     pub geometry: String,
+    pub map_labels: Vec<MapLabel>,
 }
 
 impl World {
@@ -364,6 +375,7 @@ pub fn load(text: &str) -> anyhow::Result<Arc<World>> {
         bot_hints: f.bot_hint.into_iter().map(|h| (h.name.clone(), h)).collect(),
         zones: level.areas.clone(),
         geometry: f.geometry.clone(),
+        map_labels: f.map_label.clone(),
     });
     *CACHE.lock().unwrap_or_else(|p| p.into_inner()) = Some((key, w.clone()));
     Ok(w)

@@ -485,6 +485,112 @@ pub fn height_at(fields: &[&Heightfield], p: Vec2) -> f32 {
     fields.iter().filter(|f| f.contains(p)).map(|f| f.height(p)).fold(DEEP, f32::max)
 }
 
+/// Closed contour lines where an island's ground crosses `level` (marching squares on every
+/// `stride`-th sample, simplified to within `tolerance` m): coastlines at 0, hills above. The
+/// grid's border counts as below the level, so every line closes (first point = last).
+pub fn contours(field: &Heightfield, level: f32, stride: usize, tolerance: f32) -> Vec<Vec<Vec2>> {
+    let s = stride.max(1);
+    let nx = ((field.w - 1) / s + 1) as i32;
+    let nz = ((field.h - 1) / s + 1) as i32;
+    let value = |i: i32, k: i32| -> f32 {
+        if i < 0 || k < 0 || i >= nx || k >= nz { -1.0 } else { field.at(i * s as i32, k * s as i32) - level }
+    };
+    let pos = |i: i32, k: i32| field.origin + Vec2::new(i as f32, k as f32) * (s as f32 * field.cell);
+    // Edge keys: (i, k, 0) runs (i,k)→(i+1,k); (i, k, 1) runs (i,k)→(i,k+1).
+    let crossing = |e: (i32, i32, u8)| -> Vec2 {
+        let (i, k, dir) = e;
+        let (j, l) = if dir == 0 { (i + 1, k) } else { (i, k + 1) };
+        let (a, b) = (value(i, k), value(j, l));
+        let t = if (a - b).abs() > 1e-6 { (a / (a - b)).clamp(0.0, 1.0) } else { 0.5 };
+        pos(i, k).lerp(pos(j, l), t)
+    };
+    let mut links: BTreeMap<(i32, i32, u8), Vec<(i32, i32, u8)>> = BTreeMap::new();
+    let mut link = |a: (i32, i32, u8), b: (i32, i32, u8)| {
+        links.entry(a).or_default().push(b);
+        links.entry(b).or_default().push(a);
+    };
+    for k in -1..nz {
+        for i in -1..nx {
+            let (v0, v1, v2, v3) = (value(i, k), value(i + 1, k), value(i + 1, k + 1), value(i, k + 1));
+            let case = (v0 > 0.0) as u8 | ((v1 > 0.0) as u8) << 1 | ((v2 > 0.0) as u8) << 2 | ((v3 > 0.0) as u8) << 3;
+            let (bottom, right, top, left) = ((i, k, 0), (i + 1, k, 1), (i, k + 1, 0), (i, k, 1));
+            let high_centre = v0 + v1 + v2 + v3 > 0.0;
+            match case {
+                0 | 15 => {}
+                1 | 14 => link(left, bottom),
+                2 | 13 => link(bottom, right),
+                3 | 12 => link(left, right),
+                4 | 11 => link(right, top),
+                6 | 9 => link(bottom, top),
+                7 | 8 => link(left, top),
+                // Saddles: the centre's side decides which corners join.
+                5 if high_centre => {
+                    link(left, top);
+                    link(bottom, right);
+                }
+                10 if !high_centre => {
+                    link(left, top);
+                    link(bottom, right);
+                }
+                _ => {
+                    link(left, bottom);
+                    link(right, top);
+                }
+            }
+        }
+    }
+    let mut seen = std::collections::BTreeSet::new();
+    let mut out = Vec::new();
+    for &start in links.keys() {
+        if !seen.insert(start) {
+            continue;
+        }
+        let mut ring = vec![crossing(start)];
+        let mut cur = start;
+        while let Some(&next) = links[&cur].iter().find(|e| !seen.contains(*e)) {
+            seen.insert(next);
+            ring.push(crossing(next));
+            cur = next;
+        }
+        if ring.len() < 4 {
+            continue;
+        }
+        ring.push(ring[0]);
+        out.push(simplify(&ring, tolerance));
+    }
+    out
+}
+
+/// Douglas–Peucker on a polyline (keeps both ends).
+fn simplify(pts: &[Vec2], tolerance: f32) -> Vec<Vec2> {
+    if pts.len() < 3 || tolerance <= 0.0 {
+        return pts.to_vec();
+    }
+    let mut keep = vec![false; pts.len()];
+    keep[0] = true;
+    keep[pts.len() - 1] = true;
+    let mut stack = vec![(0, pts.len() - 1)];
+    while let Some((a, b)) = stack.pop() {
+        let (pa, pb) = (pts[a], pts[b]);
+        let d = pb - pa;
+        let len = d.length();
+        let mut far = (0.0, a);
+        for (i, p) in pts.iter().enumerate().take(b).skip(a + 1) {
+            let dist = if len < 1e-6 { p.distance(pa) } else { (d.perp_dot(*p - pa) / len).abs() };
+            if dist > far.0 {
+                far = (dist, i);
+            }
+        }
+        // A closed ring's two ends coincide: always split it once.
+        if far.0 > tolerance || (len < 1e-6 && far.1 > a) {
+            keep[far.1] = true;
+            stack.push((a, far.1));
+            stack.push((far.1, b));
+        }
+    }
+    pts.iter().zip(keep).filter(|(_, k)| *k).map(|(p, _)| *p).collect()
+}
+
 /// The island whose ground is highest at `p`.
 fn field_at<'a>(fields: &[&'a Heightfield], p: Vec2) -> Option<&'a Heightfield> {
     fields.iter().filter(|f| f.contains(p)).max_by(|a, b| a.height(p).total_cmp(&b.height(p))).copied()
@@ -523,8 +629,13 @@ struct RoadPath {
 
 impl RoadPath {
     const SHOULDER: f32 = 3.0;
+    /// Metres over which a road leaves a plateau's height.
+    const RAMP: f32 = 24.0;
 
-    fn new(r: &Road, ground: &dyn Fn(Vec2) -> f32) -> Self {
+    /// `ground` gives the height under a point and whether it is pinned (inside a plateau,
+    /// which stays flat): pinned samples keep their height while the rest is smoothed, so a
+    /// road ramps out of a plateau from its edge instead of stepping up beside it.
+    fn new(r: &Road, ground: &dyn Fn(Vec2) -> (f32, bool)) -> Self {
         let pts = poly(&r.points);
         let mut along = vec![0.0];
         for w in pts.windows(2) {
@@ -540,14 +651,25 @@ impl RoadPath {
             let (a, b) = (along[i - 1], along[i]);
             pts[i - 1].lerp(pts[i], ((s - a) / (b - a).max(1e-6)).clamp(0.0, 1.0))
         };
-        let raw: Vec<f32> = (0..n).map(|k| ground(point_at(k as f32)).max(0.4)).collect();
+        let raw: Vec<(f32, bool)> = (0..n).map(|k| ground(point_at(k as f32))).map(|(h, pin)| (h.max(0.4), pin)).collect();
         // Smooth along the road (box filter, three passes ≈ a gaussian of ±8 m).
-        let mut heights = raw;
+        let mut heights: Vec<f32> = raw.iter().map(|r| r.0).collect();
         for _ in 0..3 {
             let prev = heights.clone();
             for (i, h) in heights.iter_mut().enumerate() {
                 let (lo, hi) = (i.saturating_sub(8), (i + 8).min(prev.len() - 1));
                 *h = prev[lo..=hi].iter().sum::<f32>() / (hi - lo + 1) as f32;
+            }
+        }
+        // Pinned stretches keep their height; the road ramps out of them over `RAMP` metres.
+        let pins: Vec<usize> = (0..n).filter(|&i| raw[i].1).collect();
+        if !pins.is_empty() {
+            for (i, h) in heights.iter_mut().enumerate() {
+                let j = pins[pins.partition_point(|&j| j < i).min(pins.len() - 1)];
+                let k = pins[pins.partition_point(|&j| j < i).saturating_sub(1)];
+                let near = if i.abs_diff(j) < i.abs_diff(k) { j } else { k };
+                let t = smooth(i.abs_diff(near) as f32 / Self::RAMP);
+                *h = raw[near].0 + (*h - raw[near].0) * t;
             }
         }
         let m = Vec2::splat(r.width * 0.5 + Self::SHOULDER + 1.0);
@@ -694,7 +816,13 @@ pub fn generate(def: &IslandDef) -> Heightfield {
         let (i, k) = (g.x.round() as usize, g.y.round() as usize);
         hs[k * w + i]
     };
-    let roads: Vec<RoadPath> = def.roads.iter().map(|r| RoadPath::new(r, &|p| sample(&heights, p))).collect();
+    let pinned = |p: Vec2| -> (f32, bool) {
+        match g.flats.iter().find(|f| signed_distance(p, &f.0) >= 0.0) {
+            Some(f) => (f.1.height, true),
+            None => (sample(&heights, p), false),
+        }
+    };
+    let roads: Vec<RoadPath> = def.roads.iter().map(|r| RoadPath::new(r, &pinned)).collect();
     let mut flags = vec![0u8; (w - 1) * (h - 1)];
     let mut road_cell = vec![false; w * h];
     // Distance from the nearest road's edge (negative on it).

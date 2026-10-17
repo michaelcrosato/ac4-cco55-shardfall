@@ -241,7 +241,7 @@ pub fn ui(g: &BlackTap, sim: &Sim) -> UiModel {
     }
     dedupe_markers(&mut ui.markers);
     ui.map = Some(crate::map::map(g));
-    ui.map_icons = crate::map::icons(g, sim);
+    ui.map_icons = crate::map::icons(g, sim, &ui.markers);
     ui
 }
 

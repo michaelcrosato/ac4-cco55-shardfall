@@ -494,9 +494,17 @@ impl Vessel {
                     return false;
                 }
                 *slot = c.reload;
-                let out_dir = match side {
+                let beam_dir = match side {
                     Side::Port => -self.right(),
                     Side::Starboard => self.right(),
+                };
+                // The guns train up to ±12° toward `aim_yaw` (aim assist).
+                let out_dir = match aim_yaw {
+                    Some(y) => {
+                        let a = beam_dir.angle_to(dir_of(y)).clamp(-TRAIN, TRAIN);
+                        Vec2::from_angle(a).rotate(beam_dir)
+                    }
+                    None => beam_dir,
                 };
                 let n = c.guns_per_side.max(1);
                 for i in 0..n {
@@ -577,6 +585,9 @@ impl Vessel {
         }
     }
 }
+
+/// How far broadside guns train fore and aft (radians).
+const TRAIN: f32 = 12.0 * std::f32::consts::PI / 180.0;
 
 fn rotate(v: Vec2, a: f32) -> Vec2 {
     let (s, c) = a.sin_cos();
@@ -692,7 +703,9 @@ pub fn safe_heading(pos: Vec2, want: f32, look: f32, draft: f32, seabed: &dyn Fn
             }
         }
     }
-    want
+    // Already in the shallows (nothing is clear): head for the deepest water nearby.
+    let depth = |h: f32| seabed(pos + dir_of(h) * look * 0.5) + seabed(pos + dir_of(h) * look);
+    (0..24).map(|k| k as f32 * 15.0).min_by(|a, b| depth(*a).total_cmp(&depth(*b))).unwrap_or(want)
 }
 
 /// Steers toward a heading: rudder from the turn needed.

@@ -765,6 +765,12 @@ impl Game for BlackTap {
             "time": round2(self.time),
             "body": self.body,
             "player": p,
+            "traversal": sim
+                .state
+                .player
+                .and_then(|id| sim.state.entities.get(id))
+                .and_then(|e| e.character.as_ref())
+                .map(|c| format!("{:?}", c.traversal_state())),
             "ship": ship,
             "enemies": self.sea.ships.iter().filter(|s| s.id != self.sea.mine && !s.sunk).map(|s| json!({"tag": s.tag, "hull": round2(s.hull), "disabled": s.disabled, "pos": [round2(s.pos.x), round2(s.pos.y)]})).collect::<Vec<_>>(),
             "batteries": self.sea.batteries.iter().map(|b| json!({"name": b.name, "hp": round2(b.hp), "destroyed": b.destroyed})).collect::<Vec<_>>(),

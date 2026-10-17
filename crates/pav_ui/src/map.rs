@@ -39,7 +39,8 @@ impl MapView {
             .map(|i| i.at)
             .or_else(|| map.map(|m| (m.min + m.max) * 0.5))
             .unwrap_or(glam::Vec2::ZERO);
-        Self { center, zoom: 1.0, legend: false }
+        // A closer chart around the player; zoom out to see it all.
+        Self { center, zoom: 2.0, legend: false }
     }
 
     /// Pans with a stick (x right, y up = north) and zooms by `zoom_steps` (×1.25 each),
@@ -203,7 +204,7 @@ pub fn draw(
         mp.add(PathShape::line(sp, PathStroke::new((width * wscale).max(1.0), col)));
     }
     // Labels.
-    let label_font = theme.display(quantize(34.0));
+    let label_font = theme.display(quantize(22.0 + 4.0 * view.zoom.min(3.0)));
     for (at, text) in &map.labels {
         let q = x.to_screen(*at);
         paint::text_outlined(

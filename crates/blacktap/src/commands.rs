@@ -67,10 +67,19 @@ fn ship(g: &mut BlackTap, a: &Value) -> Result<Value, String> {
             g.cam.yaw = g.sea.look_for_side(side);
             g.tool_press |= b::FIRE;
         }
+        Some("place") => {
+            let (x, z) = (arg_f32(a, "x").ok_or("place needs x=")?, arg_f32(a, "z").ok_or("place needs z=")?);
+            let s = g.sea.ship_mut(me).ok_or("no ship")?;
+            s.pos = glam::Vec2::new(x, z);
+            if let Some(deg) = arg_f32(a, "deg") {
+                s.heading = deg.rem_euclid(360.0);
+            }
+            s.speed = 0.0;
+        }
         Some("board") => g.tool_press |= b::INTERACT,
         Some("brace") => g.tool_press |= b::INTERACT,
         Some("repair") => g.tool_press |= b::HEAL,
-        Some(other) => return Err(format!("do is sail, steer, fire, board, brace or repair (not '{other}')")),
+        Some(other) => return Err(format!("do is sail, steer, place, fire, board, brace or repair (not '{other}')")),
     }
     let s = g.sea.my_ship().ok_or("no ship")?;
     Ok(json!({
@@ -216,6 +225,26 @@ pub fn level_check(g: &BlackTap) -> Value {
         checked += 1;
         if pav_core::Sim::new(&d.scene, d.seeds.first().copied().unwrap_or(1)).is_err() {
             problems.push(format!("demo '{}': scene '{}' does not build", d.name, d.scene));
+        }
+    }
+    // Nothing built across a road (a fence or a hut that blocks the way).
+    let pre = crate::island::prebuilt_file(&w.geometry);
+    for f in &pre.fields {
+        for r in &f.def.roads {
+            let pts: Vec<glam::Vec2> = r.points.iter().map(|p| glam::Vec2::from(*p)).collect();
+            // Gates close a road on purpose.
+            for fp in pre.structures.footprints.iter().filter(|fp| !fp.name.contains("gate")) {
+                checked += 1;
+                let on = pts.windows(2).any(|s| {
+                    (0..=20).any(|k| {
+                        let q = s[0].lerp(s[1], k as f32 / 20.0);
+                        fp.distance(q) < r.width * 0.5 - 0.5
+                    })
+                });
+                if on {
+                    problems.push(format!("structure '{}' stands on a road of {}", fp.name, f.name));
+                }
+            }
         }
     }
     let kinds = crate::looks::names();

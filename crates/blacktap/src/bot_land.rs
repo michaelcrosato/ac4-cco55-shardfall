@@ -114,6 +114,11 @@ pub fn follow(g: &BlackTap, sim: &Sim, name: &str) -> Option<InputFrame> {
     let ch = sim.state.player.and_then(|id| sim.state.entities.get(id)).and_then(|e| e.character.as_ref());
     let climbing = ch.is_some_and(|c| c.hang.is_some() || c.climbing.is_some() || c.climb.is_some());
     let mut i = go(g, sim, target, matches!(action, "run" | "climb" | "jump" | "dive"));
+    // Stuck on a wall the route doesn't climb (a bank beside a road): let go.
+    let still = ch.is_some_and(|c| c.vel.length() < 0.2);
+    if action != "climb" && climbing && still && tap(sim, 40) {
+        press(&mut i, if ch.is_some_and(|c| c.hang.is_some()) { b::CROUCH } else { b::DROP });
+    }
     match action {
         "climb" => {
             // At the foot of the wall: free-run into it toward the top (the next point) and
