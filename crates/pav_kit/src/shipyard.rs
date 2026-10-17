@@ -454,8 +454,8 @@ fn cloth(m: &mut Mesh, nu: usize, nv: usize, pos: impl Fn(f32, f32) -> Vec3, col
     }
     // Normals from the triangles of this cloth only.
     let mut acc = vec![Vec3::ZERO; (nu + 1) * (nv + 1)];
-    for t in m.indices[first..].chunks_exact(3) {
-        let [a, b, c] = [t[0], t[1], t[2]].map(|i| Vec3::from(m.positions[i as usize]));
+    for t in m.indices[first..].as_chunks::<3>().0 {
+        let [a, b, c] = t.map(|i| Vec3::from(m.positions[i as usize]));
         let n = (b - a).cross(c - a);
         for &i in t {
             acc[(i - base) as usize] += n;
@@ -499,7 +499,7 @@ mod tests {
         let a = hull_mesh(&c, &s, 1, 0.3, 7);
         let b = hull_mesh(&c, &s, 1, 0.3, 7);
         assert_eq!(a, b);
-        assert!(a.indices.len() > 3000 && a.indices.len() % 3 == 0);
+        assert!(a.indices.len() > 3000 && a.indices.len().is_multiple_of(3));
         assert!(a.positions.iter().all(|p| p.iter().all(|x| x.is_finite())));
         let sails = sails_mesh(&c, &s, 2.0, 120.0, 1.0, 0.0, true);
         assert!(!sails.is_empty());
