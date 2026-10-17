@@ -196,7 +196,8 @@ fn spawn(g: &mut BlackTap, sim: &mut Sim, s: &crate::world::NpcSpawn, offset: Ve
     let feet = Vec3::new(xz.x, y + 0.05, xz.y);
     let facing = heading_rad(s.facing);
     let route = if s.route.is_empty() { Vec::new() } else { w.route(&s.route) };
-    let fighter = !matches!(s.kind.as_str(), "civilian" | "molasses" | "courier");
+    // The courier can be cut down (he has a fighter's body) but he runs rather than fights.
+    let fighter = !matches!(s.kind.as_str(), "civilian" | "molasses");
     let id = if fighter {
         g.land.spawn_fighter(sim, &s.kind, Team::Enemy, feet, facing, crate::looks::look(&s.kind))
     } else {
@@ -635,7 +636,11 @@ fn brains(g: &mut BlackTap, sim: &mut Sim, dt: f32, events: &mut Vec<SimEvent>) 
             out.insert(id, InputFrame::default());
             continue;
         }
-        let engaged = n.fighter && n.mind.aware() && n.drunk <= 0.0 && n.blind <= 0.0;
+        let coward = n.kind == "courier";
+        if coward && n.mind.aware() {
+            n.flee = n.flee.max(1.0);
+        }
+        let engaged = n.fighter && !coward && n.mind.aware() && n.drunk <= 0.0 && n.blind <= 0.0;
         if let Some(f) = g.land.fighters.get_mut(&id) {
             f.idle = !engaged;
         }
@@ -690,7 +695,7 @@ fn brains(g: &mut BlackTap, sim: &mut Sim, dt: f32, events: &mut Vec<SimEvent>) 
                     }
                 }
             }
-        } else if n.civilian() && n.flee > 0.0 {
+        } else if (n.civilian() || coward) && n.flee > 0.0 {
             let away = flat(feet - pfeet).normalize_or(Vec2::X);
             inp.move_dir = away;
             face = Some(away.x.atan2(away.y));

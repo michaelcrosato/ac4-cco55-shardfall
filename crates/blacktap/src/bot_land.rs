@@ -197,6 +197,14 @@ fn dart(g: &BlackTap, sim: &Sim, at: Vec3) -> InputFrame {
 /// Creep up behind someone and take them: pickpocket (hold △) or a Tap Blade kill (□).
 fn creep(g: &BlackTap, sim: &Sim, id: pav_core::entity::EntityId, at: Vec3, kill: bool) -> InputFrame {
     let Some(p) = BlackTap::player_feet(sim) else { return InputFrame::default() };
+    // Seen: no more creeping — run him down.
+    if g.stealth.npcs.get(&id).is_some_and(|n| n.mind.aware()) {
+        let mut i = go(g, sim, at, true);
+        if flat(at - p).length() < 2.2 && tap(sim, 10) {
+            press(&mut i, b::ATTACK);
+        }
+        return i;
+    }
     let facing = sim.state.entities.get(id).and_then(|e| e.character.as_ref()).map(|c| c.facing).unwrap_or(0.0);
     let back = Vec2::new(facing.sin(), facing.cos());
     let behind = at - Vec3::new(back.x, 0.0, back.y) * 1.1;
@@ -226,6 +234,12 @@ pub fn land(g: &BlackTap, sim: &Sim, skill: &str) -> InputFrame {
     }
     let (head, arg) = skill.split_once(':').unwrap_or((skill, ""));
     let showcase = g.showcase.is_some();
+    // The showcase pulses Gull Sight now and then.
+    if showcase && sim.state.tick % 900 == 450 {
+        let mut i = InputFrame::default();
+        press(&mut i, b::GULL);
+        return i;
+    }
     match head {
         "swim_ashore" => {
             // Off the deck (free-running: no ledge safety), swim, walk up the beach.

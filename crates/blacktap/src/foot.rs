@@ -695,6 +695,7 @@ fn hit_fighter(g: &mut BlackTap, sim: &mut Sim, id: EntityId, dmg: f32, events: 
         g.land.kills += 1;
         g.land.slow = 0.14;
         g.land.slow_scale = 0.3;
+        g.show("finisher");
         crate::rounds::on_kill(g, sim, id, None);
     }
 }

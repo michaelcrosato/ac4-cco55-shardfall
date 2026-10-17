@@ -155,6 +155,9 @@ pub struct BlackTap {
     /// The world seed: runs on different seeds differ a little (wind, gun timing).
     #[serde(default)]
     pub seed: u64,
+    /// Where the showcase last counted travel as progress.
+    #[serde(default)]
+    pub showcase_anchor: Vec3,
     /// The level's rules file (tab1.toml; drydock.toml for the Drydock).
     #[serde(default = "tab1_level")]
     pub level: String,
@@ -194,11 +197,11 @@ fn parse_scene(rest: Option<&str>) -> Result<(Mode, u8, Option<u8>, Option<Strin
             let n: u8 = n.parse().map_err(|_| anyhow!("blacktap/demo/<1-5>: '{n}'"))?;
             // Rule the Waves, Storm the Fort, Ashore, Shadow of the Keg, Last Call.
             let (round, step) = match n.clamp(1, 5) {
-                1 => (2, None),
+                1 => (2, Some("disable".to_string())),
                 2 => (3, None),
                 3 => (4, None),
-                4 => (5, None),
-                _ => (6, Some("escape".to_string())),
+                4 => (5, Some("key".to_string())),
+                _ => (6, Some("dive".to_string())),
             };
             (Mode::Tab, round, Some(n.clamp(1, 5)), step)
         }
@@ -257,6 +260,7 @@ pub fn build(sim: &mut Sim, rest: Option<&str>) -> Result<()> {
         stealth: crate::stealth::Stealth::default(),
         seed: sim.state.seed,
         level: level.to_string(),
+        showcase_anchor: Vec3::ZERO,
         dock: crate::drydock::Dock::default(),
         pending_events: Vec::new(),
         tool_press: 0,
@@ -566,6 +570,12 @@ impl Game for BlackTap {
             if h.brace {
                 self.learned("brace");
             }
+            if h.repair && self.sea.timber > 0 && self.sea.repair_cd <= 0.0 {
+                self.show("repair");
+            }
+            if h.swivel && self.sea.swivel_target.is_some() {
+                self.show("swivel");
+            }
             if h.fire {
                 self.learned("broadside");
             }
@@ -574,7 +584,11 @@ impl Game for BlackTap {
             }
         }
         let title_helm = (self.mode == Mode::Title).then(|| crate::rounds::title_helm(self));
+        let braced_before = self.sea.my_ship().map(|s| s.brace_cd).unwrap_or(0.0);
         let sea_events = self.sea.step(&c.classes, &w, Some(&ocean), helm.or(title_helm), self.options.difficulty, dt, events);
+        if self.sea.my_ship().is_some_and(|s| s.brace_cd > braced_before + 1.0) {
+            self.show("brace");
+        }
         crate::rounds::sea_events(self, sim, input, sea_events, events);
         if self.body == Body::Helm && !self.land.boarding_active() {
             self.seat_at_helm(sim);
@@ -649,6 +663,19 @@ impl Game for BlackTap {
             events.push(SimEvent::Cue { cue: format!("voice_{voice}"), pos: at, gain: 0.8, pitch: 1.0 });
         }
         if let Some(s) = &mut self.showcase {
+            // Travelling counts as progress (sailing to the fort, walking to a target): the
+            // watchdog only trips when the bot goes nowhere.
+            let at = if self.body == Body::Helm {
+                self.sea.my_ship().map(|v| Vec3::new(v.pos.x, 0.0, v.pos.y))
+            } else {
+                Self::player_feet(sim)
+            };
+            if let Some(at) = at {
+                if at.distance(self.showcase_anchor) > 10.0 {
+                    self.showcase_anchor = at;
+                    s.progress();
+                }
+            }
             s.tick(dt);
         }
         crate::foot::post(self, sim, dt, events);

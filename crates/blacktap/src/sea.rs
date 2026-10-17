@@ -346,8 +346,10 @@ impl Sea {
             let (mark, started) = b.step(target, &mut self.shots, dt);
             if started && b.kind == BatteryKind::Guns {
                 events.push(SimEvent::cue("ship_bell", b.pos));
+                out.push(SeaEvent::Telegraph { ship: 0 });
             }
             if let Some(m) = mark {
+                out.push(SeaEvent::Telegraph { ship: 0 });
                 events.push(SimEvent::cue("mortar_launch", b.pos));
                 events.push(SimEvent::cue("mortar_whistle", m.at));
                 self.shells.push(m);
@@ -406,9 +408,17 @@ impl Sea {
         self.floating.retain(|f| f.alive);
 
         // ---- waterspouts
+        let near_me = self.my_ship().map(|v| v.pos);
         for sp in &mut self.spouts {
             sp.pos += sp.vel * dt;
             sp.life -= dt;
+            // Passing close by (the showcase counts it; the crew shouts).
+            if let Some(p) = near_me {
+                let d = p.distance(sp.pos);
+                if d < sp.radius + 40.0 && d + sp.vel.length() * dt >= sp.radius + 40.0 {
+                    out.push(SeaEvent::Spout);
+                }
+            }
         }
         self.spouts.retain(|s| s.life > 0.0);
         let spouts = self.spouts.clone();

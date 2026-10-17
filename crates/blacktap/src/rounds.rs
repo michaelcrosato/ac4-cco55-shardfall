@@ -299,6 +299,7 @@ pub fn sea_events(g: &mut BlackTap, sim: &mut Sim, input: &InputFrame, evs: Vec<
                 g.show("disabled");
             }
             SeaEvent::BatteryDown { name } => {
+                g.show("battery_down");
                 // Progress is kept: a checkpoint after every battery that falls.
                 sim.request_checkpoint(pav_core::sim::CheckpointRequest::Save);
                 if g.sea.destroyed_order.first().map(|s| s.as_str()) == Some("mortar") && g.sea.destroyed_order.len() == 1 {
@@ -328,7 +329,7 @@ pub fn sea_events(g: &mut BlackTap, sim: &mut Sim, input: &InputFrame, evs: Vec<
                 g.dialog.bark(&c.dialog, "ballast_brace", 3);
                 g.show("telegraph");
             }
-            SeaEvent::Spout => {}
+            SeaEvent::Spout => g.show("waterspout"),
         }
     }
     // The player's ship sinks: Spilled.
@@ -355,6 +356,7 @@ pub fn sea_events(g: &mut BlackTap, sim: &mut Sim, input: &InputFrame, evs: Vec<
         if let Some(prize) = boardable(g) {
             crate::foot::start_boarding(g, sim, prize, events);
             g.learned("board");
+            g.show("board");
         }
     }
 }
@@ -514,6 +516,33 @@ pub fn start_at(g: &mut BlackTap, sim: &mut Sim, step: &str) {
         }
         (5, "stocks") => {
             g.mission.set_flag("has_key");
+        }
+        (5, "key") => {
+            // Straight into town (attract): by the plaza, the courier on his way.
+            let w = g.world();
+            if let (Some(pid), Some(at)) = (sim.state.player, w.marker("r5_close")) {
+                sim.set_position(pid, at + Vec3::Y * 0.2);
+            }
+        }
+        (2, "disable") => {
+            for s in g.sea.ships.iter_mut().filter(|s| s.tag == "gunboat") {
+                s.sunk = true;
+                s.hull = 0.0;
+            }
+            act(g, sim, "restraint_engage");
+        }
+        (6, "dive") => {
+            for f in ["in_fort", "drye_dead", "last_words_done", "flag_raised"] {
+                g.mission.set_flag(f);
+            }
+            g.flags.insert("fort_captured".into());
+            g.stealth.flag_raised = true;
+            act(g, sim, "ship_under_cliffs");
+            let w = g.world();
+            if let (Some(pid), Some(at)) = (sim.state.player, w.marker("battlement")) {
+                sim.set_position(pid, at + Vec3::Y * 0.3);
+            }
+            g.set_atmosphere("sunset", 0.0);
         }
         (6, "drye" | "last_words" | "flag") => {
             let w = g.world();

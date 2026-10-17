@@ -49,6 +49,7 @@ r4_start = [10.0, 0.0, 95.0]
 r4_anchorage = [74.0, 0.0, 70.0]
 r4_beach = [96.0, 1.0, 20.0]
 r5_start = [120.0, 0.0, 4.0]
+r5_close = [168.0, 2.4, 14.0]
 r6_start = [292.0, 0.0, -100.0]
 extraction = [-450.0, 0.0, -300.0]
 # Flotsam (Round 1 uses the first three; all six count as collectibles).
