@@ -60,7 +60,7 @@ pub const RADIUS: f32 = 0.32;
 /// against neighbouring floor blocks until they work their way out.
 pub const PLACE_LIFT: f32 = 0.025;
 /// Feet below the ledge top while hanging (m).
-const HANG_DROP: f32 = 1.62;
+pub(crate) const HANG_DROP: f32 = 1.62;
 
 impl Posture {
     pub fn height(self) -> f32 {
@@ -119,6 +119,52 @@ pub struct MovementParams {
     /// Radius bullets must come within to hit you (small = fair dense patterns).
     #[serde(default = "hitbox")]
     pub hitbox: f32,
+    /// Traversal (`crate::traversal`): free-run on SPRINT with vaults, leaps and ledge safety,
+    /// Parkour Up (free-run + JUMP: mantle or climb) and Down (DODGE at an edge: hang), wall,
+    /// cliff and pole climbing, beams, swim sprint, dives and climbing out of the water. Off by
+    /// default: rooms and games made before it move as they did.
+    pub parkour: bool,
+    /// Parkour: every static face within 30° of vertical climbs. Off: only blocks flagged
+    /// `block_flags::LADDER`, terrain cliffs (> 55°) and poles do.
+    pub climb_all: bool,
+    /// Free-run speed (m/s), the sprint it reaches, and after how long (s).
+    pub run_speed: f32,
+    pub sprint_speed: f32,
+    pub sprint_after: f32,
+    /// Free-run: auto-step up to (m), auto-vault up to (m); Parkour Up mantles up to (m).
+    pub freerun_step: f32,
+    pub vault_height: f32,
+    pub mantle_height: f32,
+    /// Parkour Up starts a climb on a surface this close ahead (m).
+    pub climb_reach: f32,
+    /// Climbing speeds (m/s).
+    pub climb_up: f32,
+    pub climb_down: f32,
+    pub climb_side: f32,
+    /// Climb leap (JUMP on the wall): height (m) and duration (s).
+    pub climb_leap: f32,
+    pub climb_leap_time: f32,
+    /// Back-eject (JUMP with the stick away from the wall): distance out and height up (m).
+    pub eject_out: f32,
+    pub eject_up: f32,
+    /// Thickest pole, trunk or mast that climbs all round (m).
+    pub pole_radius: f32,
+    /// Jump assist at edges: a landing this far ahead, this far below, this far above (m).
+    pub leap_reach: f32,
+    pub leap_drop: f32,
+    pub leap_rise: f32,
+    /// Ledge safety: at walking pace you stop at drops deeper than this (m).
+    pub edge_drop: f32,
+    /// Beams narrower than this (m) keep you on their centreline, at most `beam_speed` (m/s).
+    pub beam_width: f32,
+    pub beam_speed: f32,
+    /// Swimming speed while SPRINT is held (m/s).
+    pub swim_sprint: f32,
+    /// Dives (DODGE in the water): longest (s), and how far the head goes under (m).
+    pub dive_time: f32,
+    pub dive_depth: f32,
+    /// Climb out of the water onto tops at most this far above the surface (m).
+    pub swim_climb: f32,
 }
 
 impl Default for MovementParams {
@@ -157,6 +203,33 @@ impl Default for MovementParams {
             hitbox: hitbox(),
             face_aim: false,
             push_mass: 70.0,
+            parkour: false,
+            climb_all: false,
+            run_speed: 6.8,
+            sprint_speed: 8.0,
+            sprint_after: 1.0,
+            freerun_step: 0.5,
+            vault_height: 1.1,
+            mantle_height: 2.1,
+            climb_reach: 0.8,
+            climb_up: 2.2,
+            climb_down: 2.6,
+            climb_side: 1.8,
+            climb_leap: 1.4,
+            climb_leap_time: 0.35,
+            eject_out: 3.0,
+            eject_up: 1.0,
+            pole_radius: 0.6,
+            leap_reach: 3.5,
+            leap_drop: 2.0,
+            leap_rise: 0.5,
+            edge_drop: 1.0,
+            beam_width: 0.6,
+            beam_speed: 2.5,
+            swim_sprint: 4.5,
+            dive_time: 6.0,
+            dive_depth: 1.2,
+            swim_climb: 1.6,
         }
     }
 }
@@ -196,6 +269,33 @@ impl Tunable for MovementParams {
         v.float("hitbox", &mut self.hitbox, 0.05, 0.6, "Bullet hit radius (m)");
         v.bool("face_aim", &mut self.face_aim, "Face the aim point instead of the movement direction");
         v.float("push_mass", &mut self.push_mass, 1.0, 500.0, "How hard the character pushes props (kg)");
+        v.bool("parkour", &mut self.parkour, "Free-run, vaults, leaps, wall and pole climbing, dives");
+        v.bool("climb_all", &mut self.climb_all, "Parkour: every near-vertical static face climbs");
+        v.float("run_speed", &mut self.run_speed, 0.5, 20.0, "Parkour: free-run speed (m/s)");
+        v.float("sprint_speed", &mut self.sprint_speed, 0.5, 25.0, "Parkour: free-run sprint speed (m/s)");
+        v.float("sprint_after", &mut self.sprint_after, 0.0, 5.0, "Parkour: seconds of free-run before the sprint");
+        v.float("freerun_step", &mut self.freerun_step, 0.0, 1.0, "Parkour: free-run auto-step height (m)");
+        v.float("vault_height", &mut self.vault_height, 0.3, 2.0, "Parkour: free-run vaults obstacles up to (m)");
+        v.float("mantle_height", &mut self.mantle_height, 0.5, 3.0, "Parkour Up: mantle onto tops up to (m)");
+        v.float("climb_reach", &mut self.climb_reach, 0.1, 2.0, "Parkour Up: climb a surface this close (m)");
+        v.float("climb_up", &mut self.climb_up, 0.1, 10.0, "Climbing up speed (m/s)");
+        v.float("climb_down", &mut self.climb_down, 0.1, 10.0, "Climbing down speed (m/s)");
+        v.float("climb_side", &mut self.climb_side, 0.1, 10.0, "Climbing sideways speed (m/s)");
+        v.float("climb_leap", &mut self.climb_leap, 0.0, 4.0, "Climb leap height (m)");
+        v.float("climb_leap_time", &mut self.climb_leap_time, 0.05, 2.0, "Climb leap duration (s)");
+        v.float("eject_out", &mut self.eject_out, 0.0, 10.0, "Back-eject distance from the wall (m)");
+        v.float("eject_up", &mut self.eject_up, 0.05, 5.0, "Back-eject height (m)");
+        v.float("pole_radius", &mut self.pole_radius, 0.05, 2.0, "Poles up to this radius climb all round (m)");
+        v.float("leap_reach", &mut self.leap_reach, 0.5, 10.0, "Jump assist: landing up to this far (m)");
+        v.float("leap_drop", &mut self.leap_drop, 0.0, 10.0, "Jump assist: landing up to this far below (m)");
+        v.float("leap_rise", &mut self.leap_rise, 0.0, 3.0, "Jump assist: landing up to this far above (m)");
+        v.float("edge_drop", &mut self.edge_drop, 0.1, 10.0, "Ledge safety: walking stops at drops over (m)");
+        v.float("beam_width", &mut self.beam_width, 0.1, 2.0, "Beams narrower than this balance (m)");
+        v.float("beam_speed", &mut self.beam_speed, 0.2, 10.0, "Top speed on a beam (m/s)");
+        v.float("swim_sprint", &mut self.swim_sprint, 0.5, 10.0, "Swimming speed with SPRINT (m/s)");
+        v.float("dive_time", &mut self.dive_time, 0.5, 30.0, "Longest dive (s)");
+        v.float("dive_depth", &mut self.dive_depth, 0.2, 5.0, "Dive: head this far under the surface (m)");
+        v.float("swim_climb", &mut self.swim_climb, 0.2, 3.0, "Climb out of the water onto tops up to (m)");
     }
 }
 
@@ -296,6 +396,100 @@ pub struct Hang {
     pub top: f32,
     /// Pull-up progress 0..1, or < 0 while just hanging.
     pub climb: f32,
+    /// Lowering into the hang from the top (Parkour Down): 1 → 0, 0 = hanging.
+    #[serde(default)]
+    pub lower: f32,
+    /// Seconds the pull-up takes (0 = `ledge_climb_time`).
+    #[serde(default)]
+    pub time: f32,
+}
+
+/// Climbing a wall, cliff or pole (`MovementParams::parkour`).
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct WallClimb {
+    /// Surface normal (horizontal, pointing at the climber).
+    pub normal: Vec3,
+    /// Poles, and outer corners being rounded: the vertical axis circled (x, z; y = 0).
+    #[serde(default)]
+    pub pivot: Option<Vec3>,
+    /// The pole's radius (0 round a corner's edge).
+    #[serde(default)]
+    pub radius: f32,
+    /// An outer corner being rounded.
+    #[serde(default)]
+    pub corner: Option<Corner>,
+    /// Climb leap: seconds left.
+    #[serde(default)]
+    pub leap: f32,
+    /// Feet after the last tick (a teleport lets go).
+    pub at: Vec3,
+    /// Seconds on this surface.
+    #[serde(default)]
+    pub time: f32,
+}
+
+/// Rounding an outer corner: from one face's normal to the next, circling the edge.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Corner {
+    pub from: Vec3,
+    pub to: Vec3,
+    /// Direction from the edge to the climber when it began.
+    pub start: Vec3,
+    /// The first face's sideways axis (the stick stays mapped to it) and the way round (±1).
+    pub tangent: Vec3,
+    pub dir: f32,
+    /// Radians rounded so far.
+    pub angle: f32,
+}
+
+impl WallClimb {
+    pub(crate) fn on(g: crate::traversal::Grip, feet: Vec3) -> Self {
+        WallClimb {
+            normal: g.normal,
+            pivot: g.pole.map(|p| p.0),
+            radius: g.pole.map(|p| p.1).unwrap_or(0.0),
+            corner: None,
+            leap: 0.0,
+            at: feet,
+            time: 0.0,
+        }
+    }
+}
+
+/// A free-run vault: a quick hop up to an obstacle's height, keeping the run speed, then let
+/// go over it.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Vault {
+    pub dir: Vec3,
+    pub speed: f32,
+    /// Feet height at the start and at the top of the hop.
+    pub from: f32,
+    pub to: f32,
+    /// Seconds into the hop, and how long it takes.
+    pub t: f32,
+    pub rise: f32,
+    /// Upward speed when the hands let go (enough to clear a thin obstacle).
+    pub release: f32,
+    /// Feet after the last tick (a teleport ends it).
+    pub at: Vec3,
+}
+
+/// How a character is getting around, for game cameras, prompts and bots.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TraversalState {
+    Ground,
+    FreeRun,
+    Air,
+    /// Walls, cliffs, poles and ladders.
+    WallClimb,
+    Hang,
+    Beam,
+    Swim,
+    Dive,
+    /// Pulling up onto a ledge.
+    Mantle,
+    Vault,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -387,6 +581,29 @@ pub struct Character {
     /// tick the game wants control (from `Game::pre`).
     #[serde(default)]
     pub scripted: Option<Scripted>,
+    /// Parkour (`MovementParams::parkour`): climbing a wall, cliff or pole.
+    #[serde(default)]
+    pub climb: Option<WallClimb>,
+    /// A free-run vault in progress.
+    #[serde(default)]
+    pub vault: Option<Vault>,
+    /// Free-run held this tick (parkour and SPRINT), and seconds of free-running so far.
+    #[serde(default)]
+    pub freerun: bool,
+    #[serde(default)]
+    pub sprint_time: f32,
+    /// Ballistic flight (a jump-assist leap, a back-eject, a vault's let-go): no air control.
+    #[serde(default)]
+    pub leap: bool,
+    /// Seconds a back-eject may still catch a wall or pole ahead.
+    #[serde(default)]
+    pub eject: f32,
+    /// Balancing on a beam narrower than `beam_width` (arms out).
+    #[serde(default)]
+    pub on_beam: bool,
+    /// Dive seconds left (> 0 = under the surface).
+    #[serde(default)]
+    pub diving: f32,
 }
 
 /// A pose and place the game gives a character for one tick (`Character::scripted`).
@@ -428,6 +645,27 @@ impl Character {
     pub fn height(&self) -> f32 {
         self.posture.height()
     }
+
+    /// A read-only summary of how the character is getting around.
+    pub fn traversal_state(&self) -> TraversalState {
+        if self.vault.is_some() {
+            TraversalState::Vault
+        } else if let Some(h) = self.hang {
+            if h.climb >= 0.0 { TraversalState::Mantle } else { TraversalState::Hang }
+        } else if self.climb.is_some() || self.climbing.is_some() {
+            TraversalState::WallClimb
+        } else if self.swimming {
+            if self.diving > 0.0 { TraversalState::Dive } else { TraversalState::Swim }
+        } else if !self.grounded {
+            TraversalState::Air
+        } else if self.on_beam {
+            TraversalState::Beam
+        } else if self.freerun && Vec2::new(self.vel.x, self.vel.z).length() > 0.5 {
+            TraversalState::FreeRun
+        } else {
+            TraversalState::Ground
+        }
+    }
 }
 
 /// Requests the simulation carries out after a character update.
@@ -463,6 +701,15 @@ fn wrap(a: f32) -> f32 {
 
 fn dir_of(yaw: f32) -> Vec3 {
     Vec3::new(yaw.sin(), 0.0, yaw.cos())
+}
+
+/// The water surface at a point: the open sea's waves, or a pool's flat top.
+fn water_at(st: &SimState, pool_top: Option<f32>, p: Vec3) -> Option<f32> {
+    let sea = st.ocean.as_ref().map(|o| o.sea.height(Vec2::new(p.x, p.z), o.time));
+    match (sea, pool_top) {
+        (Some(a), Some(b)) => Some(a.max(b)),
+        (a, b) => a.or(b),
+    }
 }
 
 /// Finds a grabbable ledge in front of a character: returns (wall point, wall normal, top).
@@ -562,6 +809,9 @@ pub fn tick(
         ch.swimming = s.pose == ScriptPose::Swim;
         ch.climbing = None;
         ch.hang = None;
+        ch.climb = None;
+        ch.vault = None;
+        ch.leap = false;
         let climbing = matches!(s.pose, ScriptPose::Climb | ScriptPose::Hang);
         let anim_vel = if s.pose == ScriptPose::Seated { Vec3::ZERO } else { s.vel };
         ch.anim.update(
@@ -604,6 +854,8 @@ pub fn tick(
     ch.invuln = (ch.invuln - dt).max(0.0);
     ch.hang_cooldown = (ch.hang_cooldown - dt).max(0.0);
     ch.roll = (ch.roll - dt).max(0.0);
+    ch.eject = (ch.eject - dt).max(0.0);
+    ch.diving = (ch.diving - dt).max(0.0);
     let stunned = ch.stun > 0.0;
     let mut wish = if stunned { Vec3::ZERO } else { Vec3::new(input.move_dir.x, 0.0, input.move_dir.y) };
     if wish.length() > 1.0 {
@@ -678,10 +930,14 @@ pub fn tick(
     let feet0 = center - Vec3::Y * (ch.height() * 0.5);
     let mut conveyor = Vec3::ZERO;
     let mut bounce = 0.0f32;
+    let mut pool_top: Option<f32> = None;
     ch.water_depth = 0.0;
     for (_, z) in st.statics.zones_at(feet0 + Vec3::Y * 0.05) {
         match z.kind {
-            ZoneKind::Water => ch.water_depth = ch.water_depth.max(z.max.y - feet0.y),
+            ZoneKind::Water => {
+                ch.water_depth = ch.water_depth.max(z.max.y - feet0.y);
+                pool_top = Some(pool_top.map_or(z.max.y, |t| t.max(z.max.y)));
+            }
             ZoneKind::Conveyor => conveyor += z.conveyor_velocity(),
             ZoneKind::Bounce => bounce = bounce.max(z.speed),
             _ => {}
@@ -695,16 +951,38 @@ pub fn tick(
         }
     }
     let was_swimming = ch.swimming;
-    ch.swimming = ch.water_depth > if was_swimming { 1.05 } else { 1.25 } && ch.climbing.is_none() && ch.hang.is_none();
+    ch.swimming = ch.water_depth > if was_swimming { 1.05 } else { 1.25 }
+        && ch.climbing.is_none()
+        && ch.hang.is_none()
+        && ch.climb.is_none()
+        && ch.vault.is_none();
+    if !ch.swimming {
+        ch.diving = 0.0;
+    }
     let rolling = ch.roll > 0.0;
     let dashing = ch.dash_time > 0.0 && ch.stun <= 0.0;
     // Creatures (spiders, lizards, ...) keep a low capsule and move at full speed.
     let creature = puppet.body != BodyPlan::Biped;
+    // Parkour (opt-in): free-run is SPRINT held.
+    let parkour = mp.parkour && !creature;
+    ch.freerun = parkour && held(buttons::SPRINT);
+    if !ch.freerun || wish.length() < 0.3 {
+        ch.sprint_time = 0.0;
+    } else if ch.grounded {
+        ch.sprint_time += dt;
+    }
+    let was_wall = ch.climb.is_some();
+    if stunned || !parkour {
+        ch.climb = None;
+        ch.vault = None;
+        ch.leap &= !stunned;
+    }
+    ch.on_beam = false;
 
     // --- posture (never stand up into a ceiling)
     let want = if creature {
         Posture::Crawl
-    } else if ch.climbing.is_some() || ch.hang.is_some() || ch.swimming {
+    } else if ch.climbing.is_some() || ch.hang.is_some() || ch.swimming || ch.climb.is_some() || ch.vault.is_some() {
         Posture::Stand
     } else if rolling || ch.crawl_toggle {
         Posture::Crawl
@@ -766,7 +1044,13 @@ pub fn tick(
             ch.facing = yaw_of(wall);
             ch.jumping = false;
         }
-    } else if ch.posture != Posture::Crawl && wish.length() > 0.3 && ch.hang.is_none() && !ch.swimming {
+    } else if ch.posture != Posture::Crawl
+        && wish.length() > 0.3
+        && ch.hang.is_none()
+        && ch.climb.is_none()
+        && ch.vault.is_none()
+        && (!ch.swimming || parkour)
+    {
         if let Some(l) = st
             .statics
             .ladders_near(feet)
@@ -779,9 +1063,133 @@ pub fn tick(
     }
     let climbing = ch.climbing.is_some();
 
+    // --- parkour: wall climbing, Parkour Up and Down, vaults, climbing out of the water
+    let mut wall_move: Option<Vec3> = None;
+    let mut climb_side = 0.0f32;
+    if parkour && !climbing && !stunned {
+        use crate::traversal::{Catch, ClimbOut};
+        let probe = crate::traversal::Probe::new(st, filter, mp);
+        if let Some(mut wc) = ch.climb.take() {
+            let ci = crate::traversal::ClimbInput {
+                wish,
+                vertical: input.vertical,
+                jump: pressed(buttons::JUMP),
+                dodge: pressed(buttons::DODGE),
+            };
+            match crate::traversal::climb(&probe, &mut wc, feet, &ci, dt) {
+                ClimbOut::Move { delta, side, up } => {
+                    let tangent = Vec3::new(-wc.normal.z, 0.0, wc.normal.x);
+                    ch.vel = tangent * side + Vec3::Y * up;
+                    ch.facing = yaw_of(-wc.normal);
+                    ch.jumping = false;
+                    climb_side = side;
+                    wall_move = Some(delta);
+                    ch.climb = Some(wc);
+                }
+                ClimbOut::Fall(v) => {
+                    ch.vel = v;
+                    ch.hang_cooldown = 0.4;
+                    ch.air_jumped = false;
+                    ch.air_from = feet.y;
+                }
+                ClimbOut::Eject(v) => {
+                    ch.vel = v;
+                    ch.leap = true;
+                    ch.eject = 1.0;
+                    ch.hang_cooldown = 0.05;
+                    ch.facing = yaw_of(v);
+                    ch.jumping = false;
+                    jumped = true;
+                }
+                ClimbOut::Ledge(h) => {
+                    ch.vel = Vec3::ZERO;
+                    ch.facing = yaw_of(-h.normal);
+                    events.push(SimEvent::Grab { pos: Vec3::new(h.wall.x, h.top, h.wall.z) });
+                    ch.hang = Some(h);
+                }
+            }
+        } else if ch.vault.is_none() && ch.hang.is_none() && ch.hang_cooldown <= 0.0 {
+            let into = wish.length() > 0.3;
+            let dir = if into { wish.normalize() } else { dir_of(ch.facing) };
+            let mut caught: Option<Catch> = None;
+            if ch.swimming {
+                // Climb out onto a dock, rock or hull: jump, or swim into it.
+                if ch.diving <= 0.0 && (pressed(buttons::JUMP) || into) {
+                    let surface = feet.y + ch.water_depth;
+                    caught = crate::traversal::swim_ledge(&probe, feet, surface, dir).map(Catch::Mantle);
+                }
+            } else if ch.grounded || ch.air_time < mp.coyote_time {
+                if ch.freerun && held(buttons::JUMP) && into {
+                    // Parkour Up: mantle, or start climbing.
+                    caught = crate::traversal::catch(&probe, feet, dir, mp.climb_reach, true);
+                } else if pressed(buttons::DODGE) {
+                    // Parkour Down: drop to a hang from the edge ahead.
+                    caught = crate::traversal::edge_hang(&probe, feet, dir).map(Catch::Mantle);
+                } else if ch.freerun && into && ch.grounded && !held(buttons::JUMP) {
+                    let vh = Vec3::new(ch.vel.x, 0.0, ch.vel.z);
+                    let speed = vh.length();
+                    if speed > 3.0 {
+                        ch.vault = crate::traversal::vault(&probe, feet, vh / speed, speed);
+                    }
+                }
+            } else if (ch.freerun && held(buttons::JUMP)) || ch.eject > 0.0 {
+                // In the air: catch a wall, pole or ledge ahead (jumps, back-ejects).
+                let vh = Vec3::new(ch.vel.x, 0.0, ch.vel.z);
+                let d = if vh.length() > 0.5 { vh.normalize() } else { dir };
+                caught = crate::traversal::catch(&probe, feet, d, 0.35 + vh.length() * dt, true);
+            }
+            match caught {
+                Some(Catch::Mantle(h)) => {
+                    ch.vel = Vec3::ZERO;
+                    ch.facing = yaw_of(-h.normal);
+                    ch.since_jump_press = 10.0;
+                    ch.swimming = false;
+                    if h.lower > 0.0 {
+                        // Lowering into a hang: the stick that pushed toward the edge must not
+                        // let go (or climb down) the moment it is hanging.
+                        ch.hang_cooldown = 0.8;
+                    }
+                    events.push(SimEvent::Grab { pos: Vec3::new(h.wall.x, h.top, h.wall.z) });
+                    ch.hang = Some(h);
+                }
+                Some(Catch::Climb(wc)) => {
+                    ch.vel = Vec3::ZERO;
+                    ch.facing = yaw_of(-wc.normal);
+                    ch.since_jump_press = 10.0;
+                    ch.jumping = false;
+                    events.push(SimEvent::Grab { pos: feet + Vec3::Y * 1.2 });
+                    wall_move = Some(Vec3::ZERO);
+                    ch.climb = Some(wc);
+                }
+                None => {}
+            }
+        }
+        // A vault's hop: up to the obstacle's height at full speed, then let go over it.
+        if let Some(mut v) = ch.vault.take() {
+            if (feet - v.at).length() <= 0.5 {
+                let (delta, done) = crate::traversal::vault_step(&mut v, feet, dt);
+                wall_move = Some(delta);
+                ch.facing = yaw_of(v.dir);
+                ch.vel = v.dir * v.speed + Vec3::Y * (delta.y / dt.max(1e-4));
+                ch.grounded = false;
+                if done {
+                    ch.vel = v.dir * v.speed + Vec3::Y * v.release;
+                    ch.leap = true;
+                    ch.air_jumped = false;
+                    ch.air_from = v.to;
+                    ch.hang_cooldown = 0.3;
+                } else {
+                    ch.vault = Some(v);
+                }
+            }
+        }
+    }
+
     // --- ledges: grab while falling against a wall top, then hang / shimmy / pull up / drop
     if !climbing
         && ch.hang.is_none()
+        && ch.climb.is_none()
+        && ch.vault.is_none()
         && mp.ledge_grab
         && !ch.grounded
         && !ch.swimming
@@ -795,7 +1203,7 @@ pub fn tick(
             if top - feet.y <= 2.1 && (ch.air_jumped || top > ch.air_from + 0.3) {
                 // Close to the top: mantle straight up instead of hanging.
                 let climb = if top - feet.y < HANG_DROP - 0.3 { 0.0 } else { -1.0 };
-                ch.hang = Some(Hang { normal: n, wall, top, climb });
+                ch.hang = Some(Hang { normal: n, wall, top, climb, lower: 0.0, time: 0.0 });
                 ch.vel = Vec3::ZERO;
                 ch.jumping = false;
                 ch.facing = yaw_of(-n);
@@ -807,15 +1215,27 @@ pub fn tick(
     if let Some(mut hg) = ch.hang {
         let rest = Vec3::new(hg.wall.x, hg.top - HANG_DROP, hg.wall.z) + hg.normal * (RADIUS + 0.08);
         let tangent = Vec3::new(-hg.normal.z, 0.0, hg.normal.x);
-        if hg.climb >= 0.0 {
-            hg.climb += dt / mp.ledge_climb_time.max(0.02);
+        let pull_time = if hg.time > 0.0 { hg.time } else { mp.ledge_climb_time }.max(0.02);
+        if hg.lower > 0.0 {
+            // Lowering into the hang from the top (Parkour Down): out over the edge, then down.
+            const LOWER_TIME: f32 = 0.45;
+            let before = hg.lower;
+            hg.lower = (hg.lower - dt / LOWER_TIME).max(0.0);
+            let (target, left) =
+                if before > 0.5 { (Vec3::new(rest.x, hg.top + 0.06, rest.z), before - 0.5) } else { (rest, before) };
+            let steps = (left * LOWER_TIME / dt).max(1.0);
+            hang_move = Some((target - feet) / steps);
+            ch.facing = yaw_of(-hg.normal);
+            ch.hang = Some(hg);
+        } else if hg.climb >= 0.0 {
+            hg.climb += dt / pull_time;
             let target = if hg.climb < 0.6 {
                 Vec3::new(rest.x, hg.top + 0.04, rest.z)
             } else {
                 Vec3::new(hg.wall.x, hg.top + 0.04, hg.wall.z) - hg.normal * 0.45
             };
             let left = if hg.climb < 0.6 { 0.6 - hg.climb } else { 1.0 - hg.climb };
-            let steps = (left * mp.ledge_climb_time / dt).max(1.0);
+            let steps = (left * pull_time / dt).max(1.0);
             hang_move = Some((target - feet) / steps);
             if hg.climb >= 1.0 {
                 ch.hang = None;
@@ -828,7 +1248,23 @@ pub fn tick(
             hg.climb = 0.0;
             ch.hang = Some(hg);
             hang_move = Some(Vec3::ZERO);
-        } else if pressed(buttons::CROUCH) || wish.dot(hg.normal) > 0.6 {
+        } else if parkour && pressed(buttons::DODGE) {
+            // Let go.
+            ch.hang = None;
+            ch.hang_cooldown = 0.35;
+            ch.vel = hg.normal * 1.5;
+            ch.air_jumped = false;
+            ch.air_from = hg.top;
+        } else if let Some(wc) = (parkour && wish.dot(hg.normal) > 0.6 && ch.hang_cooldown <= 0.0)
+            .then(|| crate::traversal::climb_below(&crate::traversal::Probe::new(st, filter, mp), feet, hg.normal))
+            .flatten()
+        {
+            // Climb down the face under the ledge.
+            ch.hang = None;
+            ch.vel = Vec3::ZERO;
+            hang_move = Some(Vec3::ZERO);
+            ch.climb = Some(wc);
+        } else if pressed(buttons::CROUCH) || (wish.dot(hg.normal) > 0.6 && ch.hang_cooldown <= 0.0) {
             ch.hang = None;
             ch.hang_cooldown = 0.35;
             ch.vel = hg.normal * 1.5;
@@ -858,9 +1294,14 @@ pub fn tick(
         }
     }
     let hanging = ch.hang.is_some();
+    // Wall climbs and vaults move the character themselves.
+    let walling = ch.climb.is_some() || ch.vault.is_some();
+    let mut launch: Option<f32> = None;
 
     // --- horizontal movement
-    if !climbing && !hanging {
+    if !climbing && !hanging && !walling {
+        // Free-run: run, then sprint once it has been held a while.
+        let run = mp.run_speed + (mp.sprint_speed - mp.run_speed) * ((ch.sprint_time - mp.sprint_after) / 0.4).clamp(0.0, 1.0);
         let mult = match ch.posture {
             _ if creature => 1.0,
             Posture::Stand => 1.0,
@@ -874,13 +1315,22 @@ pub fn tick(
         } else if stunned {
             // Knocked back: slide to a stop, no control.
             vh *= (-3.0 * (1.0 - ch.slide).max(0.05) * dt).exp();
+        } else if ch.leap && !ch.grounded {
+            // Ballistic (leaps, back-ejects, a vault's let-go): no air control.
         } else if ch.swimming {
-            let target = wish * mp.swim_speed;
+            let speed = if parkour && held(buttons::SPRINT) { mp.swim_sprint } else { mp.swim_speed };
+            let target = wish * speed;
             vh = vh.lerp(target, 1.0 - (-5.0 * dt).exp());
         } else {
             match mp.model {
                 MovementModel::Instant => {
-                    let s = if held(buttons::FOCUS) { mp.focus_speed } else { mp.speed } * mult;
+                    let s = if ch.freerun {
+                        run
+                    } else if held(buttons::FOCUS) {
+                        mp.focus_speed
+                    } else {
+                        mp.speed
+                    } * mult;
                     let target = wish * s;
                     if ch.grounded && ch.slide > 0.0 {
                         // Ice: momentum carries on.
@@ -892,7 +1342,8 @@ pub fn tick(
                     }
                 }
                 MovementModel::Momentum => {
-                    let max = mp.max_speed * mult * if held(buttons::FOCUS) { 0.5 } else { 1.0 };
+                    let top = if ch.freerun { run } else { mp.max_speed };
+                    let max = top * mult * if held(buttons::FOCUS) && !ch.freerun { 0.5 } else { 1.0 };
                     let target = wish * max;
                     let ctrl = if ch.grounded { 1.0 } else { mp.air_control };
                     let rate = if wish.length() < 0.05 {
@@ -916,7 +1367,8 @@ pub fn tick(
                         }
                         let fwd = dir_of(ch.facing);
                         let align = wish.normalize_or_zero().dot(fwd).max(0.0);
-                        let target = mp.max_speed * mult * wish.length() * align * if held(buttons::FOCUS) { 0.5 } else { 1.0 };
+                        let top = if ch.freerun { run } else { mp.max_speed };
+                        let target = top * mult * wish.length() * align * if held(buttons::FOCUS) { 0.5 } else { 1.0 };
                         let cur = vh.dot(fwd).max(0.0);
                         let rate = if target > cur { mp.accel } else { mp.decel };
                         let s = cur + (target - cur).clamp(-rate * dt, rate * dt);
@@ -966,6 +1418,28 @@ pub fn tick(
         if mp.model != MovementModel::Grid {
             ch.grid_target = None;
         }
+        // Parkour on foot: beams, the jump assist at edges (free-run), ledge safety (walking).
+        if parkour && ch.grounded && !ch.swimming && !dashing && !stunned && !rolling {
+            let probe = crate::traversal::Probe::new(st, filter, mp);
+            if !held(buttons::DODGE) {
+                if let Some((axis, side, off)) = crate::traversal::beam(&probe, feet, mp.beam_width) {
+                    ch.on_beam = true;
+                    let along = vh.dot(axis);
+                    vh = (axis * along + side * (off * 12.0).clamp(-2.0, 2.0)).clamp_length_max(mp.beam_speed);
+                }
+            }
+            let hs = vh.length();
+            if ch.freerun && hs > 3.0 {
+                if probe.drop_ahead(feet, vh, dt, mp.edge_drop) {
+                    if let Some(v) = crate::traversal::leap(&probe, feet, vh / hs, hs) {
+                        vh = Vec3::new(v.x, 0.0, v.z);
+                        launch = Some(v.y);
+                    }
+                }
+            } else if !held(buttons::DODGE) && !pressed(buttons::JUMP) {
+                vh = crate::traversal::safe_step(&probe, feet, vh, dt);
+            }
+        }
         ch.vel.x = vh.x;
         ch.vel.z = vh.z;
 
@@ -973,22 +1447,51 @@ pub fn tick(
         if ch.swimming {
             ch.jumping = false;
             let surface = feet.y + ch.water_depth;
-            let float_feet = surface - 1.3;
-            let target_vy = if held(buttons::CROUCH) {
-                -mp.swim_speed * 0.8
-            } else if held(buttons::JUMP) && ch.water_depth > 1.6 {
-                mp.swim_speed * 0.8
+            if parkour {
+                // Ride the waves: the surface where the swimmer will be; DODGE dives under it.
+                if pressed(buttons::DODGE) {
+                    ch.diving = if ch.diving > 0.0 { 0.0 } else { mp.dive_time };
+                } else if pressed(buttons::JUMP) {
+                    ch.diving = 0.0;
+                }
+                let next = feet + Vec3::new(ch.vel.x, 0.0, ch.vel.z) * dt;
+                let surf = water_at(st, pool_top, next).unwrap_or(surface);
+                let target = if held(buttons::CROUCH) {
+                    feet.y - mp.swim_speed * 0.8 * dt
+                } else if ch.diving > 0.0 {
+                    surf - mp.dive_depth - height
+                } else {
+                    surf - 1.3
+                };
+                ch.vel.y = ((target - feet.y) / dt.max(1e-4)).clamp(-4.0, 4.0);
             } else {
-                ((float_feet - feet.y) * 4.0).clamp(-3.0, 3.0)
-            };
-            ch.vel.y += (target_vy - ch.vel.y) * (1.0 - (-6.0 * dt).exp());
+                let float_feet = surface - 1.3;
+                let target_vy = if held(buttons::CROUCH) {
+                    -mp.swim_speed * 0.8
+                } else if held(buttons::JUMP) && ch.water_depth > 1.6 {
+                    mp.swim_speed * 0.8
+                } else {
+                    ((float_feet - feet.y) * 4.0).clamp(-3.0, 3.0)
+                };
+                ch.vel.y += (target_vy - ch.vel.y) * (1.0 - (-6.0 * dt).exp());
+            }
             // Climb out: jump while floating at the surface.
-            if pressed(buttons::JUMP) && ch.water_depth < 1.6 && mp.allow_jump {
+            if pressed(buttons::JUMP) && ch.water_depth < 1.6 && mp.allow_jump && ch.diving <= 0.0 {
                 ch.vel.y = (2.0 * mp.gravity * mp.jump_height * 0.9).sqrt();
                 ch.swimming = false;
                 jumped = true;
             }
         } else {
+            if let Some(vy) = launch {
+                // The jump assist: a computed arc onto the landing ahead.
+                ch.vel.y = vy;
+                ch.jumping = false;
+                ch.grounded = false;
+                ch.air_time = mp.coyote_time + 1.0;
+                ch.since_jump_press = 10.0;
+                ch.leap = true;
+                jumped = true;
+            }
             let can_jump = (ch.grounded || ch.air_time < mp.coyote_time)
                 && (ch.posture != Posture::Crawl || creature)
                 && mp.allow_jump
@@ -1021,7 +1524,7 @@ pub fn tick(
     ch.vel += ch.impulse;
     ch.impulse = Vec3::ZERO;
     // Trampolines launch you when you land on them.
-    if bounce > 0.0 && was_grounded && !climbing && !hanging && ch.vel.y <= 0.1 {
+    if bounce > 0.0 && was_grounded && !climbing && !hanging && !walling && ch.vel.y <= 0.1 {
         ch.vel.y = bounce * if held(buttons::JUMP) { 1.25 } else { 1.0 };
         ch.grounded = false;
         ch.jumping = false;
@@ -1053,33 +1556,36 @@ pub fn tick(
         up: Vector::Y,
         offset: CharacterLength::Absolute(0.02),
         slide: true,
-        autostep: (!climbing && !hanging).then_some(CharacterAutostep {
-            max_height: CharacterLength::Absolute(mp.step_height as Real),
+        autostep: (!climbing && !hanging && !walling).then_some(CharacterAutostep {
+            max_height: CharacterLength::Absolute(
+                if ch.freerun { mp.freerun_step.max(mp.step_height) } else { mp.step_height } as Real
+            ),
             min_width: CharacterLength::Absolute(0.12),
             // Step onto low planks, seesaws and debris (tall crates still get pushed).
             include_dynamic_bodies: true,
         }),
         max_slope_climb_angle: 50f32.to_radians() as Real,
         min_slope_slide_angle: 40f32.to_radians() as Real,
-        snap_to_ground: (was_grounded && ch.vel.y <= 0.0 && !climbing && !hanging && !ch.swimming)
+        snap_to_ground: (was_grounded && ch.vel.y <= 0.0 && !climbing && !hanging && !ch.swimming && !walling && !ch.leap)
             .then_some(CharacterLength::Absolute(0.25)),
         normal_nudge_factor: 1.0e-4,
     };
     let shape = st.physics.colliders[col_h].shared_shape().clone();
-    let mut desired = match hang_move {
+    let own_move = hang_move.or(wall_move);
+    let mut desired = match own_move {
         Some(m) => m,
         None => ch.vel * dt + lock_fix,
     };
-    if ch.push_load > 1.0 && hang_move.is_none() {
+    if ch.push_load > 1.0 && own_move.is_none() {
         // Pushing something heavy: share the momentum (a 70 kg push on a 280 kg ball crawls).
         let f = mp.push_mass / (mp.push_mass + ch.push_load);
         desired.x *= f;
         desired.z *= f;
     }
     // Conveyor belts carry whoever stands on them.
-    let belt = if was_grounded && !climbing && !hanging { conveyor * dt } else { Vec3::ZERO };
+    let belt = if was_grounded && !climbing && !hanging && !walling { conveyor * dt } else { Vec3::ZERO };
     desired += belt;
-    if desired.length_squared() < 1e-8 && !climbing && !hanging {
+    if desired.length_squared() < 1e-8 && !climbing && !hanging && !walling {
         // A hair of downward motion keeps the controller running its ground checks, which is
         // where it carries the character along with moving platforms.
         desired.y -= 1e-3;
@@ -1132,7 +1638,7 @@ pub fn tick(
     }
 
     // --- weight: press down on movable things underfoot (rope bridges, seesaws)
-    if mp.weight > 0.0 && !climbing && !hanging {
+    if mp.weight > 0.0 && !climbing && !hanging && !walling {
         let ray = Ray::new(new_center, Vec3::NEG_Y);
         let hit = st.physics.query_filtered(filter).cast_ray(&ray, (height * 0.5 + 0.15) as Real, true);
         if let Some((h, toi)) = hit {
@@ -1147,27 +1653,42 @@ pub fn tick(
 
     // --- resolve velocity from what actually happened
     ch.grounded = (mv.grounded && !(ch.jumping && ch.vel.y > 0.0)) || (ch.grounded && hanging);
-    if hanging {
+    if hanging || ch.vault.is_some() || (ch.leap && ch.vel.y > 0.0) {
         ch.grounded = false;
+    }
+    if ch.climb.is_some() {
+        if mv.grounded && ch.vel.y < 0.0 {
+            // Climbed down to the ground: stand there.
+            ch.climb = None;
+            ch.vel = Vec3::ZERO;
+        } else {
+            ch.grounded = false;
+        }
     }
     let mut landed = 0.0;
     if ch.grounded {
-        if !was_grounded && last_vel.y < -2.0 {
+        if !was_grounded && last_vel.y < -2.0 && !was_wall {
             landed = -last_vel.y;
-            events.push(SimEvent::Land { pos: new_center - Vec3::Y * height * 0.5, speed: landed });
+            events.push(SimEvent::Land { pos: new_center - Vec3::Y * height * 0.5, speed: landed, roll: ch.freerun });
         }
         ch.vel.y = ch.vel.y.max(0.0).min(if climbing { ch.vel.y } else { 0.0 });
         ch.air_time = 0.0;
         ch.air_from = new_center.y - height * 0.5;
         ch.air_jumped = false;
+        ch.leap = false;
+        ch.eject = 0.0;
     } else {
         ch.air_time += dt;
-        if ch.vel.y > 0.0 && moved.y < desired.y * 0.5 && !climbing && !hanging && !ch.swimming {
+        if ch.vel.y > 0.0 && moved.y < desired.y * 0.5 && !climbing && !hanging && !ch.swimming && !walling {
             ch.vel.y = 0.0; // bumped the ceiling
             ch.jumping = false;
         }
     }
-    if dt > 0.0 && !climbing && !hanging {
+    if ch.hang.is_some() || ch.climb.is_some() || ch.swimming || climbing {
+        ch.leap = false;
+        ch.eject = 0.0;
+    }
+    if dt > 0.0 && !climbing && !hanging && !walling {
         // Blocked by a wall: keep only the motion that actually happened (sliding along it). A
         // belt's push is not the character's own motion: walking against a treadmill keeps the
         // stride, and a belt shoving it into a wall never turns that into walking backwards.
@@ -1184,7 +1705,17 @@ pub fn tick(
     ch.dash_time = (ch.dash_time - dt).max(0.0);
     if let Some(f) = ch.face {
         ch.facing = f;
-    } else if !climbing && !hanging && !stunned && matches!(mp.model, MovementModel::Instant | MovementModel::Momentum) {
+    } else if ch.leap && !ch.grounded && !walling {
+        // In flight: face where it goes.
+        if Vec2::new(ch.vel.x, ch.vel.z).length() > 0.5 {
+            ch.facing = yaw_of(ch.vel);
+        }
+    } else if !climbing
+        && !hanging
+        && !walling
+        && !stunned
+        && matches!(mp.model, MovementModel::Instant | MovementModel::Momentum)
+    {
         if mp.face_aim {
             if let Some(a) = input.aim {
                 let d = a - new_center;
@@ -1199,7 +1730,13 @@ pub fn tick(
 
     // --- blaster: hold fire
     if bp.weapon == Weapon::Blaster {
-        if (held(buttons::USE) || held(buttons::PRIMARY)) && ch.bomb_cooldown <= 0.0 && !climbing && !hanging && !stunned {
+        if (held(buttons::USE) || held(buttons::PRIMARY))
+            && ch.bomb_cooldown <= 0.0
+            && !climbing
+            && !hanging
+            && !walling
+            && !stunned
+        {
             ch.bomb_cooldown = bp.fire_interval;
             let from = new_center + Vec3::Y * 0.25;
             let dir = if bp.shoot_angle >= 0.0 {
@@ -1221,6 +1758,7 @@ pub fn tick(
         && ch.bomb_cooldown <= 0.0
         && !climbing
         && !hanging
+        && !walling
         && !ch.swimming
     {
         ch.bomb_cooldown = bp.cooldown;
@@ -1264,7 +1802,7 @@ pub fn tick(
             grounded: ch.grounded,
             crouch: ch.posture == Posture::Crouch,
             crawl: ch.posture == Posture::Crawl && !rolling && !creature,
-            climbing: climbing || hanging,
+            climbing: climbing || hanging || ch.climb.is_some(),
             facing: ch.facing,
             landed,
             jumped,
@@ -1275,6 +1813,10 @@ pub fn tick(
     );
     if hanging {
         ch.anim.climb_phase = 0.25;
+    } else if ch.climb.is_some() {
+        // Hands and feet move with sideways climbing too (`update` counts the vertical part).
+        let step = climb_side.abs() * dt / (0.9 * puppet.scale.max(0.1));
+        ch.anim.climb_phase = (ch.anim.climb_phase + step).rem_euclid(1.0);
     }
     // An idle clip plays while the character stands still with nothing to do; a walk clip
     // while it heads forward on the ground, as fast as it moves; a run clip instead once the
@@ -1365,6 +1907,14 @@ pub fn tick(
         if crossed(0.25) || crossed(0.75) {
             events.push(SimEvent::Step { pos: new_center - Vec3::Y * height * 0.5 });
         }
+    }
+    // Where climbs and vaults left the feet (a teleport before the next tick lets go).
+    let feet_end = new_center - Vec3::Y * height * 0.5;
+    if let Some(c) = &mut ch.climb {
+        c.at = feet_end;
+    }
+    if let Some(v) = &mut ch.vault {
+        v.at = feet_end;
     }
 
     if let Some(e) = st.entities.map.get_mut(&id) {

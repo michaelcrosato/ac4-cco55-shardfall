@@ -427,7 +427,7 @@ fn falls(g: &mut Game, sim: &mut Sim, lv: &mut LevelState, events: &mut Vec<SimE
             a.life = (a.life - loss).max(1.0);
             a.iframes = a.iframes.max(1.0);
             g.float_text(lv.safe + Vec3::Y * 2.2, "Fell!");
-            events.push(SimEvent::Land { pos: lv.safe, speed: 6.0 });
+            events.push(SimEvent::Land { pos: lv.safe, speed: 6.0, roll: false });
         } else {
             sim.set_position(id, Vec3::new(f.x, 0.05, f.z));
             let hero = g.hero_id;
