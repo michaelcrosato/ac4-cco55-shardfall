@@ -4,7 +4,7 @@
 # give the rules a seabed and coasts meanwhile.
 
 # Wanted posters in Dryport (tear them down to lower the heat).
-poster = [[166.0, 2.0, 12.0], [176.0, 2.0, 34.0], [196.0, 2.0, 12.0], [202.0, 2.0, 30.0], [214.0, 2.0, 20.0], [186.0, 2.0, 2.0]]
+poster = [[164.0, 2.4, 2.7], [206.0, 2.4, 2.7], [196.0, 2.4, 2.7], [172.0, 2.4, 27.3], [216.0, 2.4, 27.3], [162.0, 2.4, 27.3]]
 
 [bounds]
 soft = 560.0
@@ -46,10 +46,10 @@ r1_start = [-420.0, 0.0, 380.0]
 r2_start = [-260.0, 0.0, 230.0]
 r3_start = [80.0, 0.0, -330.0]
 r4_start = [10.0, 0.0, 95.0]
-r4_anchorage = [70.0, 0.0, 52.0]
-r4_beach = [86.0, 0.0, 22.0]
+r4_anchorage = [74.0, 0.0, 70.0]
+r4_beach = [96.0, 1.0, 20.0]
 r5_start = [120.0, 0.0, 4.0]
-r6_start = [292.0, 0.0, -98.0]
+r6_start = [292.0, 0.0, -100.0]
 extraction = [-450.0, 0.0, -300.0]
 # Flotsam (Round 1 uses the first three; all six count as collectibles).
 flotsam_1 = [-372.0, 0.0, 318.0]
@@ -59,35 +59,41 @@ flotsam_4 = [-180.0, 0.0, 330.0]
 flotsam_5 = [-60.0, 0.0, 260.0]
 flotsam_6 = [-30.0, 0.0, -300.0]
 # Fort Abstinence.
-battery_west = [270.0, 14.0, -200.0]
-battery_north = [340.0, 16.0, -250.0]
-mortar_tower = [380.0, 22.0, -160.0]
-fort_keep = [345.0, 18.0, -190.0]
 # Where a ship can shell each battery from open water (bot hints).
 fire_west = [150.0, 0.0, -330.0]
 fire_north = [340.0, 0.0, -432.0]
 fire_mortar = [545.0, 0.0, -255.0]
-flagpole = [352.0, 30.0, -196.0]
-fort_gate = [318.0, 14.0, -146.0]
 fort_cliff = [330.0, 2.0, -268.0]
-cave = [300.0, 1.0, -120.0]
-under_cliffs = [300.0, 0.0, -290.0]
+under_cliffs = [326.0, 0.0, -318.0]
 # Dryport.
 dryport = [180.0, 2.0, 20.0]
-chapel_perch = [150.0, 26.0, 2.0]
-chapel_hay = [156.0, 1.0, 8.0]
-stocks = [182.0, 2.0, 18.0]
-temperance_hall = [204.0, 2.0, 2.0]
-docks = [190.0, 1.0, 44.0]
-tavern = [168.0, 2.0, 30.0]
 # Gull Rock and Hook Key.
-gull_perch = [-120.0, 28.0, -160.0]
 hook_wreck = [-262.0, 0.0, 128.0]
 # Land.
-bell_tower = [362.0, 20.0, -176.0]
-town_square = [182.0, 2.0, 20.0]
-gull_water = [-106.0, 0.0, -150.0]
-cellar = [338.0, 12.0, -170.0]
+gull_water = [-92.0, 0.0, -140.0]
+cliff_water = [338.0, 0.0, -300.0]
+
+# Markers taken from the generated structures (games/blacktap/tab1_world.toml).
+[marker_from]
+battery_west = "west_battery.platform"
+battery_north = "north_battery.platform"
+mortar_tower = "mortar_tower.mortar"
+fort_keep = "keep.center"
+flagpole = "keep.flagpole"
+bell_tower = "keep.door"
+fort_gate = "fort_gate.outside"
+cellar = "keep.door+-6,0,3"
+cave = "cave_hut.door"
+chapel_perch = "chapel.perch"
+chapel_hay = "chapel_cart.landing"
+stocks = "stocks.stocks"
+temperance_hall = "temperance_hall.door"
+docks = "pier.end"
+tavern = "tavern.door"
+town_square = "stocks.center"
+dryport = "stocks.center"
+gull_perch = "lighthouse.perch"
+battlement = "north_battery.cannon2"
 
 # ---------------------------------------------------------------- routes (loops, x/z)
 [route]
@@ -99,243 +105,23 @@ r4_approach = [[-60.0, 140.0], [20.0, 90.0], [70.0, 52.0]]
 r3_approach = [[-60.0, -60.0], [40.0, -300.0], [180.0, -330.0]]
 escape = [[300.0, -300.0], [150.0, -360.0], [-100.0, -340.0], [-450.0, -300.0]]
 # On land.
-town_patrol_a = [[170.0, 4.0], [150.0, 14.0], [158.0, 34.0], [178.0, 30.0]]
-town_patrol_b = [[200.0, 30.0], [214.0, 40.0], [222.0, 24.0], [206.0, 14.0]]
-courier_route = [[204.0, 8.0], [196.0, 16.0], [188.0, 26.0], [190.0, 40.0], [190.0, 46.0]]
-fort_courtyard = [[330.0, -185.0], [346.0, -176.0], [352.0, -196.0], [334.0, -200.0]]
-fort_wall_west = [[300.0, -205.0], [292.0, -186.0], [300.0, -168.0], [292.0, -186.0]]
-fort_wall_north = [[350.0, -235.0], [366.0, -220.0], [336.0, -244.0]]
+town_patrol_a = [[166.0, 8.0], [202.0, 8.0], [202.0, 28.0], [166.0, 28.0]]
+town_patrol_b = [[150.0, 38.0], [226.0, 38.0]]
+courier_route = [[186.0, 5.0], [200.0, 9.0], [203.0, 28.0], [200.0, 38.0], [196.0, 47.0], [196.0, 70.0]]
+fort_courtyard = [[332.0, -182.0], [362.0, -182.0], [362.0, -220.0], [332.0, -222.0]]
+fort_wall_west = [[310.4, -180.0], [310.4, -224.0]]
+fort_wall_north = [[318.0, -231.6], [362.0, -231.6]]
 
 
-# ---------------------------------------------------------------- people (PLAN §9.11)
-# group = the mission action that places them; kind = npcs.toml archetype; facing in degrees
-# from north; route = a [route] loop they walk; tags: courier, escort, gossip, critical...
-[[npc]]
-group = "town"
-kind = "civilian"
-at = [176.0, 2.0, 16.0]
-count = 3
-tags = ["gossip"]
-facing = 0.0
-
-[[npc]]
-group = "town"
-kind = "civilian"
-at = [196.0, 2.0, 38.0]
-count = 3
-tags = ["gossip"]
-
-[[npc]]
-group = "town"
-kind = "civilian"
-at = [164.0, 2.0, 26.0]
-count = 4
-
-[[npc]]
-group = "town"
-kind = "civilian"
-at = [190.0, 2.0, 10.0]
-count = 4
-
-[[npc]]
-group = "town"
-kind = "civilian"
-at = [208.0, 1.5, 44.0]
-count = 3
-
-[[npc]]
-group = "town"
-kind = "guard"
-at = [170.0, 2.0, 4.0]
-route = "town_patrol_a"
-
-[[npc]]
-group = "town"
-kind = "guard"
-at = [200.0, 2.0, 30.0]
-route = "town_patrol_b"
-
-[[npc]]
-group = "town"
-kind = "guard"
-at = [210.0, 2.0, 6.0]
-facing = 270.0
-
-[[npc]]
-group = "town"
-kind = "musketeer"
-at = [222.0, 2.0, 18.0]
-facing = 250.0
-
-[[npc]]
-group = "courier"
-kind = "courier"
-at = [204.0, 2.0, 6.0]
-route = "courier_route"
-once = true
-tags = ["courier", "critical"]
-
-[[npc]]
-group = "courier"
-kind = "guard"
-at = [206.0, 2.0, 4.0]
-tags = ["escort", "critical"]
-count = 2
-
-[[npc]]
-group = "stocks"
-kind = "molasses"
-at = [182.0, 2.0, 18.0]
-facing = 180.0
-tags = ["critical"]
-
-[[npc]]
-group = "stocks"
-kind = "guard"
-at = [178.0, 2.0, 16.0]
-facing = 300.0
-tags = ["critical"]
-
-[[npc]]
-group = "stocks"
-kind = "guard"
-at = [186.0, 2.0, 16.0]
-facing = 60.0
-tags = ["critical"]
-
-[[npc]]
-group = "stocks"
-kind = "brute"
-at = [182.0, 2.0, 23.0]
-facing = 180.0
-tags = ["critical"]
-
-[[npc]]
-group = "fort"
-kind = "guard"
-at = [316.0, 14.0, -150.0]
-facing = 160.0
-
-[[npc]]
-group = "fort"
-kind = "guard"
-at = [322.0, 14.0, -150.0]
-facing = 200.0
-
-[[npc]]
-group = "fort"
-kind = "guard"
-at = [330.0, 14.0, -185.0]
-route = "fort_courtyard"
-
-[[npc]]
-group = "fort"
-kind = "guard"
-at = [300.0, 14.0, -205.0]
-route = "fort_wall_west"
-
-[[npc]]
-group = "fort"
-kind = "musketeer"
-at = [350.0, 16.0, -235.0]
-route = "fort_wall_north"
-
-[[npc]]
-group = "fort"
-kind = "musketeer"
-at = [272.0, 14.0, -196.0]
-facing = 300.0
-
-[[npc]]
-group = "fort"
-kind = "guard"
-at = [340.0, 16.0, -248.0]
-facing = 0.0
-
-[[npc]]
-group = "fort"
-kind = "brute"
-at = [336.0, 12.0, -172.0]
-facing = 90.0
-
-[[npc]]
-group = "fort"
-kind = "guard"
-at = [362.0, 14.0, -178.0]
-facing = 200.0
-tags = ["bell_ringer"]
-
-[[npc]]
-group = "drye"
-kind = "drye"
-at = [346.0, 18.0, -186.0]
-facing = 200.0
-tags = ["critical"]
-
-[[npc]]
-group = "drye"
-kind = "brute"
-at = [342.0, 18.0, -188.0]
-facing = 150.0
-tags = ["drye_guard", "critical"]
-
-[[npc]]
-group = "drye"
-kind = "musketeer"
-at = [350.0, 18.0, -189.0]
-facing = 230.0
-tags = ["drye_guard", "critical"]
-
-# ---------------------------------------------------------------- routes on land
 
 # ---------------------------------------------------------------- hiding, heat, areas
-[[hide]]
-kind = "grass"
-at = [172.0, 2.0, 8.0]
-radius = 3.0
-
-[[hide]]
-kind = "grass"
-at = [192.0, 2.0, 24.0]
-radius = 2.5
-
-[[hide]]
-kind = "cart"
-at = [156.0, 1.0, 8.0]
-radius = 1.6
-
-[[hide]]
-kind = "haystack"
-at = [214.0, 2.0, 32.0]
-radius = 1.4
-
-[[hide]]
-kind = "grass"
-at = [260.0, 8.0, -110.0]
-radius = 6.0
-
-[[hide]]
-kind = "grass"
-at = [300.0, 10.0, -140.0]
-radius = 5.0
-
-[[hide]]
-kind = "grass"
-at = [318.0, 12.0, -260.0]
-radius = 4.0
-
-[[hide]]
-kind = "haystack"
-at = [326.0, 14.0, -180.0]
-radius = 1.4
-
 
 
 [[area]]
 name = "fort"
 kind = "restricted"
-center = [335.0, -200.0]
-radii = [62.0, 52.0]
+center = [340.0, -201.0]
+radii = [31.0, 31.0]
 
 [[area]]
 name = "dryport"
@@ -345,14 +131,19 @@ radii = [62.0, 42.0]
 
 [[perch]]
 name = "chapel"
-at = [150.0, 26.0, 2.0]
+marker = "chapel_perch"
 leap_to = "chapel_hay"
 reveals = 220.0
 
 [[perch]]
 name = "gull_rock"
-at = [-120.0, 28.0, -160.0]
+marker = "gull_perch"
 leap_to = "gull_water"
+
+[[perch]]
+name = "battlement"
+marker = "battlement"
+leap_to = "cliff_water"
 reveals = 260.0
 
 # ---------------------------------------------------------------- collectibles (PLAN §5.2)
@@ -455,3 +246,187 @@ at = [304.0, 1.0, -124.0]
 kind = "keg_tap"
 name = "keg_tap_crypt"
 at = [150.0, 0.5, 6.0]
+
+# ---------------------------------------------------------------- people (PLAN §9.11)
+# group = the mission action that places them; kind = npcs.toml archetype; facing in degrees
+# from north; route = a [route] loop they walk; tags: courier, escort, gossip, critical...
+[[npc]]
+group = "town"
+kind = "civilian"
+at = [178.0, 2.4, 14.0]
+tags = ["gossip"]
+count = 3
+
+[[npc]]
+group = "town"
+kind = "civilian"
+at = [194.0, 2.4, 20.0]
+tags = ["gossip"]
+count = 3
+
+[[npc]]
+group = "town"
+kind = "civilian"
+at = [204.0, 2.4, 40.0]
+count = 3
+
+[[npc]]
+group = "town"
+kind = "civilian"
+at = [148.0, 2.4, 30.0]
+count = 3
+
+[[npc]]
+group = "town"
+kind = "civilian"
+at = [239.0, 2.4, 14.0]
+count = 3
+
+[[npc]]
+group = "town"
+kind = "civilian"
+at = [176.0, 2.4, 40.0]
+tags = ["gossip"]
+count = 3
+
+[[npc]]
+group = "town"
+kind = "guard"
+at = [166.0, 2.4, 8.0]
+route = "town_patrol_a"
+
+[[npc]]
+group = "town"
+kind = "guard"
+at = [150.0, 2.4, 38.0]
+route = "town_patrol_b"
+
+[[npc]]
+group = "town"
+kind = "guard"
+at = [186.0, 2.4, 5.0]
+facing = 180.0
+
+[[npc]]
+group = "town"
+kind = "musketeer"
+at = [230.0, 2.4, 23.0]
+
+[[npc]]
+group = "courier"
+kind = "courier"
+at = [186.0, 2.4, 6.0]
+route = "courier_route"
+once = true
+tags = ["courier", "critical"]
+
+[[npc]]
+group = "courier"
+kind = "guard"
+at = [186.0, 2.4, 4.0]
+tags = ["escort", "critical"]
+count = 2
+
+[[npc]]
+group = "stocks"
+kind = "molasses"
+at = [184.0, 2.4, 18.6]
+facing = 180.0
+tags = ["critical"]
+
+[[npc]]
+group = "stocks"
+kind = "guard"
+at = [180.0, 2.4, 16.0]
+facing = 300.0
+tags = ["critical"]
+
+[[npc]]
+group = "stocks"
+kind = "guard"
+at = [188.0, 2.4, 16.0]
+facing = 60.0
+tags = ["critical"]
+
+[[npc]]
+group = "stocks"
+kind = "brute"
+at = [184.0, 2.4, 22.5]
+facing = 180.0
+tags = ["critical"]
+
+[[npc]]
+group = "fort"
+kind = "guard"
+at = [336.0, 15.0, -162.0]
+facing = 180.0
+
+[[npc]]
+group = "fort"
+kind = "guard"
+at = [344.0, 15.0, -162.0]
+facing = 180.0
+
+[[npc]]
+group = "fort"
+kind = "guard"
+at = [332.0, 15.0, -182.0]
+route = "fort_courtyard"
+
+[[npc]]
+group = "fort"
+kind = "guard"
+at = [310.4, 23.0, -180.0]
+route = "fort_wall_west"
+
+[[npc]]
+group = "fort"
+kind = "musketeer"
+at = [318.0, 23.0, -231.6]
+route = "fort_wall_north"
+
+[[npc]]
+group = "fort"
+kind = "musketeer"
+at = [284.0, 17.5, -205.0]
+facing = 270.0
+
+[[npc]]
+group = "fort"
+kind = "guard"
+at = [342.0, 17.5, -252.0]
+
+[[npc]]
+group = "fort"
+kind = "brute"
+at = [336.0, 15.0, -190.0]
+facing = 90.0
+
+[[npc]]
+group = "fort"
+kind = "guard"
+at = [348.0, 15.0, -195.0]
+facing = 180.0
+tags = ["bell_ringer"]
+
+[[npc]]
+group = "drye"
+kind = "drye"
+at = [348.0, 22.4, -198.6]
+facing = 180.0
+tags = ["critical"]
+
+[[npc]]
+group = "drye"
+kind = "brute"
+at = [343.0, 15.0, -194.0]
+facing = 160.0
+tags = ["drye_guard", "critical"]
+
+[[npc]]
+group = "drye"
+kind = "musketeer"
+at = [353.0, 15.0, -194.0]
+facing = 200.0
+tags = ["drye_guard", "critical"]
+

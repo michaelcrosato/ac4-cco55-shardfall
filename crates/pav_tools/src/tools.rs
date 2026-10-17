@@ -164,6 +164,12 @@ pub static TOOLS: &[Tool] = &[
         run: crate::kit_tools::t_level_check,
     },
     Tool {
+        name: "markers",
+        help: "The running game's named world markers (name= filters).",
+        args: &[arg("name", "string", "only markers whose name contains this")],
+        run: crate::kit_tools::t_markers,
+    },
+    Tool {
         name: "tour",
         help: "The game's canonical vistas in one contact sheet PNG.",
         args: &[

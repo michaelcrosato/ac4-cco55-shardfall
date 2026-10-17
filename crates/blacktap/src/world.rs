@@ -54,6 +54,10 @@ pub struct LevelFile {
     /// Bot hints: named waypoint lists (x, y, z) with an action at each point.
     #[serde(default)]
     pub bot_hint: Vec<BotHint>,
+    /// Markers taken from the generated structures (`chapel_perch = "chapel.perch"`), with
+    /// an optional offset: `"keep.flagpole+0,0,1.5"`.
+    #[serde(default)]
+    pub marker_from: BTreeMap<String, String>,
 }
 
 /// People placed by the mission actions (`spawn_town`, `spawn_fort_guards`...), by group.
@@ -97,7 +101,11 @@ pub struct Area {
 #[derive(Clone, Debug, Deserialize)]
 pub struct Perch {
     pub name: String,
+    #[serde(default)]
     pub at: [f32; 3],
+    /// A marker to stand on instead of `at` (resolved at load).
+    #[serde(default)]
+    pub marker: String,
     #[serde(default)]
     pub leap_to: String,
     #[serde(default)]
@@ -151,6 +159,8 @@ pub struct World {
     pub perches: Vec<Perch>,
     pub collectibles: Vec<Collectible>,
     pub bot_hints: BTreeMap<String, BotHint>,
+    /// Generated areas: stalk grass and hay (hiding), soft landings, perches.
+    pub zones: Vec<pav_core::structures::Area>,
 }
 
 impl World {
@@ -185,10 +195,24 @@ impl World {
     }
 
     /// The hiding spot `p` is in (feet), if any.
-    pub fn hide_at(&self, p: Vec3) -> Option<&Hide> {
-        self.hides.iter().find(|h| {
+    pub fn hide_at(&self, p: Vec3) -> Option<Hide> {
+        if let Some(h) = self.hides.iter().find(|h| {
             let c = Vec3::from(h.at);
             Vec2::new(p.x - c.x, p.z - c.z).length() < h.radius && (p.y - c.y).abs() < 2.0
+        }) {
+            return Some(h.clone());
+        }
+        use pav_core::structures::AreaKind;
+        let probe = p + Vec3::Y * 0.5;
+        self.zones.iter().filter(|a| a.contains(probe)).find_map(|a| {
+            let kind = match a.kind {
+                AreaKind::Hide if a.name.contains("hay") => "hay",
+                AreaKind::Hide => "grass",
+                AreaKind::Soft if a.name.contains("hay") => "cart",
+                AreaKind::Soft => "awning",
+                AreaKind::Perch => return None,
+            };
+            Some(Hide { kind: kind.into(), at: a.center().to_array(), radius: (a.max - a.min).length() * 0.5 })
         })
     }
 
@@ -270,21 +294,59 @@ pub fn load(text: &str) -> anyhow::Result<Arc<World>> {
         }
     }
     let f: LevelFile = toml::from_str(text)?;
-    let seabed = Arc::new(bake_seabed(&f.shape, f.bounds.hard + 40.0));
+    let level = crate::island::prebuilt();
+    let half = f.bounds.hard + 40.0;
+    let seabed = Arc::new(if level.fields.is_empty() {
+        bake_seabed(&f.shape, half)
+    } else {
+        let refs: Vec<&pav_core::island::Heightfield> = level.fields.iter().map(|x| x.as_ref()).collect();
+        pav_core::island::seabed(&refs, Vec2::splat(-half), Vec2::splat(half), 4.0)
+    });
+    let mut markers: BTreeMap<String, Vec3> = f.marker.iter().map(|(k, v)| (k.clone(), Vec3::from(*v))).collect();
+    for (k, v) in &level.markers {
+        markers.entry(k.clone()).or_insert(*v);
+    }
+    for (alias, from) in &f.marker_from {
+        let (name, off) = from.split_once('+').map(|(n, o)| (n, Some(o))).unwrap_or((from.as_str(), None));
+        let Some(mut p) = level.markers.get(name).copied() else {
+            log::warn!("tab1.toml: marker_from '{alias}' names unknown structure marker '{name}'");
+            continue;
+        };
+        if let Some(o) = off {
+            let v: Vec<f32> = o.split(',').filter_map(|x| x.trim().parse().ok()).collect();
+            if v.len() == 3 {
+                p += Vec3::new(v[0], v[1], v[2]);
+            }
+        }
+        markers.insert(alias.clone(), p);
+    }
+    let mut perches = f.perch;
+    for p in &mut perches {
+        if let Some(m) = markers.get(&p.marker).filter(|_| !p.marker.is_empty()) {
+            p.at = m.to_array();
+        }
+    }
+    let terrain: Option<Arc<dyn Fn(Vec2) -> Option<f32> + Send + Sync>> = if level.fields.is_empty() {
+        None
+    } else {
+        let lv = level.clone();
+        Some(Arc::new(move |p: Vec2| Some(lv.ground(p))))
+    };
     let w = Arc::new(World {
-        markers: f.marker.iter().map(|(k, v)| (k.clone(), Vec3::from(*v))).collect(),
+        markers,
         routes: f.route.iter().map(|(k, v)| (k.clone(), v.iter().map(|p| Vec2::from(*p)).collect())).collect(),
         shapes: f.shape,
         bounds: f.bounds,
         seabed,
-        terrain: None,
+        terrain,
         npcs: f.npc,
         hides: f.hide,
         posters: f.poster.iter().map(|p| Vec3::from(*p)).collect(),
         areas: f.area,
-        perches: f.perch,
+        perches,
         collectibles: f.collectible,
         bot_hints: f.bot_hint.into_iter().map(|h| (h.name.clone(), h)).collect(),
+        zones: level.areas.clone(),
     });
     *CACHE.lock().unwrap_or_else(|p| p.into_inner()) = Some((key, w.clone()));
     Ok(w)

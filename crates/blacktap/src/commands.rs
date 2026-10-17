@@ -21,6 +21,11 @@ pub fn command(g: &mut BlackTap, sim: &mut Sim, name: &str, args: &Value) -> Rep
         "ocean" => ocean(g, args),
         "level_check" => Ok(level_check(g)),
         "tour" => tour(g, sim, args),
+        "markers" => {
+            let w = g.world();
+            let f = arg_str(args, "name").unwrap_or("");
+            Ok(json!(w.markers.iter().filter(|(k, _)| k.contains(f)).map(|(k, v)| (k.clone(), [round2(v.x), round2(v.y), round2(v.z)])).collect::<std::collections::BTreeMap<_, _>>()))
+        }
         _ => return None,
     })
 }

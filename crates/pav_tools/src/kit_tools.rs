@@ -401,6 +401,10 @@ pub fn t_perception(s: &mut Session, a: &Args) -> Result<Output> {
     Ok(Output::Json(game_command(s, "perception", a)?))
 }
 
+pub fn t_markers(s: &mut Session, a: &Args) -> Result<Output> {
+    Ok(Output::Json(game_command(s, "markers", a)?))
+}
+
 pub fn t_level_check(s: &mut Session, a: &Args) -> Result<Output> {
     if s.sim.play().is_none() {
         let mut fresh = Session::new("blacktap/title", 1)?;

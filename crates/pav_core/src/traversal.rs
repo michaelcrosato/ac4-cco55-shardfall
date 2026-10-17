@@ -110,7 +110,7 @@ impl<'a> Probe<'a> {
             return Some(None);
         }
         let flagged =
-            BlockRef::from_tag(c.user_data).and_then(|r| self.st.statics.get(r)).is_some_and(|b| b.has(block_flags::LADDER));
+            BlockRef::from_tag(c.user_data).and_then(|r| self.st.statics.get(r)).is_some_and(|b| b.has(block_flags::LADDER) || b.has(block_flags::CLIMBABLE));
         flagged.then_some(None)
     }
 
