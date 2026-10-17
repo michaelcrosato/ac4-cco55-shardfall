@@ -22,6 +22,7 @@ pub const SCENES: &[(&str, &str)] = &[
     ("town", "Shardfall: Emberwatch, the town (smith, stash, portal)."),
     ("lab", "Shardfall: the Menagerie, a gallery of designed and generated creatures."),
     ("level", "Shardfall: a level of the descent. 'level/<n>' is depth n (1-12 designed, then the endless Depths)."),
+    ("yard", "World-gen yard: a generated island with a colonial town, a fort corner, docks, jungle and every structure kind."),
 ];
 
 /// The scenes a menu offers: the built-in ones, then the games (`crate::games::GAMES`).
@@ -132,6 +133,9 @@ pub fn build(sim: &mut Sim, name: &str) -> Result<()> {
             }
         }
         "test" => test_scene(sim),
+        "yard" => {
+            crate::island::build_yard(sim);
+        }
         "arena" => crate::arpg::scene::build_arena(sim),
         "town" => crate::arpg::scene::build_town(sim, None),
         "lab" => crate::arpg::scene::build_lab(sim, None),

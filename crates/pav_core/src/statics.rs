@@ -32,6 +32,17 @@ pub mod block_flags {
     pub const CRACKED: u32 = 16;
     /// Crumbles only under the player (monsters fall into holes but don't make them).
     pub const PLAYER_CRUMBLE: u32 = 32;
+    /// Its side faces can be free-climbed (Parkour Up): building, fort and tower walls, cliff
+    /// blocks, parapets. Set by `structures`; traversal reads it.
+    pub const CLIMBABLE: u32 = 64;
+    /// Its top is a walkable roof (flat roofs, wall walks, balconies, tower tops, piers):
+    /// free-run lands on it, ledge safety guards its edges.
+    pub const ROOF: u32 = 128;
+    /// A pole climbed all round (posts, masts, flagpoles); tilted poles (trunks) are `Pole`s.
+    pub const POLE: u32 = 256;
+    /// A narrow beam walked with balance assist (planks between roofs, laundry lines, outrigger
+    /// beams): snap to the centre line along its long axis.
+    pub const BEAM: u32 = 512;
 }
 
 /// Which region static content belongs to.
@@ -207,6 +218,41 @@ impl Ladder {
     }
 }
 
+/// A climbable pole that may lean (palm and tree trunks): a cylinder from `base` to `top` with
+/// its own collider. Climbed all round; `StaticWorld::poles_near` finds them.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Pole {
+    pub base: Vec3,
+    pub top: Vec3,
+    pub radius: f32,
+    #[serde(default)]
+    pub collider: Option<ColliderHandle>,
+}
+
+impl Pole {
+    pub fn new(base: Vec3, top: Vec3, radius: f32) -> Self {
+        Self { base, top, radius, collider: None }
+    }
+    /// Unit axis from base to top.
+    pub fn axis(&self) -> Vec3 {
+        (self.top - self.base).normalize_or(Vec3::Y)
+    }
+    /// The closest point on the axis to `p`, and its distance from `p`.
+    pub fn closest(&self, p: Vec3) -> (Vec3, f32) {
+        let ab = self.top - self.base;
+        let t = ((p - self.base).dot(ab) / ab.length_squared().max(1e-6)).clamp(0.0, 1.0);
+        let q = self.base + ab * t;
+        (q, q.distance(p))
+    }
+    fn collider(&self) -> ColliderBuilder {
+        let ab = self.top - self.base;
+        let rot = Quat::from_rotation_arc(Vec3::Y, ab.normalize_or(Vec3::Y));
+        ColliderBuilder::cylinder((ab.length() * 0.5) as Real, self.radius as Real)
+            .position(Pose::from_parts((self.base + self.top) * 0.5, rot))
+            .friction(0.8)
+    }
+}
+
 /// A static decorative shape (trees, rocks, lamps), optionally solid.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Decor {
@@ -335,6 +381,9 @@ pub struct StaticChunk {
     /// Library assets baked in (level dressing).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub props: Vec<StaticProp>,
+    /// Climbable poles (trunks), each with its collider.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub poles: Vec<Pole>,
     /// Colours for the theme roles its props name (`$wall` → `#rrggbb`); others take
     /// `props::DEFAULT_ROLES`.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
@@ -359,6 +408,7 @@ impl StaticChunk {
             && self.zones.is_empty()
             && self.labels.is_empty()
             && self.props.is_empty()
+            && self.poles.is_empty()
         {
             self.min = min;
             self.max = max;
@@ -551,6 +601,32 @@ impl StaticWorld {
         Ok(key)
     }
 
+    /// Adds a climbable pole (with its collider) to the region containing its base.
+    pub fn add_pole(&mut self, physics: &mut PhysicsState, mut pole: Pole) -> RegionKey {
+        let key = RegionKey::chunk_of(pole.base);
+        pole.collider = Some(physics.insert_static(pole.collider()));
+        let chunk = self.chunk_mut(key);
+        let r = Vec3::splat(pole.radius);
+        chunk.grow(pole.base.min(pole.top) - r, pole.base.max(pole.top) + r);
+        chunk.poles.push(pole);
+        chunk.version += 1;
+        key
+    }
+
+    /// Poles whose axis passes within `radius` of `p` (active regions only).
+    pub fn poles_near(&self, p: Vec3, radius: f32) -> impl Iterator<Item = &Pole> {
+        let r = Vec3::splat(radius);
+        self.regions_in(p - r, p + r)
+            .flat_map(|(_, c)| c.poles.iter())
+            .filter(move |pole| pole.closest(p).1 <= radius + pole.radius)
+    }
+
+    /// The block a collider belongs to (a ray or contact hit), if it is one.
+    pub fn block_of(&self, physics: &PhysicsState, collider: ColliderHandle) -> Option<(BlockRef, &Block)> {
+        let r = BlockRef::from_tag(physics.colliders.get(collider)?.user_data)?;
+        Some((r, self.get(r)?))
+    }
+
     /// The colours a region's props wear for their theme roles.
     pub fn set_palette(&mut self, key: RegionKey, palette: BTreeMap<String, String>) {
         let chunk = self.chunk_mut(key);
@@ -636,6 +712,11 @@ impl StaticWorld {
                 physics.remove_collider(h);
             }
         }
+        for p in &mut chunk.poles {
+            if let Some(h) = p.collider.take() {
+                physics.remove_collider(h);
+            }
+        }
         if let Some(h) = chunk.terrain_collider.take() {
             physics.remove_collider(h);
         }
@@ -668,6 +749,9 @@ impl StaticWorld {
         }
         for p in &mut chunk.props {
             p.collider = p.parts().and_then(|parts| p.collider(&parts)).map(|c| physics.insert_static(c));
+        }
+        for p in &mut chunk.poles {
+            p.collider = Some(physics.insert_static(p.collider()));
         }
         if let Some(t) = &chunk.terrain {
             chunk.terrain_collider = Some(physics.insert_static(t.collider()));

@@ -1,0 +1,455 @@
+# The world-generation yard (`pav capture scene=yard`): one ~200 m island with a colonial
+# street and plaza, a fort corner on the north-east cliffs, docks in the south bay, jungle,
+# stalk grass, and one of every structure kind. Format: `island.rs` (islands, sea, markers),
+# `structures.rs` ([[structure]]), `vegetation.rs` ([vegetation]).
+
+[markers]
+spawn = [-22.0, 0.0, 28.0]
+overview = [0.0, 0.0, 0.0]
+
+[sea]
+min = [-260.0, -220.0]
+max = [260.0, 220.0]
+color = "#2f8fa6"
+
+[[island]]
+name = "yard"
+seed = 11
+outline = [[-102, 0], [-88, -44], [-52, -70], [0, -76], [48, -80], [88, -66], [104, -32],
+           [98, 8], [74, 44], [36, 64], [-4, 70], [-46, 64], [-84, 40]]
+beach = 11
+shelf = 24
+rise = 5
+peaks = [{ at = [-34, -26], height = 21, radius = 58 }, { at = [16, -34], height = 11, radius = 40 }]
+cliffs = [{ from = [44, -80], to = [104, -28], height = 15 }]
+noise = { scale = 34, amp = 2.2, seed = 4 }
+# The town plateau above the south bay and the fort plateau on the cliff top.
+flatten = [
+  { polygon = [[-64, 10], [-14, 10], [-12, 1], [12, 1], [14, 52], [-62, 52]], height = 3.0, blend = 8, ground = "dirt", color = "#c9ad83" },
+  { polygon = [[44, -70], [92, -62], [96, -26], [46, -20]], height = 15.0, blend = 10, ground = "grass" },
+]
+roads = [{ points = [[12, 30], [24, 22], [32, 4], [42, -12], [56, -14]], width = 4 },
+         { points = [[-70, 30], [-62, 30]], width = 3 }]
+grass = [[[18, -8], [34, -10], [34, 6], [20, 8]],
+         [[-12, -50], [6, -52], [8, -40], [-10, -38]],
+         [[-80, -8], [-66, -12], [-64, 2], [-78, 4]]]
+
+[vegetation]
+seed = 5
+grass = { spacing = 1.0, height = [1.0, 1.3], width = 1.15, color = "#a9b552", color2 = "#7c9a3e" }
+
+# Beach palms: dense on the sand, leaning out to sea.
+[[vegetation.rule]]
+asset = "LIB/core/palm"
+ground = ["sand", "grass"]
+height = [0.7, 7.0]
+slope = 18
+spacing = 9
+chance = 0.55
+patchy = 0.2
+scale = [0.8, 1.15]
+seeds = 6
+pole = { radius = 0.17, height = 7.0, lean = 2.2 }
+
+# Jungle: trees, palms among them, bushes and ferns underneath.
+[[vegetation.rule]]
+asset = "LIB/core/jungle_tree"
+ground = ["jungle"]
+height = [3.0, 40.0]
+slope = 30
+spacing = 8
+chance = 0.7
+scale = [0.9, 1.3]
+clear = 5
+seeds = 4
+pole = { radius = 0.3, height = 5.0, lean = 0.0 }
+
+[[vegetation.rule]]
+asset = "LIB/core/palm"
+ground = ["jungle", "grass"]
+height = [3.0, 30.0]
+slope = 26
+spacing = 13
+chance = 0.45
+scale = [0.9, 1.25]
+seeds = 6
+pole = { radius = 0.17, height = 7.0, lean = 2.2 }
+
+[[vegetation.rule]]
+asset = "LIB/core/bush"
+ground = ["jungle"]
+height = [1.5, 40.0]
+slope = 32
+spacing = 5
+chance = 0.5
+scale = [1.1, 1.9]
+seeds = 4
+
+[[vegetation.rule]]
+asset = "LIB/core/bush"
+ground = ["grass"]
+height = [1.5, 40.0]
+slope = 32
+spacing = 9
+chance = 0.35
+patchy = 0.3
+scale = [0.8, 1.3]
+seeds = 4
+
+[[vegetation.rule]]
+asset = "LIB/core/fern"
+ground = ["jungle", "grass"]
+height = [2.0, 40.0]
+slope = 34
+spacing = 6.5
+chance = 0.5
+scale = [1.0, 1.6]
+seeds = 3
+
+# Undergrowth clumps (one grass-renderer instance each).
+[[vegetation.rule]]
+tuft = { height = [0.8, 1.2], width = 1.5, color = "#356f33", color2 = "#5a9444" }
+ground = ["jungle"]
+height = [2.0, 40.0]
+slope = 36
+spacing = 2.8
+chance = 0.55
+
+[[vegetation.rule]]
+tuft = { height = [0.35, 0.6], width = 0.8, color = "#7fae55", color2 = "#a2b25a" }
+ground = ["grass"]
+height = [1.5, 40.0]
+slope = 30
+spacing = 5
+chance = 0.35
+patchy = 0.4
+
+# Boulders on the rocky slopes and a few on the grass and the beach.
+[[vegetation.rule]]
+asset = "LIB/core/rock_cluster"
+ground = ["rock", "cliff", "grass", "sand"]
+height = [0.3, 40.0]
+slope = 48
+spacing = 13
+chance = 0.35
+patchy = 0.35
+scale = [0.8, 1.6]
+seeds = 4
+solid = true
+align = true
+
+# Driftwood on the wet sand.
+[[vegetation.rule]]
+asset = "LIB/core/driftwood"
+ground = ["wet_sand", "sand"]
+height = [0.1, 1.4]
+slope = 14
+spacing = 8
+chance = 0.5
+scale = [0.8, 1.2]
+seeds = 3
+align = true
+
+# Palms in the plaza and by the chapel.
+[[vegetation.place]]
+asset = "LIB/core/palm"
+at = [-6.5, 22]
+yaw = 30
+seed = 2
+pole = { radius = 0.17, height = 7.0, lean = 2.2 }
+
+[[vegetation.place]]
+asset = "LIB/core/palm"
+at = [5.5, 41]
+yaw = 200
+seed = 4
+pole = { radius = 0.17, height = 7.0, lean = 2.2 }
+
+[[vegetation.place]]
+asset = "LIB/core/palm"
+at = [-8, 40.5]
+yaw = 120
+scale = 0.9
+seed = 1
+pole = { radius = 0.17, height = 7.0, lean = 2.2 }
+
+# --- Paving first (other things stand on the ground under it). ---------------------------
+
+[[structure]]
+kind = "paving"
+name = "street"
+at = [-38.5, 28]
+size = [41, 7.2]
+
+[[structure]]
+kind = "paving"
+name = "plaza"
+at = [-4, 31]
+size = [28, 18]
+
+# --- The street: north row faces south (yaw 0), south row faces north (yaw 180). ----------
+
+[[structure]]
+kind = "house"
+name = "casa_ochre"
+at = [-54, 21]
+size = [8, 6]
+floors = 2
+style = "ochre"
+seed = 1
+balcony = "front"
+
+[[structure]]
+kind = "house"
+name = "casa_coral"
+at = [-45.2, 21.5]
+size = [8, 7]
+floors = 3
+style = "coral"
+seed = 2
+
+[[structure]]
+kind = "house"
+name = "casa_sky"
+at = [-36, 21]
+size = [8.5, 6]
+floors = 2
+style = "sky"
+seed = 3
+awning = true
+
+[[structure]]
+kind = "tavern"
+name = "last_drop"
+at = [-26.5, 21]
+size = [9, 6]
+floors = 2
+style = "seafoam"
+seed = 4
+sign = "THE LAST DROP"
+
+[[structure]]
+kind = "house"
+name = "casa_lime"
+at = [-54, 35]
+yaw = 180
+size = [8, 6]
+floors = 2
+style = "lime"
+seed = 5
+
+[[structure]]
+kind = "house"
+name = "casa_seafoam"
+at = [-45, 35.5]
+yaw = 180
+size = [8, 7]
+floors = 2
+style = "seafoam"
+seed = 6
+balcony = "front"
+
+[[structure]]
+kind = "house"
+name = "casa_rosa"
+at = [-36.5, 35]
+yaw = 180
+size = [7.5, 6]
+floors = 3
+style = "coral"
+seed = 7
+
+[[structure]]
+kind = "hall"
+name = "temperance_hall"
+at = [-26, 37]
+yaw = 180
+size = [10, 10]
+floors = 2
+sign = "TEMPERANCE HALL"
+seed = 8
+
+# Lines between roofs (after the houses they join).
+[[structure]]
+kind = "laundry_line"
+name = "line_a"
+at = [-45.2, 24.8]
+to = [-45, 32.2]
+seed = 9
+
+[[structure]]
+kind = "laundry_line"
+name = "line_b"
+at = [-54, 23.8]
+to = [-54, 32.2]
+seed = 10
+
+[[structure]]
+kind = "beam"
+name = "plank_a"
+at = [-41.4, 20.5]
+to = [-39.9, 20.5]
+
+[[structure]]
+kind = "crate_stack"
+name = "crates_street"
+at = [-58.8, 28]
+size = [2, 3]
+seed = 3
+
+[[structure]]
+kind = "wanted_poster"
+name = "poster_street"
+at = [-31.5, 24.7]
+seed = 1
+
+# --- The plaza. ---------------------------------------------------------------------------
+
+[[structure]]
+kind = "chapel"
+name = "chapel"
+at = [-5, 12]
+size = [11, 17]
+sign = "ST. ASCETIC"
+seed = 12
+
+[[structure]]
+kind = "hay_cart"
+name = "hay_cart"
+at = [-12.5, 24.5]
+yaw = 90
+seed = 1
+
+[[structure]]
+kind = "stocks"
+name = "stocks"
+at = [2, 31]
+yaw = 270
+
+[[structure]]
+kind = "stall"
+name = "stall_fruit"
+at = [-11, 34]
+seed = 2
+
+[[structure]]
+kind = "stall"
+name = "stall_fish"
+at = [-4, 34]
+style = "sky"
+seed = 3
+
+[[structure]]
+kind = "warehouse"
+name = "bonded_warehouse"
+at = [4, 46]
+yaw = 180
+size = [14, 9]
+sign = "BONDED RUM"
+seed = 13
+
+# --- Docks in the south bay. ---------------------------------------------------------------
+
+[[structure]]
+kind = "quay"
+name = "quay"
+at = [-30, 64]
+yaw = 180
+size = [26, 7]
+
+[[structure]]
+kind = "pier"
+name = "pier"
+at = [-30, 80.5]
+yaw = 180
+size = [4, 26]
+
+[[structure]]
+kind = "harbour_wall"
+name = "mole"
+at = [-60, 74]
+yaw = 270
+size = [28, 3.5]
+
+[[structure]]
+kind = "hut"
+name = "fisher_hut"
+at = [-74, 26]
+yaw = 90
+seed = 2
+
+# --- The fort corner on the north-east cliffs. -----------------------------------------------
+
+[[structure]]
+kind = "fort_wall"
+name = "north_wall"
+at = [66, -63]
+size = [30, 3]
+stairs = "right"
+
+[[structure]]
+kind = "bastion"
+name = "ne_bastion"
+at = [87, -63]
+size = [12, 12]
+
+[[structure]]
+kind = "fort_wall"
+name = "west_wall"
+at = [49.5, -48]
+yaw = 270
+size = [27, 3]
+stairs = "left"
+
+[[structure]]
+kind = "gate"
+name = "fort_gate"
+at = [56, -32.5]
+size = [10, 6]
+
+[[structure]]
+kind = "keep"
+name = "keep"
+at = [70, -44]
+size = [16, 12]
+
+[[structure]]
+kind = "battery"
+name = "east_battery"
+at = [93, -42]
+yaw = 90
+size = [14, 8]
+cannons = 4
+
+[[structure]]
+kind = "mortar_tower"
+name = "mortar_tower"
+at = [88, -27]
+
+[[structure]]
+kind = "barracks"
+name = "barracks"
+at = [70, -27]
+yaw = 180
+size = [14, 7]
+floors = 1
+
+[[structure]]
+kind = "palisade"
+name = "palisade"
+at = [36, -18]
+yaw = 90
+size = [10, 0.4]
+
+# --- Elsewhere. -----------------------------------------------------------------------------
+
+[[structure]]
+kind = "lighthouse"
+name = "lighthouse"
+at = [-94, 4]
+
+[[structure]]
+kind = "watchtower_ruin"
+name = "ruin"
+at = [-34, -26]
+seed = 4
