@@ -75,8 +75,14 @@ pub static TOOLS: &[Tool] = &[
     },
     Tool {
         name: "camera",
-        help: "Apply a camera preset (no args lists them).",
-        args: &[arg("preset", "string", "preset name")],
+        help: "Apply a camera preset, or a fixed shot (eye + look) over a game's own camera; game=true returns to it. No args lists presets.",
+        args: &[
+            arg("preset", "string", "preset name"),
+            arg("eye", "array", "[x, y, z] camera position for a fixed shot"),
+            arg("look", "array", "[x, y, z] point the shot looks at"),
+            arg("fov", "number", "shot field of view, degrees (default 55)"),
+            arg("game", "boolean", "true: back to the game's own camera"),
+        ],
         run: t_camera,
     },
     Tool {
@@ -1213,11 +1219,30 @@ fn t_set(s: &mut Session, a: &Args) -> Result<Output> {
 
 fn t_camera(s: &mut Session, a: &Args) -> Result<Output> {
     let presets = pav_view::CameraParams::PRESETS;
+    if a.get("game").and_then(|v| v.as_bool().or_else(|| v.as_str().map(|t| t == "true"))).unwrap_or(false) {
+        s.free_camera = false;
+        s.shot = None;
+        return Ok(Output::Json(json!({ "camera": "game" })));
+    }
+    let v3 = |key: &str| -> Result<Option<glam::Vec3>> {
+        Ok(vec_arg(a, key)?.filter(|v| v.len() == 3).map(|v| glam::Vec3::new(v[0], v[1], v[2])))
+    };
+    if let (Some(eye), Some(look)) = (v3("eye")?, v3("look")?) {
+        let fov =
+            a.get("fov").and_then(|v| v.as_f64().or_else(|| v.as_str().and_then(|t| t.parse().ok()))).unwrap_or(55.0) as f32;
+        s.shot = Some(pav_core::play::CameraHint { eye, target: look, fov, far: 2000.0, cut: true, fade_occluders: false });
+        return Ok(Output::Json(
+            json!({ "shot": { "eye": [eye.x, eye.y, eye.z], "look": [look.x, look.y, look.z], "fov": fov } }),
+        ));
+    }
     match get_str(a, "preset") {
         None => Ok(Output::Json(json!(presets.iter().map(|p| p.0).collect::<Vec<_>>()))),
         Some(name) => {
             let p = presets.iter().find(|p| p.0.starts_with(name)).ok_or_else(|| anyhow!("unknown preset '{name}'"))?;
             s.camera.params = (p.1)();
+            // A preset is the session's camera: it wins over a game's own camera in captures.
+            s.free_camera = true;
+            s.shot = None;
             Ok(Output::Json(json!({ "preset": p.0 })))
         }
     }

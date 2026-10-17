@@ -134,6 +134,14 @@ struct Credits {
     block: Vec<CreditBlock>,
 }
 
+#[derive(Debug, Default, Deserialize)]
+struct ShipsFile {
+    #[serde(default)]
+    class: pav_kit::naval::Classes,
+    #[serde(default)]
+    style: BTreeMap<String, pav_kit::shipyard::ShipStyle>,
+}
+
 /// Everything parsed, shared by every scene built from it.
 #[derive(Debug, Default)]
 pub struct Content {
@@ -142,6 +150,8 @@ pub struct Content {
     pub atmospheres: BTreeMap<String, AtmosphereDef>,
     pub demo: Vec<DemoSegment>,
     pub credits: Vec<CreditBlock>,
+    pub classes: pav_kit::naval::Classes,
+    pub styles: BTreeMap<String, pav_kit::shipyard::ShipStyle>,
 }
 
 impl Content {
@@ -162,5 +172,6 @@ pub fn load() -> Result<Arc<Content>> {
     let atmospheres: BTreeMap<String, AtmosphereDef> = toml::from_str(&file("atmosphere.toml")?).context("atmosphere.toml")?;
     let demo = pav_kit::demo::parse_playlist(&file("demo.toml")?).context("demo.toml")?;
     let credits: Credits = toml::from_str(&file("credits.toml")?).context("credits.toml")?;
-    Ok(Arc::new(Content { info, camera, atmospheres, demo, credits: credits.block }))
+    let ships: ShipsFile = toml::from_str(&file("ships.toml")?).context("ships.toml")?;
+    Ok(Arc::new(Content { info, camera, atmospheres, demo, credits: credits.block, classes: ships.class, styles: ships.style }))
 }

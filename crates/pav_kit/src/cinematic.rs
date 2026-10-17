@@ -122,6 +122,13 @@ impl Playing {
             None => (self.world(a.eye), self.world(a.target), a.fov, false),
         };
         let just_cut = a.cut && (self.t - a.at) < 0.02 || (i == 0 && self.t < 0.02 && first.cut);
-        Some(CameraHint { eye, target, fov: if fov > 1.0 { fov } else { 50.0 }, far: 1800.0, cut: just_cut || cut, fade_occluders: false })
+        Some(CameraHint {
+            eye,
+            target,
+            fov: if fov > 1.0 { fov } else { 50.0 },
+            far: 1800.0,
+            cut: just_cut || cut,
+            fade_occluders: false,
+        })
     }
 }

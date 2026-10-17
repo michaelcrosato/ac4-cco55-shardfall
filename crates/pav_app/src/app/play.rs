@@ -452,7 +452,11 @@ impl App {
             now.right = deadzone(Vec2::new(gp.value(Axis::RightStickX), gp.value(Axis::RightStickY)), 0.2);
             let t = |b| gp.button_data(b).map(|d| d.value()).unwrap_or(0.0);
             now.triggers = [t(gilrs::Button::LeftTrigger2), t(gilrs::Button::RightTrigger2)];
-            if !now.held.is_empty() || now.left.length() > 0.35 || now.right.length() > 0.35 || now.triggers.iter().any(|&v| v > 0.2) {
+            if !now.held.is_empty()
+                || now.left.length() > 0.35
+                || now.right.length() > 0.35
+                || now.triggers.iter().any(|&v| v > 0.2)
+            {
                 now.any = true;
             }
         }

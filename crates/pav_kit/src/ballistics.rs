@@ -110,13 +110,7 @@ impl Ballistics {
 
     /// Moves every shot and returns what they hit. `ground(x, z)` is the terrain height (or
     /// very low over open sea), `sea(x, z)` the water surface.
-    pub fn step(
-        &mut self,
-        dt: f32,
-        targets: &[Target],
-        ground: &dyn Fn(Vec2) -> f32,
-        sea: &dyn Fn(Vec2) -> f32,
-    ) -> Vec<Impact> {
+    pub fn step(&mut self, dt: f32, targets: &[Target], ground: &dyn Fn(Vec2) -> f32, sea: &dyn Fn(Vec2) -> f32) -> Vec<Impact> {
         let mut out = Vec::new();
         let mut keep = Vec::with_capacity(self.shots.len());
         for mut s in std::mem::take(&mut self.shots) {
@@ -160,7 +154,9 @@ impl Ballistics {
                 }
             }
             match hit {
-                Some((pos, what)) => out.push(Impact { pos, what, kind: s.kind, owner: s.owner, damage: s.damage, blast: s.blast }),
+                Some((pos, what)) => {
+                    out.push(Impact { pos, what, kind: s.kind, owner: s.owner, damage: s.damage, blast: s.blast })
+                }
                 None if s.life > 0.0 => {
                     s.pos = to;
                     keep.push(s);

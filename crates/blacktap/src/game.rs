@@ -286,6 +286,16 @@ impl Game for BlackTap {
             look: Look::Lit,
         });
         out.push(DrawItem::Decal { center: self.goal, radius: 1.4, ring: 0.85, color: Color::hex("#e2b04a"), alpha: 0.8 });
+        // The Black Tap at anchor off the cay (shipyard preview until the sea arrives).
+        let c = self.content_ref();
+        if let (Some(class), Some(style)) = (c.classes.get("brig"), c.styles.get("black_tap")) {
+            let hull = std::sync::Arc::new(pav_kit::shipyard::hull_mesh(class, style, 0xb1ac_7a90, 0.0, 1));
+            let at = Vec3::new(self.goal.x - 24.0, -0.45, self.goal.z - 42.0);
+            let rot = Quat::from_rotation_y(1.0);
+            out.push(DrawItem::Mesh { mesh: hull, pos: at, rot, scale: Vec3::ONE, color: Color::WHITE, emissive: 0.0 });
+            let sails = pav_kit::shipyard::sails_mesh(class, style, 2.0, 140.0, self.time, 0.0, true);
+            out.push(DrawItem::Dynamic { mesh: sails, pos: at, rot, color: Color::WHITE, two_sided: true });
+        }
     }
 
     fn atmosphere(&self, _sim: &Sim) -> Option<Atmosphere> {

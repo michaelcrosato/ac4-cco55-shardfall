@@ -1,0 +1,177 @@
+# Ship classes (pav_kit::naval::HullClass) and their looks (pav_kit::shipyard::ShipStyle).
+# Speeds in m/s, turn rates in °/s, lengths in metres. PLAN.md §9.6.
+
+[class.brig]
+name = "Brig"
+length = 32.0
+beam = 8.5
+draft = 3.2
+freeboard = 2.6
+hp = 1200.0
+speed_half = 9.0
+speed_full = 15.0
+accel = 1.4
+brake = 2.2
+turn_still = 4.0
+turn_mid = 22.0
+turn_full = 16.0
+guns_per_side = 8
+chasers = 2
+swivels = 1
+kegs = 4
+crew = 24
+masts = 2
+mast_height = 22.0
+muzzle = 70.0
+ball_damage = 30.0
+reload = 6.0
+
+[class.gunboat]
+name = "Gunboat"
+length = 12.0
+beam = 4.0
+draft = 1.2
+freeboard = 1.1
+hp = 220.0
+speed_half = 7.0
+speed_full = 11.0
+accel = 1.8
+brake = 2.5
+turn_still = 8.0
+turn_mid = 30.0
+turn_full = 24.0
+guns_per_side = 1
+chasers = 1
+swivels = 0
+kegs = 0
+crew = 6
+masts = 1
+mast_height = 9.0
+muzzle = 65.0
+ball_damage = 22.0
+reload = 5.0
+
+[class.schooner]
+name = "Schooner"
+length = 24.0
+beam = 7.0
+draft = 2.6
+freeboard = 2.2
+hp = 700.0
+speed_half = 8.0
+speed_full = 12.5
+accel = 1.3
+brake = 2.0
+turn_still = 5.0
+turn_mid = 21.0
+turn_full = 15.0
+guns_per_side = 6
+chasers = 2
+swivels = 1
+kegs = 0
+crew = 14
+masts = 2
+mast_height = 18.0
+muzzle = 68.0
+ball_damage = 24.0
+reload = 7.0
+
+[class.frigate]
+name = "Frigate"
+length = 40.0
+beam = 11.0
+draft = 4.2
+freeboard = 3.4
+hp = 2400.0
+speed_half = 8.0
+speed_full = 13.0
+accel = 1.0
+brake = 1.8
+turn_still = 3.0
+turn_mid = 15.0
+turn_full = 11.0
+guns_per_side = 14
+chasers = 2
+swivels = 2
+kegs = 0
+crew = 60
+masts = 3
+mast_height = 28.0
+muzzle = 72.0
+ball_damage = 28.0
+reload = 8.0
+
+[class.sloop]
+name = "Sloop"
+length = 16.0
+beam = 5.2
+draft = 1.8
+freeboard = 1.6
+hp = 320.0
+speed_half = 7.0
+speed_full = 11.0
+guns_per_side = 3
+crew = 8
+masts = 1
+mast_height = 13.0
+
+[class.merchant]
+name = "Merchantman"
+length = 26.0
+beam = 8.0
+draft = 3.0
+freeboard = 2.4
+hp = 600.0
+speed_half = 6.0
+speed_full = 9.5
+turn_mid = 16.0
+turn_full = 12.0
+guns_per_side = 2
+crew = 12
+masts = 2
+mast_height = 19.0
+
+[style.black_tap]
+hull = "#262220"
+bottom = "#5a2c22"
+wale = "#c9a24a"
+strake = "#3b2a20"
+deck = "#a07b52"
+rail = "#4a3424"
+sail = "#2a2624"
+emblem = "#d4a94c"
+rig = "square"
+figurehead = true
+
+[style.temperance]
+hull = "#2c3e66"
+bottom = "#4a3a30"
+wale = "#e8e8ee"
+strake = "#1f2c4a"
+deck = "#b08a5c"
+rail = "#e8e8ee"
+sail = "#efe7d6"
+emblem = "#2c3e66"
+rig = "fore_and_aft"
+
+[style.temperance_square]
+hull = "#2c3e66"
+bottom = "#4a3a30"
+wale = "#e8e8ee"
+strake = "#1f2c4a"
+deck = "#b08a5c"
+rail = "#e8e8ee"
+sail = "#efe7d6"
+emblem = "#2c3e66"
+rig = "square"
+
+[style.merchant]
+hull = "#7a5434"
+bottom = "#4a3a30"
+wale = "#d9a35b"
+strake = "#5a3c24"
+deck = "#b89a6a"
+rail = "#6b4a2f"
+sail = "#e8dcc4"
+emblem = "#b5543a"
+rig = "square"

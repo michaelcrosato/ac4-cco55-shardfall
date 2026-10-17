@@ -14,3 +14,4 @@ pub mod dialog;
 pub mod mission;
 pub mod naval;
 pub mod perception;
+pub mod shipyard;

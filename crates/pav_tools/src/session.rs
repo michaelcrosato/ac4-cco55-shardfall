@@ -52,6 +52,10 @@ pub struct Session {
     pub feedback: Option<crate::live_feedback::SharedFeedback>,
     /// Live requests share owner 0; independent headless sessions adopt only their own jobs.
     pub(crate) creature_owner: u64,
+    /// Captures ignore the game's own camera (`camera preset=...`): the session's rig instead.
+    pub free_camera: bool,
+    /// Captures from this exact shot (`camera eye=[..] look=[..]`), over any game camera.
+    pub shot: Option<pav_core::play::CameraHint>,
 }
 
 /// All tunables reachable by path: `sim.*`, `camera.*`, `view.*`.
@@ -108,6 +112,8 @@ impl Session {
             look: Default::default(),
             feedback: None,
             creature_owner: crate::creature_tools::new_owner(),
+            free_camera: false,
+            shot: None,
         };
         s.sync_camera();
         Ok(s)
@@ -134,6 +140,8 @@ impl Session {
             look: Default::default(),
             feedback: None,
             creature_owner: 0,
+            free_camera: false,
+            shot: None,
         }
     }
 
@@ -318,9 +326,21 @@ impl Session {
         view
     }
 
+    /// The current frame with the session's camera overrides applied (a fixed shot, or the
+    /// session's own rig instead of a game's camera).
+    pub fn capture_frame(&mut self) -> RenderFrame {
+        let mut frame = self.sim.frame();
+        if self.shot.is_some() || self.free_camera {
+            let mut play = frame.play.as_deref().cloned().unwrap_or_default();
+            play.camera = self.shot;
+            frame.play = Some(std::sync::Arc::new(play));
+        }
+        frame
+    }
+
     /// Renders the current state to RGBA8 pixels.
     pub fn render(&mut self, width: u32, height: u32) -> Result<Vec<u8>> {
-        let frame = self.sim.frame();
+        let frame = self.capture_frame();
         let focus = frame.focus;
         self.camera.snap(focus);
         let camera = self.camera.clone();
@@ -348,7 +368,7 @@ impl Session {
 
     /// Renders like `render` and also returns the camera's view-projection (to place marks).
     pub fn render_with_camera(&mut self, width: u32, height: u32) -> Result<(Vec<u8>, glam::Mat4)> {
-        let frame = self.sim.frame();
+        let frame = self.capture_frame();
         let focus = frame.focus;
         self.camera.snap(focus);
         let camera = self.camera.clone();

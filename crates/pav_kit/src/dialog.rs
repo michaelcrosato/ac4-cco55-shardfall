@@ -65,7 +65,10 @@ impl DialogBank {
 
     /// Seconds a line stays up: its own, or ~14 characters a second with a floor.
     pub fn duration(&self, id: &str) -> f32 {
-        self.line.get(id).map(|l| if l.duration > 0.0 { l.duration } else { (l.text.chars().count() as f32 / 14.0).clamp(2.2, 7.0) }).unwrap_or(2.5)
+        self.line
+            .get(id)
+            .map(|l| if l.duration > 0.0 { l.duration } else { (l.text.chars().count() as f32 / 14.0).clamp(2.2, 7.0) })
+            .unwrap_or(2.5)
     }
 }
 

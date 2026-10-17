@@ -278,15 +278,19 @@ pub fn assassination(a: &Assassin, t: &Mark) -> Option<Assassination> {
 
 /// A double assassination when two valid targets stand within 1.2 m of each other.
 pub fn double_assassination(a: &Assassin, t1: &Mark, t2: &Mark) -> bool {
-    a.double_unlocked
-        && t1.feet.distance(t2.feet) <= 1.2
-        && assassination(a, t1).is_some()
-        && assassination(a, t2).is_some()
+    a.double_unlocked && t1.feet.distance(t2.feet) <= 1.2 && assassination(a, t1).is_some() && assassination(a, t2).is_some()
 }
 
 /// Pistol lock: the best target in a cone (degrees) within range, scored by angle and
 /// distance; `visible` checks line of sight.
-pub fn pistol_lock(eye: Vec3, aim_dir: Vec3, cone_deg: f32, range: f32, marks: &[(u32, Vec3)], visible: &dyn Fn(Vec3) -> bool) -> Option<u32> {
+pub fn pistol_lock(
+    eye: Vec3,
+    aim_dir: Vec3,
+    cone_deg: f32,
+    range: f32,
+    marks: &[(u32, Vec3)],
+    visible: &dyn Fn(Vec3) -> bool,
+) -> Option<u32> {
     let cone = cone_deg.to_radians().cos();
     marks
         .iter()

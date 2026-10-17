@@ -38,7 +38,10 @@ pub enum Cond {
     Timer(f32),
     /// The mission's clock is still under this many seconds.
     Before(f32),
-    Counter { name: String, at_least: i64 },
+    Counter {
+        name: String,
+        at_least: i64,
+    },
     /// Evaluated by the game.
     Game(String),
 }
@@ -49,7 +52,10 @@ pub enum Cond {
 pub enum Act {
     Flag(String),
     Unflag(String),
-    Count { name: String, add: i64 },
+    Count {
+        name: String,
+        add: i64,
+    },
     /// A dialog line by id.
     Line(String),
     Music(String),

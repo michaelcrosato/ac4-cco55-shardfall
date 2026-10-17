@@ -305,18 +305,31 @@ impl Vessel {
         };
         let torn = if self.torn > 0.0 { 0.5 } else { 1.0 };
         let wind_strength = (wind.length() / 6.0).clamp(0.6, 1.3);
-        top * wind_factor(self.off_wind(wind)) * (0.4 + 0.6 * self.sails) * torn * wind_strength * (1.0 + 0.25 * (self.boost > 0.0) as i32 as f32)
+        top * wind_factor(self.off_wind(wind))
+            * (0.4 + 0.6 * self.sails)
+            * torn
+            * wind_strength
+            * (1.0 + 0.25 * (self.boost > 0.0) as i32 as f32)
     }
 
     /// One tick of sailing. `seabed(x, z)` is the ground height (negative under water).
-    pub fn sail_step(&mut self, c: &HullClass, helm: Helm, wind: Vec2, ocean: Option<&Ocean>, seabed: &dyn Fn(Vec2) -> f32, dt: f32) -> Vec<NavalEvent> {
+    pub fn sail_step(
+        &mut self,
+        c: &HullClass,
+        helm: Helm,
+        wind: Vec2,
+        ocean: Option<&Ocean>,
+        seabed: &dyn Fn(Vec2) -> f32,
+        dt: f32,
+    ) -> Vec<NavalEvent> {
         let mut ev = Vec::new();
         self.torn = (self.torn - dt).max(0.0);
         self.boost = (self.boost - dt).max(0.0);
         self.boost_cd = (self.boost_cd - dt).max(0.0);
         self.brace = (self.brace - dt).max(0.0);
         self.brace_cd = (self.brace_cd - dt).max(0.0);
-        for t in [&mut self.guns.port, &mut self.guns.starboard, &mut self.guns.chain, &mut self.guns.kegs, &mut self.guns.swivel] {
+        for t in [&mut self.guns.port, &mut self.guns.starboard, &mut self.guns.chain, &mut self.guns.kegs, &mut self.guns.swivel]
+        {
             *t = (*t - dt).max(0.0);
         }
         if self.sinking > 0.0 {
@@ -354,7 +367,9 @@ impl Vessel {
         // Turning: slow at a standstill, quickest at mid speed.
         let mid = c.speed_full * 0.5;
         let s = self.speed.abs();
-        let turn = if s < mid { c.turn_still + (c.turn_mid - c.turn_still) * (s / mid.max(0.1)) } else {
+        let turn = if s < mid {
+            c.turn_still + (c.turn_mid - c.turn_still) * (s / mid.max(0.1))
+        } else {
             c.turn_mid + (c.turn_full - c.turn_mid) * ((s - mid) / (c.speed_full - mid).max(0.1)).min(1.0)
         };
         let rudder = if self.disabled { 0.0 } else { helm.rudder.clamp(-1.0, 1.0) };
@@ -454,7 +469,15 @@ impl Vessel {
 
     /// Fires a weapon: queues its shots in `out` and starts its reload. `elevation` in radians
     /// (aim assist or the player's look), `aim_yaw` the horizontal aim (heading, degrees).
-    pub fn fire(&mut self, c: &HullClass, w: Weapon, elevation: f32, aim_yaw: Option<f32>, out: &mut ballistics::Ballistics, heavy: f32) -> bool {
+    pub fn fire(
+        &mut self,
+        c: &HullClass,
+        w: Weapon,
+        elevation: f32,
+        aim_yaw: Option<f32>,
+        out: &mut ballistics::Ballistics,
+        heavy: f32,
+    ) -> bool {
         if !self.alive() || self.disabled {
             return false;
         }
@@ -692,7 +715,14 @@ pub fn wind_aware(from: Vec2, goal: Vec2, wind: Vec2, tack: f32) -> f32 {
 }
 
 /// Decides an AI ship's orders against a target ship (`target`: position, heading, speed).
-pub fn captain_orders(v: &mut Vessel, c: &HullClass, target: Option<(Vec2, f32, f32)>, wind: Vec2, seabed: &dyn Fn(Vec2) -> f32, dt: f32) -> Orders {
+pub fn captain_orders(
+    v: &mut Vessel,
+    c: &HullClass,
+    target: Option<(Vec2, f32, f32)>,
+    wind: Vec2,
+    seabed: &dyn Fn(Vec2) -> f32,
+    dt: f32,
+) -> Orders {
     let mut o = Orders::default();
     let Some(cap) = v.captain.clone() else { return o };
     if !v.alive() || v.disabled {
@@ -763,7 +793,13 @@ pub fn captain_orders(v: &mut Vessel, c: &HullClass, target: Option<(Vec2, f32, 
                         // Keep the target on the beam (the side it is already on), easing
                         // in or out to stay in 60–110 m.
                         let side = if turn_to(v.heading, bearing) >= 0.0 { 1.0 } else { -1.0 };
-                        let lean = if dist < 60.0 { -20.0 } else if dist > 95.0 { 20.0 } else { 0.0 };
+                        let lean = if dist < 60.0 {
+                            -20.0
+                        } else if dist > 95.0 {
+                            20.0
+                        } else {
+                            0.0
+                        };
                         want = (bearing - side * (90.0 - lean)).rem_euclid(360.0);
                         sail = 1;
                         let rel = turn_to(v.heading, bearing);
@@ -865,7 +901,12 @@ pub struct MarkedShell {
 impl Battery {
     /// One tick against a target ship (position, velocity): fires telegraphed volleys or
     /// mortar shells into `out`, returns a new landing mark for mortars.
-    pub fn step(&mut self, target: Option<(Vec3, Vec3)>, out: &mut ballistics::Ballistics, dt: f32) -> (Option<MarkedShell>, bool) {
+    pub fn step(
+        &mut self,
+        target: Option<(Vec3, Vec3)>,
+        out: &mut ballistics::Ballistics,
+        dt: f32,
+    ) -> (Option<MarkedShell>, bool) {
         if self.destroyed {
             return (None, false);
         }
