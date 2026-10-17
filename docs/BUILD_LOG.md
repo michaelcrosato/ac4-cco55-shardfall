@@ -6,6 +6,46 @@ compactions: after any restart read §14, then the top of this file, then `git l
 
 ---
 
+## 2026-10-17 — The VFX list, ambient life, haptics
+
+**Built** (agent, merged `6dd7900`; `crates/blacktap/src/vfx.rs`, `games/blacktap/fx.toml`, 50 cues)
+- Naval: muzzle flash, flame, sparks and wind-drifted smoke from every gun port (`cannon_fire`,
+  `chain_fire`, `swivel_fire`, `muzzle_smoke`), batteries' volleys; cannonball streaks and mortar
+  glows; big/small splashes; hull splinters; deck fire (flames, downwind smoke, heat haze,
+  crackle); sinking bubbles then floating debris (`Sea::wrecks`); powder-keg explosion with
+  debris; mortar launch on the emplacement and impacts; telegraph rings and glowing gun ports.
+- On foot: steel sparks (`sword_clash`, `sword_hit`, `counter`); pistol flash and puff; dart
+  trails; a billowing Smoke Keg cloud; sand and dust footfalls chosen by the ground's material.
+- Water and weather: bow spray and wake; rain streaks, sea rings and splashes round the player;
+  lightning on a seeded schedule (sky flash, forked bolt, light, crack, thunder, rumble);
+  waterspouts (a rotating column, spray and mist, haze).
+- Ambient life (pure functions of time, seed, camera and level — never sim state): gull flocks
+  (follow-the-leader boids round the coasts, Gull Rock, the harbour and the Black Tap), jungle
+  leaf fall, dusk fireflies over grass, torches with flickering lights on the fort's walls,
+  bastions, gate, harbour and doors, the lighthouse lamp; a `dusk` preset.
+- Moments: the survey swirl with gulls sweeping the perch, the Leap of Spirits' gold trail and
+  feathers, hay and water landings, collectible sparkles, the Gull Sight pulse ring.
+- Engine: `DrawItem::Emitter` and `DrawItem::Distortion`; the game's wind reaches cue particles.
+- **Haptics**: rumble cues live one tick in `FrameEffects.rumble`; the app plays them while the
+  game is played and Vibration is on — `gilrs::ff` natively, the Gamepad API's
+  `vibrationActuator.playEffect("dual-rumble")` in the browser. Broadsides, hits, rams, shells
+  near the ship, hard landings, assassinations and thunder rumble.
+
+**Verified**
+- `cargo test -p blacktap --test vfx`: 8 passed — `drawing_never_changes_the_simulation`,
+  `a_burning_ship_draws_flames_smoke_and_haze`, `gulls_wheel_over_the_coast_and_the_ship`,
+  `dusk_lights_the_torches_and_wakes_the_fireflies`,
+  `lightning_strikes_on_a_schedule_in_heavy_rain_only`, `gull_sight_pulses_a_ring`,
+  `visual_cues_have_a_look` (every visual cue has an FX entry), `rumble_lives_for_one_tick`.
+- Captures looked at: `out/vfx/r2_battle_fire.png`, `out/vfx/storm_escape.png` (gull flock,
+  waterspouts, spray), `out/vfx/title_gulls.png` (wake and bow spray); the agent's 33 captures
+  were tuned until each effect read (broadsides, splinters, deck fire, sinking and wreckage,
+  mortar launch, lightning, waterspout, gulls, survey, leap, hay landing, darts, Smoke Keg,
+  pistol, sword sparks, footfalls, sparkles, Gull Sight ring, fort and town at dusk).
+- clippy `-D warnings` native and wasm32 for the touched crates.
+
+---
+
 ## 2026-10-17 — Performance budgets, quality presets, LOD, looks; content guide; tools
 
 **Built**
