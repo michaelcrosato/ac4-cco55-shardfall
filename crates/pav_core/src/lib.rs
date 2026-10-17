@@ -34,6 +34,7 @@ pub mod level;
 pub mod material;
 pub mod moves;
 pub mod nav;
+pub mod nav25;
 pub mod ocean;
 pub mod params;
 pub mod parts;
