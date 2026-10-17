@@ -89,6 +89,9 @@ Ranked by how much output each saved (the files are in [`ENGINE_UPSTREAM.md`](..
 - **Zone events were lost to games** (zones updated after `post`); **bombs fired on
   PRIMARY/USE for every game** (fixed with `Weapon::None`). Both now have tests in
   `crates/pav_core/tests/games.rs`.
+- **A dead character stays a standing capsule**: nothing in the engine lets the living pass a
+  body, so two corpses wedged a fighter and the player in the fort for an hour of game time
+  (found by the full-level gate on seed 2). Added `Sim::set_ghost` (the capsule becomes a sensor).
 - **Raycasts miss before the first physics step** (the query pipeline is built by `step`): tools
   that probe a freshly loaded scene must step first. Undocumented.
 - **A copied `target/` keeps stale `build.rs` output** (embedded data, material goldens): a fresh

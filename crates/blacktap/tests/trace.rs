@@ -2,6 +2,8 @@
 //! `BT_SEED` for `BT_SECS` seconds, printing a compact status every `BT_EVERY` seconds.
 //!
 //! `BT_SCENE=blacktap/round/2 BT_SEED=1 cargo test -p blacktap --test trace -- --ignored --nocapture`
+//! `BT_SAVE_AT=600,700` also saves the state at those seconds to `out/trace_<secs>.state`, for
+//! `pav snapshot_load` after `load scene=<BT_SCENE> seed=<BT_SEED>`.
 
 mod common;
 
@@ -52,6 +54,8 @@ fn trace() {
     let seed: u64 = env("BT_SEED", 1);
     let secs: f32 = env("BT_SECS", 300.0);
     let every: f32 = env("BT_EVERY", 10.0);
+    let mut save_at: Vec<f32> =
+        std::env::var("BT_SAVE_AT").unwrap_or_default().split(',').filter_map(|v| v.trim().parse().ok()).collect();
     let mut sim = common::sim(&scene, seed);
     let hz = sim.config.tick_rate.hz() as f32;
     let mut t = 0u64;
@@ -63,6 +67,11 @@ fn trace() {
         t += (every * hz) as u64;
         let s = common::status(&sim);
         eprintln!("{:>5.0}s {}", t as f32 / hz, compact(&s));
+        while save_at.first().is_some_and(|&at| t as f32 / hz >= at) {
+            let path = format!("{}/../../out/trace_{:.0}.state", env!("CARGO_MANIFEST_DIR"), save_at.remove(0));
+            sim.save_state(std::path::Path::new(&path)).expect("save the state");
+            eprintln!("saved {path}");
+        }
         if s["tab_complete"].as_bool() == Some(true) {
             break;
         }

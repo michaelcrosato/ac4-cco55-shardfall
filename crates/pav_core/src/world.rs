@@ -1040,9 +1040,9 @@ impl Sim {
             if let Some(ch) = &mut e.character {
                 // Characters (NPCs) get their capsule back.
                 ch.vel = Vec3::ZERO;
-                let posture = ch.posture;
+                let (posture, ghost) = (ch.posture, ch.ghost);
                 let (id, pos) = (e.id, e.pos);
-                e.body = Some(self.character_body(id, pos, posture));
+                e.body = Some(self.character_body(id, pos, posture, ghost));
             } else if let Some(prop) = &e.prop {
                 // Recreate the same compound parts, never the conservative root proxy.
                 if let Some(collider) = prop.collider() {

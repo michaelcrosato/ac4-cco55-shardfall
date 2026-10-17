@@ -391,7 +391,7 @@ impl Sim {
         let id = self.state.entities.alloc_id();
         let ch = Character::new();
         let center = feet + Vec3::Y * (ch.height() * 0.5 + character::PLACE_LIFT);
-        let b = self.character_body(id, center, ch.posture);
+        let b = self.character_body(id, center, ch.posture, ch.ghost);
         self.state.entities.map.insert(
             id,
             Entity {
@@ -443,12 +443,35 @@ impl Sim {
         id
     }
 
-    /// A character's kinematic capsule (when it is created or wakes up).
-    pub(crate) fn character_body(&mut self, id: EntityId, center: Vec3, posture: character::Posture) -> RigidBodyHandle {
+    /// A character's kinematic capsule (when it is created or wakes up); a ghost's is a sensor.
+    pub(crate) fn character_body(
+        &mut self,
+        id: EntityId,
+        center: Vec3,
+        posture: character::Posture,
+        ghost: bool,
+    ) -> RigidBodyHandle {
         let body = RigidBodyBuilder::kinematic_position_based().translation(center);
-        let collider =
-            ColliderBuilder::capsule_y(posture.half_height() as Real, RADIUS as Real).friction(0.0).user_data(entity_tag(id.0));
+        let collider = ColliderBuilder::capsule_y(posture.half_height() as Real, RADIUS as Real)
+            .friction(0.0)
+            .sensor(ghost)
+            .user_data(entity_tag(id.0));
         self.state.physics.insert(body, collider).0
+    }
+
+    /// Lets others pass through a character (a body on the ground) or makes it solid again.
+    pub fn set_ghost(&mut self, id: EntityId, ghost: bool) {
+        let Some(e) = self.state.entities.map.get_mut(&id) else { return };
+        let Some(ch) = &mut e.character else { return };
+        ch.ghost = ghost;
+        let ph = &mut self.state.physics;
+        let handles: Vec<ColliderHandle> =
+            e.body.and_then(|b| ph.bodies.get(b)).map(|b| b.colliders().to_vec()).unwrap_or_default();
+        for h in handles {
+            if let Some(c) = ph.colliders.get_mut(h) {
+                c.set_sensor(ghost);
+            }
+        }
     }
 
     /// Spawns the player at the scene's spawn point and makes the camera follow it.

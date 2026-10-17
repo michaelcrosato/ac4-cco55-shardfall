@@ -670,6 +670,9 @@ pub fn apply_upgrade(g: &mut BlackTap, up: &str) {
 /// A kill happened (fights, assassinations): mission bookkeeping.
 pub fn on_kill(g: &mut BlackTap, sim: &mut Sim, id: EntityId, how: Option<Assassination>) {
     crate::stealth::on_kill(g, sim, id, how);
+    // A body on the ground: the living walk through it (a standing capsule would wall in a
+    // doorway or pin the player in a fight).
+    sim.set_ghost(id, true);
 }
 
 /// Adds one to a mission counter.

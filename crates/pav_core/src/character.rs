@@ -581,6 +581,10 @@ pub struct Character {
     /// tick the game wants control (from `Game::pre`).
     #[serde(default)]
     pub scripted: Option<Scripted>,
+    /// Others pass through this character (a body on the ground): its capsule is a sensor, so
+    /// movement and `Sim::raycast` ignore it. Set it with `Sim::set_ghost`.
+    #[serde(default)]
+    pub ghost: bool,
     /// Parkour (`MovementParams::parkour`): climbing a wall, cliff or pole.
     #[serde(default)]
     pub climb: Option<WallClimb>,

@@ -331,3 +331,32 @@ fn walking_against_a_treadmill_keeps_the_stride() {
         assert!(v.x > -0.01, "pinned against the wall, not backing off: {v}");
     }
 }
+
+#[test]
+fn ghosts_let_the_living_walk_through() {
+    // A body on the ground (`Sim::set_ghost`) must not stand in the way like a pillar. Against
+    // the east wall (x = 21) a solid body can't be pushed aside, so it blocks the player.
+    let mut sim = flats();
+    put(&mut sim, Vec3::new(16.0, 0.5, -2.0));
+    let body = sim.spawn_character("body", Vec3::new(20.5, 0.0, -2.0));
+    go(&mut sim, Vec2::ZERO, 5);
+    let snap = sim.snapshot();
+    go(&mut sim, Vec2::new(1.0, 0.0), 90);
+    assert!(feet(&sim).x < 20.2, "a standing body blocks: x {:.2}", feet(&sim).x);
+    for restored in [false, true] {
+        sim.restore(snap.clone());
+        sim.set_ghost(body, true);
+        if restored {
+            // The flag lives in the state: a snapshot taken now keeps it.
+            let ghost = sim.snapshot();
+            sim.restore(ghost);
+        }
+        go(&mut sim, Vec2::new(1.0, 0.0), 90);
+        assert!(feet(&sim).x > 20.45, "through the ghost to the wall (restored {restored}): x {:.2}", feet(&sim).x);
+    }
+    sim.restore(snap);
+    sim.set_ghost(body, true);
+    sim.set_ghost(body, false);
+    go(&mut sim, Vec2::new(1.0, 0.0), 90);
+    assert!(feet(&sim).x < 20.2, "solid again: x {:.2}", feet(&sim).x);
+}

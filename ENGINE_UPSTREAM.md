@@ -31,6 +31,7 @@ game-agnostic. `git diff 79061e4 -- crates/pav_* scripts web` shows the exact ch
 | `InputFrame.look` (camera delta) and `triggers` (analog L2/R2), serde-defaulted; button names for all 32 bits. | `src/input.rs` |
 | Checkpoints outside `SimState` (`Sim::request_checkpoint`, save/load), persistence `Store` API (native file; localStorage in the app). | `src/sim.rs`, `src/persist.rs` |
 | `Character.scripted` (game-placed poses: leaps, cinematics). | `src/character.rs` |
+| Ghosts: `Sim::set_ghost` makes a character's capsule a sensor (`Character.ghost`, kept through sleep and snapshots), so bodies on the ground stop walling in doorways and pinning fighters; test `ghosts_let_the_living_walk_through`. | `src/sim.rs`, `src/character.rs`, `src/world.rs`, `tests/movement.rs` |
 | Ocean: Gerstner waves (6 slots, presets), CPU height/normal/velocity identical to the GPU; seabed; swimming in waves. | `src/ocean.rs`, `src/character.rs`, `src/world.rs` |
 | **Islands**: heightfields from outlines with beaches, shelves, peaks, cliffs, noise, plateaus and graded roads (roads ramp out of plateaus), terrain patches, materials, climbable cells, seabed; `contours` (marching squares) for maps; `LevelDef`/`build_level`. | `src/island.rs`, `tests/island.rs` |
 | **Structures**: 27 generator kinds (houses, fort walls, bastions, gates, keep, batteries, towers, chapel, pier, laundry lines, palisades, huts, ruins...), markers, areas (hide, soft, perch), block flags (climbable, roof, pole, beam). | `src/structures.rs`, `tests/structures.rs`, `src/yard.toml` |
