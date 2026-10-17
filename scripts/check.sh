@@ -39,5 +39,6 @@ cargo test --locked -q "${tested[@]}"
 if $full; then
 	step "long runs (ignored tests: Rounds x5, full Tab x3, attract, determinism)"
 	cargo test --locked -q -p blacktap -- --ignored --test-threads 2
+	cargo test --locked -q -p pav_tools --test attract -- --ignored
 fi
 printf '\ncheck.sh: all green%s\n' "$($full && echo ' (full)')"

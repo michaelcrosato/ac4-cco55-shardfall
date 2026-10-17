@@ -138,7 +138,7 @@ pub fn act(g: &mut BlackTap, sim: &mut Sim, name: &str) {
         }
         "supplies" => {
             // A Round played from its own start has what the Tab would have given by then.
-            g.sea.timber = g.sea.timber.max(4);
+            g.sea.timber = g.sea.timber.max(6);
             g.sea.iron = g.sea.iron.max(2);
         }
         "spawn_flotsam" => {
@@ -298,6 +298,8 @@ pub fn sea_events(g: &mut BlackTap, sim: &mut Sim, input: &InputFrame, evs: Vec<
                 g.show("disabled");
             }
             SeaEvent::BatteryDown { name } => {
+                // Progress is kept: a checkpoint after every battery that falls.
+                sim.request_checkpoint(pav_core::sim::CheckpointRequest::Save);
                 if g.sea.destroyed_order.first().map(|s| s.as_str()) == Some("mortar") && g.sea.destroyed_order.len() == 1 {
                     g.mission.set_flag("mortar_first");
                 } else if g.sea.destroyed_order.len() == 1 {
