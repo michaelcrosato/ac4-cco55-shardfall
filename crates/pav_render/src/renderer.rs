@@ -1,14 +1,20 @@
 //! The frame renderer: shadow pass -> MSAA scene pass (HDR color + normal/group + depth)
 //! -> composite (outlines, tonemap) into any target view.
+//!
+//! The scene pass uses reversed depth (1 at the near plane, 0 at the far plane, compared with
+//! `Greater`): with a float depth buffer that keeps depth precise out to the horizon. The
+//! camera's projection stays the usual one; the renderer flips it (`reversed_z`). Shadow maps
+//! keep the usual direction.
 
 use std::collections::HashMap;
 
 use bytemuck::{Pod, Zeroable};
-use glam::{Mat4, Vec3};
+use glam::{Mat4, Vec3, Vec4};
 use wgpu::util::DeviceExt;
 
+use crate::cull::{Culler, Verdict};
 use crate::mesh::{MeshData, MeshKey, Vertex};
-use crate::scene::{Scene, Tonemap};
+use crate::scene::{CameraData, Scene, Tonemap};
 
 pub const HDR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 pub const NORMAL_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
@@ -39,6 +45,7 @@ struct Globals {
     cut3: [f32; 4],
     wind: [f32; 4],
     push: [f32; 4],
+    fog3: [f32; 4],
 }
 
 #[repr(C)]
@@ -105,6 +112,8 @@ struct GpuMesh {
     vbuf: wgpu::Buffer,
     ibuf: wgpu::Buffer,
     index_count: u32,
+    /// Bounding sphere in the mesh's own frame (centre, radius), for culling.
+    bounds: (Vec3, f32),
     /// Frame counter when last used (custom meshes are evicted when unused).
     last_used: u64,
 }
@@ -174,6 +183,16 @@ pub struct RenderStats {
     pub lights: usize,
     /// Procedural material rows in the scene's table (besides row 0, none).
     pub materials: usize,
+    /// Mesh and SDF instances not drawn because they were outside the view (their shadows
+    /// may still be drawn), and because they were past their category's distance limit.
+    pub culled_frustum: usize,
+    pub culled_distance: usize,
+    /// Mesh and SDF instances drawn into the shadow maps.
+    pub shadow_instances: usize,
+    /// Instances drawn again as Gull Sight silhouettes (`flags::XRAY`).
+    pub xray_instances: usize,
+    /// Vertices of the ocean grid (0 without an ocean).
+    pub ocean_vertices: usize,
 }
 
 pub struct Renderer {
@@ -188,10 +207,16 @@ pub struct Renderer {
     shadow_bg: wgpu::BindGroup,
     shadow_view: wgpu::TextureView,
     shadow_sampler: wgpu::Sampler,
-    mesh_pipeline: wgpu::RenderPipeline,
-    sdf_pipeline: wgpu::RenderPipeline,
     mesh_shadow_pipeline: wgpu::RenderPipeline,
     sdf_shadow_pipeline: wgpu::RenderPipeline,
+    /// The scene pass's pipelines for the usual depth direction, and for reversed depth (built
+    /// the first time a scene needs them).
+    pipes: ScenePipelines,
+    pipes_rev: Option<ScenePipelines>,
+    scene_shader: wgpu::ShaderModule,
+    main_layout: wgpu::PipelineLayout,
+    text_layout: wgpu::PipelineLayout,
+    sea: crate::sea::SeaPass,
     post_layout: wgpu::BindGroupLayout,
     post_pipeline_layout: wgpu::PipelineLayout,
     post_shader: wgpu::ShaderModule,
@@ -200,7 +225,6 @@ pub struct Renderer {
     targets: Option<FrameTargets>,
     mesh_instances: DynBuffer,
     sdf_instances: DynBuffer,
-    text_pipeline: wgpu::RenderPipeline,
     text_bg: wgpu::BindGroup,
     text_instances: DynBuffer,
     atlas: crate::text::FontAtlas,
@@ -224,13 +248,15 @@ pub struct Renderer {
     materials: MaterialBuffer,
 }
 
-/// The scene shader: the material library in front of scene.wgsl (it reads the globals that
-/// scene.wgsl declares). `examples/dump_wgsl.rs` writes it out for `scripts/check-wgsl.sh`.
-pub const SCENE_WGSL: &str = concat!(include_str!("shaders/materials.wgsl"), include_str!("shaders/scene.wgsl"));
+/// The scene shader: the shared globals (common.wgsl) and the material library in front of
+/// scene.wgsl. `examples/dump_wgsl.rs` writes it out for `scripts/check-wgsl.sh`.
+pub const SCENE_WGSL: &str =
+    concat!(include_str!("shaders/common.wgsl"), include_str!("shaders/materials.wgsl"), include_str!("shaders/scene.wgsl"));
 
 /// Every WGSL module the renderer compiles, by name, exactly as compiled.
 pub const WGSL_MODULES: &[(&str, &str)] = &[
     ("scene", SCENE_WGSL),
+    ("sea", crate::sea::SEA_WGSL),
     ("post", include_str!("shaders/post.wgsl")),
     ("bloom", include_str!("shaders/bloom.wgsl")),
     ("distort", include_str!("shaders/distort.wgsl")),
@@ -353,6 +379,184 @@ fn glyph_layout() -> wgpu::VertexBufferLayout<'static> {
 
 fn mat(m: Mat4) -> [[f32; 4]; 4] {
     m.to_cols_array_2d()
+}
+
+/// `proj` with depth reversed: z' = w - z, so the near plane maps to 1 and the far plane to 0.
+pub fn reversed_z(proj: Mat4) -> Mat4 {
+    Mat4::from_cols(Vec4::X, Vec4::Y, Vec4::new(0.0, 0.0, -1.0, 0.0), Vec4::new(0.0, 0.0, 1.0, 1.0)) * proj
+}
+
+/// The bounding sphere of a mesh's vertices (centre of their box, farthest vertex).
+fn mesh_bounds(data: &MeshData) -> (Vec3, f32) {
+    if data.vertices.is_empty() {
+        return (Vec3::ZERO, 0.0);
+    }
+    let (mut lo, mut hi) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
+    for v in &data.vertices {
+        let p = Vec3::from(v.pos);
+        lo = lo.min(p);
+        hi = hi.max(p);
+    }
+    let c = (lo + hi) * 0.5;
+    let r = data.vertices.iter().map(|v| Vec3::from(v.pos).distance(c)).fold(0.0, f32::max);
+    (c, r)
+}
+
+/// The scene pass's pipelines whose depth test depends on the depth direction.
+struct ScenePipelines {
+    mesh: wgpu::RenderPipeline,
+    sdf: wgpu::RenderPipeline,
+    text: wgpu::RenderPipeline,
+    mesh_xray: wgpu::RenderPipeline,
+    sdf_xray: wgpu::RenderPipeline,
+}
+
+impl ScenePipelines {
+    /// `reversed`: depth 1 at the near plane, 0 at the far plane (nearer = greater).
+    fn new(
+        device: &wgpu::Device,
+        shader: &wgpu::ShaderModule,
+        main_layout: &wgpu::PipelineLayout,
+        text_layout: &wgpu::PipelineLayout,
+        reversed: bool,
+    ) -> Self {
+        use wgpu::CompareFunction as C;
+        let (nearer, nearer_eq, farther) =
+            if reversed { (C::Greater, C::GreaterEqual, C::Less) } else { (C::Less, C::LessEqual, C::Greater) };
+        let color_targets = [
+            Some(wgpu::ColorTargetState { format: HDR_FORMAT, blend: None, write_mask: wgpu::ColorWrites::ALL }),
+            Some(wgpu::ColorTargetState { format: NORMAL_FORMAT, blend: None, write_mask: wgpu::ColorWrites::ALL }),
+        ];
+        let depth_main = Some(wgpu::DepthStencilState {
+            format: DEPTH_FORMAT,
+            depth_write_enabled: Some(true),
+            depth_compare: Some(nearer),
+            stencil: Default::default(),
+            bias: Default::default(),
+        });
+        // Gull Sight: only where something nearer hides the instance, without writing depth;
+        // the colour blends over the scene with a constant 0.45 of it left (the shader
+        // premultiplies by 0.55) and the alpha keeps the larger marker.
+        let depth_xray = Some(wgpu::DepthStencilState {
+            format: DEPTH_FORMAT,
+            depth_write_enabled: Some(false),
+            depth_compare: Some(farther),
+            stencil: Default::default(),
+            bias: Default::default(),
+        });
+        let xray_targets = [
+            Some(wgpu::ColorTargetState {
+                format: HDR_FORMAT,
+                blend: Some(wgpu::BlendState {
+                    color: wgpu::BlendComponent {
+                        src_factor: wgpu::BlendFactor::One,
+                        dst_factor: wgpu::BlendFactor::Constant,
+                        operation: wgpu::BlendOperation::Add,
+                    },
+                    alpha: wgpu::BlendComponent {
+                        src_factor: wgpu::BlendFactor::One,
+                        dst_factor: wgpu::BlendFactor::One,
+                        operation: wgpu::BlendOperation::Max,
+                    },
+                }),
+                write_mask: wgpu::ColorWrites::ALL,
+            }),
+            Some(wgpu::ColorTargetState { format: NORMAL_FORMAT, blend: None, write_mask: wgpu::ColorWrites::empty() }),
+        ];
+        let ms = wgpu::MultisampleState { count: SAMPLES, mask: !0, alpha_to_coverage_enabled: false };
+        let vl = vertex_layouts();
+        let sdf_buffers = [sdf_layout()];
+        let pipeline = |label: &str,
+                        layout: &wgpu::PipelineLayout,
+                        vs: &str,
+                        fs: &str,
+                        buffers: &[Option<wgpu::VertexBufferLayout>],
+                        cull_mode: Option<wgpu::Face>,
+                        depth_stencil: Option<wgpu::DepthStencilState>,
+                        multisample: wgpu::MultisampleState,
+                        targets: &[Option<wgpu::ColorTargetState>]| {
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some(label),
+                layout: Some(layout),
+                vertex: wgpu::VertexState {
+                    module: shader,
+                    entry_point: Some(vs),
+                    compilation_options: Default::default(),
+                    buffers,
+                },
+                primitive: wgpu::PrimitiveState { cull_mode, ..Default::default() },
+                depth_stencil,
+                multisample,
+                fragment: Some(wgpu::FragmentState {
+                    module: shader,
+                    entry_point: Some(fs),
+                    compilation_options: Default::default(),
+                    targets,
+                }),
+                multiview_mask: None,
+                cache: None,
+            })
+        };
+        let mesh_buffers = [Some(vl[0].clone()), Some(vl[1].clone())];
+        let sdf_buffers = [Some(sdf_buffers[0].clone())];
+        // No culling: back faces become visible only where cutaway opened a solid, and are
+        // drawn as flat caps.
+        let mesh =
+            pipeline("mesh", main_layout, "vs_mesh", "fs_mesh", &mesh_buffers, None, depth_main.clone(), ms, &color_targets);
+        let sdf = pipeline(
+            "sdf",
+            main_layout,
+            "vs_sdf",
+            "fs_sdf",
+            &sdf_buffers,
+            Some(wgpu::Face::Front),
+            depth_main,
+            ms,
+            &color_targets,
+        );
+        let mesh_xray = pipeline(
+            "mesh xray",
+            main_layout,
+            "vs_mesh",
+            "fs_xray",
+            &mesh_buffers,
+            Some(wgpu::Face::Back),
+            depth_xray.clone(),
+            ms,
+            &xray_targets,
+        );
+        let sdf_xray = pipeline(
+            "sdf xray",
+            main_layout,
+            "vs_sdf",
+            "fs_sdf_xray",
+            &sdf_buffers,
+            Some(wgpu::Face::Front),
+            depth_xray,
+            ms,
+            &xray_targets,
+        );
+        // Text: an alpha-to-coverage pipeline pulled a little toward the camera.
+        let bias = if reversed { 1 } else { -1 };
+        let text = pipeline(
+            "text",
+            text_layout,
+            "vs_text",
+            "fs_text",
+            &[Some(glyph_layout())],
+            None,
+            Some(wgpu::DepthStencilState {
+                format: DEPTH_FORMAT,
+                depth_write_enabled: Some(true),
+                depth_compare: Some(nearer_eq),
+                stencil: Default::default(),
+                bias: wgpu::DepthBiasState { constant: 4 * bias, slope_scale: bias as f32, clamp: 0.0 },
+            }),
+            wgpu::MultisampleState { count: SAMPLES, mask: !0, alpha_to_coverage_enabled: true },
+            &color_targets,
+        );
+        Self { mesh, sdf, text, mesh_xray, sdf_xray }
+    }
 }
 
 impl Renderer {
@@ -490,6 +694,7 @@ impl Renderer {
         });
 
         let materials = MaterialBuffer::new(device);
+        let sea = crate::sea::SeaPass::new(device, queue, &globals_layout);
         let main_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("main"),
             bind_group_layouts: &[Some(&globals_layout), Some(&materials.layout)],
@@ -501,17 +706,6 @@ impl Renderer {
             immediate_size: 0,
         });
 
-        let color_targets = [
-            Some(wgpu::ColorTargetState { format: HDR_FORMAT, blend: None, write_mask: wgpu::ColorWrites::ALL }),
-            Some(wgpu::ColorTargetState { format: NORMAL_FORMAT, blend: None, write_mask: wgpu::ColorWrites::ALL }),
-        ];
-        let depth_main = Some(wgpu::DepthStencilState {
-            format: DEPTH_FORMAT,
-            depth_write_enabled: Some(true),
-            depth_compare: Some(wgpu::CompareFunction::Less),
-            stencil: Default::default(),
-            bias: Default::default(),
-        });
         let depth_shadow = Some(wgpu::DepthStencilState {
             format: DEPTH_FORMAT,
             depth_write_enabled: Some(true),
@@ -519,54 +713,9 @@ impl Renderer {
             stencil: Default::default(),
             bias: wgpu::DepthBiasState { constant: 2, slope_scale: 2.0, clamp: 0.0 },
         });
-        let ms = wgpu::MultisampleState { count: SAMPLES, mask: !0, alpha_to_coverage_enabled: false };
 
         let vl = vertex_layouts();
-        let mesh_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("mesh"),
-            layout: Some(&main_layout),
-            vertex: wgpu::VertexState {
-                module: &scene_shader,
-                entry_point: Some("vs_mesh"),
-                compilation_options: Default::default(),
-                buffers: &[Some(vl[0].clone()), Some(vl[1].clone())],
-            },
-            // No culling: back faces become visible only where cutaway opened a solid, and are
-            // drawn as flat caps.
-            primitive: wgpu::PrimitiveState { cull_mode: None, ..Default::default() },
-            depth_stencil: depth_main.clone(),
-            multisample: ms,
-            fragment: Some(wgpu::FragmentState {
-                module: &scene_shader,
-                entry_point: Some("fs_mesh"),
-                compilation_options: Default::default(),
-                targets: &color_targets,
-            }),
-            multiview_mask: None,
-            cache: None,
-        });
         let sdf_buffers = [sdf_layout()];
-        let sdf_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("sdf"),
-            layout: Some(&main_layout),
-            vertex: wgpu::VertexState {
-                module: &scene_shader,
-                entry_point: Some("vs_sdf"),
-                compilation_options: Default::default(),
-                buffers: &[Some(sdf_buffers[0].clone())],
-            },
-            primitive: wgpu::PrimitiveState { cull_mode: Some(wgpu::Face::Front), ..Default::default() },
-            depth_stencil: depth_main,
-            multisample: ms,
-            fragment: Some(wgpu::FragmentState {
-                module: &scene_shader,
-                entry_point: Some("fs_sdf"),
-                compilation_options: Default::default(),
-                targets: &color_targets,
-            }),
-            multiview_mask: None,
-            cache: None,
-        });
         let mesh_shadow_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("mesh shadow"),
             layout: Some(&shadow_pipeline_layout),
@@ -765,34 +914,7 @@ impl Renderer {
             bind_group_layouts: &[Some(&globals_layout), Some(&text_layout)],
             immediate_size: 0,
         });
-        let glyph_buffers = [glyph_layout()];
-        let text_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("text"),
-            layout: Some(&text_pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &scene_shader,
-                entry_point: Some("vs_text"),
-                compilation_options: Default::default(),
-                buffers: &[Some(glyph_buffers[0].clone())],
-            },
-            primitive: wgpu::PrimitiveState { cull_mode: None, ..Default::default() },
-            depth_stencil: Some(wgpu::DepthStencilState {
-                format: DEPTH_FORMAT,
-                depth_write_enabled: Some(true),
-                depth_compare: Some(wgpu::CompareFunction::LessEqual),
-                stencil: Default::default(),
-                bias: wgpu::DepthBiasState { constant: -4, slope_scale: -1.0, clamp: 0.0 },
-            }),
-            multisample: wgpu::MultisampleState { count: SAMPLES, mask: !0, alpha_to_coverage_enabled: true },
-            fragment: Some(wgpu::FragmentState {
-                module: &scene_shader,
-                entry_point: Some("fs_text"),
-                compilation_options: Default::default(),
-                targets: &color_targets,
-            }),
-            multiview_mask: None,
-            cache: None,
-        });
+        let pipes = ScenePipelines::new(device, &scene_shader, &main_layout, &text_pipeline_layout, false);
         let text_instances = DynBuffer::new(device, "glyphs", wgpu::BufferUsages::VERTEX, 16 * 1024);
         let dyn_vertices = DynBuffer::new(device, "dynamic vertices", wgpu::BufferUsages::VERTEX, 64 * 1024);
         let dyn_indices = DynBuffer::new(device, "dynamic indices", wgpu::BufferUsages::INDEX, 32 * 1024);
@@ -812,10 +934,14 @@ impl Renderer {
             shadow_bg,
             shadow_view,
             shadow_sampler,
-            mesh_pipeline,
-            sdf_pipeline,
             mesh_shadow_pipeline,
             sdf_shadow_pipeline,
+            pipes,
+            pipes_rev: None,
+            scene_shader,
+            main_layout,
+            text_layout: text_pipeline_layout,
+            sea,
             post_layout,
             post_pipeline_layout,
             post_shader,
@@ -824,7 +950,6 @@ impl Renderer {
             targets: None,
             mesh_instances,
             sdf_instances,
-            text_pipeline,
             text_bg,
             text_instances,
             atlas,
@@ -892,7 +1017,10 @@ impl Renderer {
             contents: bytemuck::cast_slice(&data.indices),
             usage: wgpu::BufferUsages::INDEX,
         });
-        self.meshes.insert(key, GpuMesh { vbuf, ibuf, index_count: data.indices.len() as u32, last_used: self.frame });
+        self.meshes.insert(
+            key,
+            GpuMesh { vbuf, ibuf, index_count: data.indices.len() as u32, bounds: mesh_bounds(data), last_used: self.frame },
+        );
     }
 
     pub fn has_mesh(&self, key: MeshKey) -> bool {
@@ -1045,9 +1173,16 @@ impl Renderer {
             }
         }
 
-        // Globals.
+        // Globals. Open-world scenes (with a sky or an ocean) draw with reversed depth (see the
+        // module docs); the others keep the usual direction, exactly as before.
+        let reversed = scene.sky.is_some() || scene.ocean.is_some();
+        if reversed && self.pipes_rev.is_none() {
+            self.pipes_rev =
+                Some(ScenePipelines::new(&self.device, &self.scene_shader, &self.main_layout, &self.text_layout, true));
+        }
         let cam = &scene.camera;
-        let view_proj = cam.proj * cam.view;
+        let rcam = if reversed { CameraData { proj: reversed_z(cam.proj), ..*cam } } else { *cam };
+        let view_proj = rcam.proj * cam.view;
         let (light_vp, texel) = Self::light_matrix(scene);
         let sun_dir = scene.sun.direction.normalize_or(Vec3::NEG_Y);
         // The lights nearest the point of interest, if there are too many.
@@ -1088,9 +1223,14 @@ impl Renderer {
                 [d.x, d.y, w.strength, w.gusts]
             },
             push: scene.wind.pusher.extend(scene.wind.push_radius).to_array(),
+            fog3: match &scene.fog_ray {
+                Some(r) => [1.0, r.height_falloff.max(0.0), r.base, r.sun_glow.max(0.0)],
+                None => [0.0; 4],
+            },
         };
         self.queue.write_buffer(&self.globals_buf, 0, bytemuck::bytes_of(&globals));
         self.materials.upload(&self.device, &self.queue, scene);
+        self.sea.prepare(&self.device, &self.queue, scene, reversed);
         let globals_sun_dir = globals.sun_dir;
         globals.view_proj = mat(light_vp);
         globals.eye = [0.0, 0.0, 0.0, 0.0];
@@ -1151,27 +1291,58 @@ impl Renderer {
             );
         }
 
-        // Instances, grouped by mesh.
-        let mut order: Vec<usize> =
-            (0..scene.meshes.len()).filter(|&i| self.meshes.contains_key(&scene.meshes[i].mesh)).collect();
-        order.sort_by_key(|&i| scene.meshes[i].mesh);
-        let mut gpu_meshes = Vec::with_capacity(order.len());
-        let mut batches: Vec<(MeshKey, u32, u32, u32, u32)> = Vec::new(); // key, start, end, shadow_start, shadow_end
-        // Shadow casters are the same instances; NO_SHADOW ones are skipped by a second ordering.
-        for &i in &order {
-            let m = &scene.meshes[i];
-            let idx = gpu_meshes.len() as u32;
-            gpu_meshes.push(GpuMeshInstance {
-                model: mat(m.transform),
-                color: m.color.extend(m.emissive).to_array(),
-                params: [m.style as u32, m.flags, m.group, self.materials.param(m.material)],
-                ext: m.ext.extend(0.0).to_array(),
-            });
-            match batches.last_mut() {
-                Some(b) if b.0 == m.mesh => b.2 = idx + 1,
-                _ => batches.push((m.mesh, idx, idx + 1, 0, 0)),
+        // Culling: what the camera sees is drawn; what shadows the visible area casts.
+        let lamps = casters.iter().map(|&i| (scene.point_lights[i].position, scene.point_lights[i].radius)).collect();
+        let culler = Culler::new(scene, cam.proj * cam.view, scene.sun.shadows.then_some(light_vp), lamps);
+        let (mut culled_frustum, mut culled_distance) = (0, 0);
+        let mut tally = |v: Verdict| {
+            if v.far {
+                culled_distance += 1;
+            } else if !v.draw {
+                culled_frustum += 1;
+            }
+        };
+
+        // Instances, grouped by mesh: the drawn ones, the dynamic meshes, then the shadow
+        // casters and the Gull Sight silhouettes, each in runs of one mesh.
+        let mut order: Vec<(usize, Verdict)> = Vec::with_capacity(scene.meshes.len());
+        for (i, m) in scene.meshes.iter().enumerate() {
+            let Some(gm) = self.meshes.get(&m.mesh) else { continue };
+            let (c, r) = Culler::mesh_sphere(&m.transform, gm.bounds.0, gm.bounds.1);
+            let v = culler.test(c, r, m.flags);
+            tally(v);
+            if v.draw || v.shadow {
+                order.push((i, v));
             }
         }
+        order.sort_by_key(|&(i, _)| scene.meshes[i].mesh);
+        let materials = &self.materials;
+        let gpu_of = |m: &crate::scene::MeshInstance| GpuMeshInstance {
+            model: mat(m.transform),
+            color: m.color.extend(m.emissive).to_array(),
+            params: [m.style as u32, m.flags, m.group, materials.param(m.material)],
+            ext: m.ext.extend(0.0).to_array(),
+        };
+        let mut gpu_meshes: Vec<GpuMeshInstance> = Vec::with_capacity(order.len() * 2);
+        // Appends the instances `pick` chooses, returning their runs (mesh, first, end).
+        let runs = |gpu_meshes: &mut Vec<GpuMeshInstance>, pick: &dyn Fn(u32, Verdict) -> bool| {
+            let mut out: Vec<(MeshKey, u32, u32)> = Vec::new();
+            for &(i, v) in &order {
+                let m = &scene.meshes[i];
+                if !pick(m.flags, v) {
+                    continue;
+                }
+                let idx = gpu_meshes.len() as u32;
+                gpu_meshes.push(gpu_of(m));
+                match out.last_mut() {
+                    Some(b) if b.0 == m.mesh => b.2 = idx + 1,
+                    _ => out.push((m.mesh, idx, idx + 1)),
+                }
+            }
+            out
+        };
+        let batches = runs(&mut gpu_meshes, &|_, v| v.draw);
+        let drawn_meshes = gpu_meshes.len();
         // Dynamic meshes: one instance each (identity transform), after the regular ones.
         let mut dyn_draws: Vec<(u32, u32, i32, u32, bool)> = Vec::new(); // first index, count, base vertex, instance, shadow
         {
@@ -1207,38 +1378,42 @@ impl Renderer {
         let main_triangles =
             batches.iter().map(|b| (b.2 - b.1) as usize * self.meshes[&b.0].index_count as usize / 3).sum::<usize>()
                 + dyn_draws.iter().map(|d| d.1 as usize / 3).sum::<usize>();
-        // Shadow-casting copies appended after the main list.
-        for b in batches.iter_mut() {
-            let start = gpu_meshes.len() as u32;
-            for k in b.1..b.2 {
-                let src = gpu_meshes[k as usize];
-                if src.params[1] & crate::scene::flags::NO_SHADOW == 0 {
-                    gpu_meshes.push(src);
-                }
-            }
-            b.3 = start;
-            b.4 = gpu_meshes.len() as u32;
-        }
+        let shadow_start = gpu_meshes.len();
+        let shadow_batches = runs(&mut gpu_meshes, &|f, v| v.shadow && f & crate::scene::flags::NO_SHADOW == 0);
+        let shadow_meshes = gpu_meshes.len() - shadow_start;
+        let xray_start = gpu_meshes.len();
+        let xray_batches = runs(&mut gpu_meshes, &|f, v| v.draw && f & crate::scene::flags::XRAY != 0);
+        let xray_meshes = gpu_meshes.len() - xray_start;
         self.mesh_instances.write(&self.device, &self.queue, bytemuck::cast_slice(&gpu_meshes));
 
-        let mut gpu_sdfs: Vec<GpuSdfInstance> = scene
-            .sdfs
-            .iter()
-            .map(|s| GpuSdfInstance {
+        // SDFs: the drawn ones, the shadow casters, the silhouettes.
+        let mut gpu_sdfs: Vec<GpuSdfInstance> = Vec::with_capacity(scene.sdfs.len());
+        let mut sdf_shadow: Vec<GpuSdfInstance> = Vec::new();
+        let mut sdf_xray: Vec<GpuSdfInstance> = Vec::new();
+        for s in &scene.sdfs {
+            let v = culler.test((s.a + s.b) * 0.5, (s.b - s.a).length() * 0.5 + s.ra.max(s.rb), s.flags);
+            tally(v);
+            let inst = GpuSdfInstance {
                 a: [s.a.x, s.a.y, s.a.z, s.ra],
                 b: [s.b.x, s.b.y, s.b.z, s.rb],
                 color: s.color.extend(s.emissive).to_array(),
                 params: [s.style as u32, s.flags, s.group, self.materials.param(s.material)],
-            })
-            .collect();
+            };
+            if v.draw {
+                gpu_sdfs.push(inst);
+                if s.flags & crate::scene::flags::XRAY != 0 {
+                    sdf_xray.push(inst);
+                }
+            }
+            if v.shadow && s.flags & crate::scene::flags::NO_SHADOW == 0 {
+                sdf_shadow.push(GpuSdfInstance { color: [0.0; 4], params: [0; 4], ..inst });
+            }
+        }
         let sdf_count = gpu_sdfs.len() as u32;
-        gpu_sdfs.extend(scene.sdfs.iter().filter(|s| s.flags & crate::scene::flags::NO_SHADOW == 0).map(|s| GpuSdfInstance {
-            a: [s.a.x, s.a.y, s.a.z, s.ra],
-            b: [s.b.x, s.b.y, s.b.z, s.rb],
-            color: [0.0; 4],
-            params: [0; 4],
-        }));
+        gpu_sdfs.extend_from_slice(&sdf_shadow);
         let sdf_shadow_end = gpu_sdfs.len() as u32;
+        gpu_sdfs.extend_from_slice(&sdf_xray);
+        let sdf_xray_end = gpu_sdfs.len() as u32;
         self.sdf_instances.write(&self.device, &self.queue, bytemuck::cast_slice(&gpu_sdfs));
 
         let mut quads = Vec::new();
@@ -1267,7 +1442,7 @@ impl Renderer {
         let mut draw_calls = 0;
 
         // 0. Particles: birth and integration (compute).
-        self.particles.prepare(encoder, &self.queue, cam, scene.time, &scene.particles);
+        self.particles.prepare(encoder, &self.queue, &rcam, scene.time, &scene.particles);
 
         // 1. Shadow passes: the sun, then six faces per shadow-casting point light.
         let mut shadow_targets: Vec<(&wgpu::TextureView, &wgpu::BindGroup)> = Vec::new();
@@ -1311,12 +1486,12 @@ impl Renderer {
             pass.set_bind_group(0, bg, &[]);
             pass.set_pipeline(&self.mesh_shadow_pipeline);
             pass.set_vertex_buffer(1, self.mesh_instances.buf.slice(..));
-            for b in &batches {
+            for b in &shadow_batches {
                 let mesh = &self.meshes[&b.0];
-                if b.4 > b.3 && mesh.index_count > 0 {
+                if mesh.index_count > 0 {
                     pass.set_vertex_buffer(0, mesh.vbuf.slice(..));
                     pass.set_index_buffer(mesh.ibuf.slice(..), wgpu::IndexFormat::Uint32);
-                    pass.draw_indexed(0..mesh.index_count, 0, b.3..b.4);
+                    pass.draw_indexed(0..mesh.index_count, 0, b.1..b.2);
                     draw_calls += 1;
                 }
             }
@@ -1338,8 +1513,10 @@ impl Renderer {
             }
         }
 
-        // 2. Scene pass.
+        // 2. Scene pass: opaque geometry and the ocean, text, the sky on what is left, Gull
+        // Sight silhouettes, then rain and particles over it all.
         let t = self.targets.as_ref().expect("targets");
+        let pipes = if reversed { self.pipes_rev.as_ref().expect("reversed pipelines") } else { &self.pipes };
         {
             let cc = scene.clear_color;
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -1366,7 +1543,10 @@ impl Renderer {
                 ],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                     view: &t.depth_ms,
-                    depth_ops: Some(wgpu::Operations { load: wgpu::LoadOp::Clear(1.0), store: wgpu::StoreOp::Store }),
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(if reversed { 0.0 } else { 1.0 }),
+                        store: wgpu::StoreOp::Store,
+                    }),
                     stencil_ops: None,
                 }),
                 timestamp_writes: None,
@@ -1375,7 +1555,7 @@ impl Renderer {
             });
             pass.set_bind_group(0, &self.globals_bg, &[]);
             pass.set_bind_group(1, &self.materials.bg, &[]);
-            pass.set_pipeline(&self.mesh_pipeline);
+            pass.set_pipeline(&pipes.mesh);
             pass.set_vertex_buffer(1, self.mesh_instances.buf.slice(..));
             for b in &batches {
                 let mesh = &self.meshes[&b.0];
@@ -1396,19 +1576,50 @@ impl Renderer {
                 }
             }
             if sdf_count > 0 {
-                pass.set_pipeline(&self.sdf_pipeline);
+                pass.set_pipeline(&pipes.sdf);
                 pass.set_vertex_buffer(0, self.sdf_instances.buf.slice(..));
                 pass.draw(0..36, 0..sdf_count);
                 draw_calls += 1;
             }
+            if self.sea.draw_ocean(&mut pass, &self.globals_bg) {
+                draw_calls += 1;
+            }
             if glyph_count > 0 {
-                pass.set_pipeline(&self.text_pipeline);
+                pass.set_pipeline(&pipes.text);
                 pass.set_bind_group(1, &self.text_bg, &[]);
                 pass.set_vertex_buffer(0, self.text_instances.buf.slice(..));
                 pass.draw(0..6, 0..glyph_count);
                 draw_calls += 1;
             }
-            if self.particles.draw(&mut pass) {
+            if self.sea.draw_sky(&mut pass, &self.globals_bg) {
+                draw_calls += 1;
+            }
+            if xray_meshes > 0 || sdf_xray_end > sdf_shadow_end {
+                pass.set_bind_group(0, &self.globals_bg, &[]);
+                pass.set_bind_group(1, &self.materials.bg, &[]);
+                pass.set_blend_constant(wgpu::Color { r: 0.45, g: 0.45, b: 0.45, a: 0.45 });
+                pass.set_pipeline(&pipes.mesh_xray);
+                pass.set_vertex_buffer(1, self.mesh_instances.buf.slice(..));
+                for b in &xray_batches {
+                    let mesh = &self.meshes[&b.0];
+                    if mesh.index_count > 0 {
+                        pass.set_vertex_buffer(0, mesh.vbuf.slice(..));
+                        pass.set_index_buffer(mesh.ibuf.slice(..), wgpu::IndexFormat::Uint32);
+                        pass.draw_indexed(0..mesh.index_count, 0, b.1..b.2);
+                        draw_calls += 1;
+                    }
+                }
+                if sdf_xray_end > sdf_shadow_end {
+                    pass.set_pipeline(&pipes.sdf_xray);
+                    pass.set_vertex_buffer(0, self.sdf_instances.buf.slice(..));
+                    pass.draw(0..36, sdf_shadow_end..sdf_xray_end);
+                    draw_calls += 1;
+                }
+            }
+            if self.sea.draw_rain(&mut pass, &self.globals_bg) {
+                draw_calls += 1;
+            }
+            if self.particles.draw(&mut pass, reversed) {
                 draw_calls += 1;
             }
         }
@@ -1420,13 +1631,13 @@ impl Renderer {
         } else {
             0.0
         };
-        let distorted =
-            scene.post.distortion && self.distort.record(encoder, &self.device, &self.queue, cam, scene.time, &scene.distortions);
+        let distorted = scene.post.distortion
+            && self.distort.record(encoder, &self.device, &self.queue, &rcam, scene.time, &scene.distortions);
 
         // 3. Composite.
         let p = &scene.post;
         let post = PostUniform {
-            inv_proj: mat(cam.proj.inverse()),
+            inv_proj: mat(rcam.proj.inverse()),
             view: mat(cam.view),
             // Screen-space bounce light: strength, world radius, pixels per metre at 1 m.
             gi: [p.gi, 1.6, size.1 as f32 * cam.proj.y_axis.y * 0.5, self.frame as f32],
@@ -1445,7 +1656,7 @@ impl Renderer {
                 if target_format.is_srgb() { 0.0 } else { 1.0 },
                 p.saturation,
             ],
-            misc: [p.outline_darken, bloom, if distorted { 1.0 } else { 0.0 }, 0.0],
+            misc: [p.outline_darken, bloom, if distorted { 1.0 } else { 0.0 }, if reversed { 1.0 } else { 0.0 }],
             fwd: cam.forward.normalize_or(Vec3::NEG_Z).extend(0.0).to_array(),
             filt: {
                 let f = &scene.filter;
@@ -1472,7 +1683,7 @@ impl Renderer {
             sun_color: scene.sun.color.extend(n_lights as f32).to_array(),
             sky: scene.ambient.sky.extend(0.0).to_array(),
             air: [p.haze, p.haze_height.max(0.1), p.haze_base, p.shafts],
-            air2: [p.shafts_forward.clamp(0.0, 0.95), p.halos, 0.0, 0.0],
+            air2: [p.shafts_forward.clamp(0.0, 0.95), p.halos, scene.gull.clamp(0.0, 1.0), 0.0],
         };
         self.queue.write_buffer(&self.post_buf, 0, bytemuck::bytes_of(&post));
         self.post_pipeline(target_format);
@@ -1504,7 +1715,7 @@ impl Renderer {
         }
 
         self.stats = RenderStats {
-            mesh_instances: order.len(),
+            mesh_instances: drawn_meshes,
             sdf_instances: sdf_count as usize,
             glyphs: glyph_count as usize,
             draw_calls,
@@ -1516,6 +1727,11 @@ impl Renderer {
             custom_meshes: self.meshes.keys().filter(|k| matches!(k, MeshKey::Custom(_))).count(),
             lights: n_lights,
             materials: self.materials.len.saturating_sub(1),
+            culled_frustum,
+            culled_distance,
+            shadow_instances: shadow_meshes + (sdf_shadow_end - sdf_count) as usize,
+            xray_instances: xray_meshes + (sdf_xray_end - sdf_shadow_end) as usize,
+            ocean_vertices: self.sea.ocean_vertices(),
         };
     }
 }

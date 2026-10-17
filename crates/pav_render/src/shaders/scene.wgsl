@@ -1,40 +1,6 @@
 // Main scene shader: instanced meshes, analytic SDF impostors, shadow passes. The renderer
-// compiles it with materials.wgsl (procedural materials) in front.
-
-struct Globals {
-    view_proj: mat4x4<f32>,
-    inv_view_proj: mat4x4<f32>,
-    light_view_proj: mat4x4<f32>,
-    eye: vec4<f32>,          // xyz camera position; w = 1 perspective, 0 orthographic
-    forward: vec4<f32>,      // xyz camera forward
-    sun_dir: vec4<f32>,      // xyz direction light travels; w = shadows enabled
-    sun_color: vec4<f32>,
-    sky_color: vec4<f32>,
-    ground_color: vec4<f32>,
-    cut: vec4<f32>,          // xyz focus; w = cut height
-    cut2: vec4<f32>,         // x cut radius, y height cut on, z fade radius, w fade on
-    params: vec4<f32>,       // x time, y point light count, z shadow texel (world), w pixel footprint:
-                             // metres per pixel at 1 m (perspective) or in all (orthographic)
-    style: vec4<f32>,        // x flat shadow, y cel bands, z rim, w specular
-    viewport: vec4<f32>,     // w, h, 1/w, 1/h
-    fog: vec4<f32>,          // rgb colour, w = enabled
-    fog2: vec4<f32>,         // x,y centre (xz), z start, w end
-    cut3: vec4<f32>,         // x front cut distance, y front cut on
-    wind: vec4<f32>,         // xy direction (world x, z), z strength, w gust speed
-    push: vec4<f32>,         // xyz the pusher's feet (grass bends away), w radius (0 = none)
-};
-
-struct PointLight {
-    pos_radius: vec4<f32>,
-    color: vec4<f32>,
-};
-
-@group(0) @binding(0) var<uniform> g: Globals;
-@group(0) @binding(1) var<storage, read> point_lights: array<PointLight>;
-@group(0) @binding(2) var shadow_map: texture_depth_2d;
-@group(0) @binding(3) var shadow_sampler: sampler_comparison;
-@group(0) @binding(4) var point_shadow: texture_depth_2d_array;
-@group(0) @binding(5) var<storage, read> point_mats: array<mat4x4<f32>>;
+// compiles it with common.wgsl (globals, shadows, fog) and materials.wgsl (procedural
+// materials) in front.
 
 const FLAG_NO_CUT: u32 = 1u;
 const FLAG_NO_RECEIVE_SHADOW: u32 = 4u;
@@ -44,6 +10,13 @@ const FLAG_PIXEL: u32 = 32u;
 const FLAG_OBJECT: u32 = 64u;
 const FLAG_SWAY: u32 = 128u;
 const FLAG_GRASS: u32 = 256u;
+const FLAG_XRAY: u32 = 512u;
+
+// The colour target's alpha marks what Gull Sight leaves in colour: 2 on XRAY instances, 1
+// elsewhere (the composite reads it; nothing else uses the scene's alpha).
+fn marker(flags: u32) -> f32 {
+    return select(1.0, 2.0, (flags & FLAG_XRAY) != 0u);
+}
 
 // How far wind moves a vertex `h` metres above the bottom of its instance. Gusts roll across
 // the world as a slow wave along the wind (so a field of grass ripples), with a faster flutter
@@ -138,28 +111,6 @@ fn cut_away(p: vec3<f32>, frag: vec2<f32>, flags: u32, height: bool) -> bool {
     return false;
 }
 
-fn shadow_factor(p: vec3<f32>, n: vec3<f32>) -> f32 {
-    if (g.sun_dir.w < 0.5) {
-        return 1.0;
-    }
-    let texel = g.params.z;
-    let lp = g.light_view_proj * vec4<f32>(p + n * texel * 1.5, 1.0);
-    let ndc = lp.xyz / lp.w;
-    let uv = vec2<f32>(ndc.x * 0.5 + 0.5, -ndc.y * 0.5 + 0.5);
-    if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0 || ndc.z > 1.0 || ndc.z < 0.0) {
-        return 1.0;
-    }
-    let ts = 1.0 / f32(textureDimensions(shadow_map).x);
-    let d = ndc.z - 0.0008;
-    var s = 0.0;
-    for (var y = -1; y <= 1; y++) {
-        for (var x = -1; x <= 1; x++) {
-            s += textureSampleCompareLevel(shadow_map, shadow_sampler, uv + vec2<f32>(f32(x), f32(y)) * ts, d);
-        }
-    }
-    return s / 9.0;
-}
-
 // Shadow of point light shadow slot `slot` at p (1 = lit). Faces: +x -x +y -y +z -z.
 fn point_shadow_factor(slot: u32, light: vec3<f32>, p: vec3<f32>, n: vec3<f32>) -> f32 {
     let d = p - light;
@@ -190,13 +141,6 @@ fn point_shadow_factor(slot: u32, light: vec3<f32>, p: vec3<f32>, n: vec3<f32>) 
         }
     }
     return s * 0.25;
-}
-
-fn view_dir(p: vec3<f32>) -> vec3<f32> {
-    if (g.eye.w > 0.5) {
-        return normalize(g.eye.xyz - p);
-    }
-    return -g.forward.xyz;
 }
 
 fn quantize(x: f32, bands: f32) -> f32 {
@@ -269,14 +213,6 @@ fn shade(p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, emissive: f32, style: u3
     }
     col = col + albedo * emissive;
     return apply_fog(p, col);
-}
-
-fn apply_fog(p: vec3<f32>, col: vec3<f32>) -> vec3<f32> {
-    if (g.fog.w < 0.5) {
-        return col;
-    }
-    let d = length(p.xz - g.fog2.xy);
-    return mix(col, g.fog.rgb, smoothstep(g.fog2.z, g.fog2.w, d));
 }
 
 // The normal buffer's w is the outline group (folded into 1..1023, 0 = background) plus 1024
@@ -390,18 +326,18 @@ fn fs_mesh(in: MeshOut, @builtin(front_facing) front: bool) -> FsOut {
     }
     if (!front && (in.params.y & FLAG_TWO_SIDED) != 0u) {
         let nb = -normalize(in.normal);
-        o.color = vec4<f32>(shade(in.world, nb, albedo * 0.85, emis, in.params.x, in.params.y, pbr), 1.0);
+        o.color = vec4<f32>(shade(in.world, nb, albedo * 0.85, emis, in.params.x, in.params.y, pbr), marker(in.params.y));
         o.normal = group_out(nb, in.params.z, in.params.y);
         return o;
     }
     if (!front) {
         // Inside of a cut-open solid: draw a flat "cross-section" cap.
-        o.color = vec4<f32>(in.color.rgb * 0.42, 1.0);
+        o.color = vec4<f32>(in.color.rgb * 0.42, marker(in.params.y));
         o.normal = group_out(vec3<f32>(0.0, 1.0, 0.0), in.params.z, in.params.y);
         return o;
     }
     let n = normalize(in.normal);
-    o.color = vec4<f32>(shade(in.world, n, albedo, emis, in.params.x, in.params.y, pbr), 1.0);
+    o.color = vec4<f32>(shade(in.world, n, albedo, emis, in.params.x, in.params.y, pbr), marker(in.params.y));
     // The outline buffer always gets the geometric normal.
     o.normal = group_out(n, in.params.z, in.params.y);
     return o;
@@ -601,8 +537,55 @@ fn fs_sdf(in: SdfOut) -> SdfFsOut {
         emis += mo.glow;
         pbr = materials[mid].pbr.xy;
     }
-    o.color = vec4<f32>(shade(p, n, albedo, emis, in.params.x, in.params.y, pbr), 1.0);
+    o.color = vec4<f32>(shade(p, n, albedo, emis, in.params.x, in.params.y, pbr), marker(in.params.y));
     o.normal = group_out(n, in.params.z, in.params.y);
+    o.depth = clip.z / clip.w;
+    return o;
+}
+
+// ---------------------------------------------------------------- Gull Sight (XRAY)
+
+// The hidden parts of an XRAY instance (its pipeline passes only fragments behind what is
+// already drawn): a flat silhouette in the instance colour, brighter toward the rim, blended
+// over the scene with a constant 0.45 of what lies in front (the colour is premultiplied by
+// 0.55 here). Alpha 2 marks the pixel for Gull Sight (the blend keeps the larger alpha).
+fn xray_color(color: vec3<f32>, n: vec3<f32>, v: vec3<f32>, frag: vec2<f32>) -> vec4<f32> {
+    let rim = pow(1.0 - abs(dot(n, v)), 2.0);
+    // Faint scan lines so a silhouette reads as seen through the wall.
+    let lines = 0.85 + 0.3 * step(0.5, fract(frag.y * 0.25));
+    let c = color * (1.1 + 2.4 * rim) * lines + vec3<f32>(0.3) * rim;
+    return vec4<f32>(c * 0.55, 2.0);
+}
+
+@fragment
+fn fs_xray(in: MeshOut) -> FsOut {
+    var o: FsOut;
+    o.color = xray_color(in.color.rgb, normalize(in.normal), view_dir(in.world), in.clip.xy);
+    o.normal = vec4<f32>(0.0);
+    return o;
+}
+
+@fragment
+fn fs_sdf_xray(in: SdfOut) -> SdfFsOut {
+    var ro: vec3<f32>;
+    var rd: vec3<f32>;
+    if (g.eye.w > 0.5) {
+        ro = g.eye.xyz;
+        rd = normalize(in.world - ro);
+    } else {
+        rd = g.forward.xyz;
+        let span = length(in.b.xyz - in.a.xyz) + 4.0 * max(in.a.w, in.b.w) + 1.0;
+        ro = in.world - rd * span * 2.0;
+    }
+    let hit = round_cone(ro, rd, in.a.xyz, in.b.xyz, in.a.w, in.b.w);
+    if (hit.x < 0.0) {
+        discard;
+    }
+    let p = ro + rd * hit.x;
+    let clip = g.view_proj * vec4<f32>(p, 1.0);
+    var o: SdfFsOut;
+    o.color = xray_color(in.color.rgb, normalize(hit.yzw), -rd, in.clip.xy);
+    o.normal = vec4<f32>(0.0);
     o.depth = clip.z / clip.w;
     return o;
 }

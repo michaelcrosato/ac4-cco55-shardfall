@@ -450,7 +450,8 @@ pub(crate) struct Particles {
     cam: wgpu::Buffer,
     update: wgpu::ComputePipeline,
     update_bg: wgpu::BindGroup,
-    draw: wgpu::RenderPipeline,
+    /// For the usual depth direction and for reversed depth.
+    draw: [wgpu::RenderPipeline; 2],
     draw_bg: wgpu::BindGroup,
     /// Next ring slot, and how many slots have ever been used (draw/update range).
     head: u32,
@@ -509,39 +510,50 @@ impl Particles {
                 operation: wgpu::BlendOperation::Add,
             },
         };
-        let draw = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        let draw_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("particle draw"),
-            layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            bind_group_layouts: &[Some(&dl)],
+            immediate_size: 0,
+        });
+        let draw = [wgpu::CompareFunction::LessEqual, wgpu::CompareFunction::GreaterEqual].map(|compare| {
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some("particle draw"),
-                bind_group_layouts: &[Some(&dl)],
-                immediate_size: 0,
-            })),
-            vertex: wgpu::VertexState {
-                module: &ds,
-                entry_point: Some("vs"),
-                compilation_options: Default::default(),
-                buffers: &[],
-            },
-            primitive: wgpu::PrimitiveState { cull_mode: None, ..Default::default() },
-            depth_stencil: Some(wgpu::DepthStencilState {
-                format: DEPTH_FORMAT,
-                depth_write_enabled: Some(false),
-                depth_compare: Some(wgpu::CompareFunction::LessEqual),
-                stencil: Default::default(),
-                bias: Default::default(),
-            }),
-            multisample: wgpu::MultisampleState { count: SAMPLES, mask: !0, alpha_to_coverage_enabled: false },
-            fragment: Some(wgpu::FragmentState {
-                module: &ds,
-                entry_point: Some("fs"),
-                compilation_options: Default::default(),
-                targets: &[
-                    Some(wgpu::ColorTargetState { format: HDR_FORMAT, blend: Some(premul), write_mask: wgpu::ColorWrites::ALL }),
-                    Some(wgpu::ColorTargetState { format: NORMAL_FORMAT, blend: None, write_mask: wgpu::ColorWrites::empty() }),
-                ],
-            }),
-            multiview_mask: None,
-            cache: None,
+                layout: Some(&draw_layout),
+                vertex: wgpu::VertexState {
+                    module: &ds,
+                    entry_point: Some("vs"),
+                    compilation_options: Default::default(),
+                    buffers: &[],
+                },
+                primitive: wgpu::PrimitiveState { cull_mode: None, ..Default::default() },
+                depth_stencil: Some(wgpu::DepthStencilState {
+                    format: DEPTH_FORMAT,
+                    depth_write_enabled: Some(false),
+                    depth_compare: Some(compare),
+                    stencil: Default::default(),
+                    bias: Default::default(),
+                }),
+                multisample: wgpu::MultisampleState { count: SAMPLES, mask: !0, alpha_to_coverage_enabled: false },
+                fragment: Some(wgpu::FragmentState {
+                    module: &ds,
+                    entry_point: Some("fs"),
+                    compilation_options: Default::default(),
+                    targets: &[
+                        Some(wgpu::ColorTargetState {
+                            format: HDR_FORMAT,
+                            blend: Some(premul),
+                            write_mask: wgpu::ColorWrites::ALL,
+                        }),
+                        Some(wgpu::ColorTargetState {
+                            format: NORMAL_FORMAT,
+                            blend: None,
+                            write_mask: wgpu::ColorWrites::empty(),
+                        }),
+                    ],
+                }),
+                multiview_mask: None,
+                cache: None,
+            })
         });
         let draw_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("particle draw"),
@@ -640,12 +652,12 @@ impl Particles {
         }
     }
 
-    /// Draws the particles inside the scene pass.
-    pub fn draw(&self, pass: &mut wgpu::RenderPass<'_>) -> bool {
+    /// Draws the particles inside the scene pass (`reversed`: its depth is reversed).
+    pub fn draw(&self, pass: &mut wgpu::RenderPass<'_>, reversed: bool) -> bool {
         if self.used == 0 {
             return false;
         }
-        pass.set_pipeline(&self.draw);
+        pass.set_pipeline(&self.draw[reversed as usize]);
         pass.set_bind_group(0, &self.draw_bg, &[]);
         pass.draw(0..6, 0..self.used);
         true

@@ -1,11 +1,13 @@
 //! Pavilion renderer: a stylized 3D renderer on wgpu. Knows nothing about the simulation.
 
 pub mod capture;
+pub mod cull;
 pub(crate) mod fx;
 pub mod gpu;
 pub mod mesh;
 pub mod renderer;
 pub mod scene;
+pub mod sea;
 pub mod shadows;
 pub mod text;
 mod upscale;

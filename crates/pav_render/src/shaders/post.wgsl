@@ -1,4 +1,6 @@
 // Composite: screen-space outlines from depth/normal/group, exposure, tonemap, saturation.
+// Scene depth runs 0 (near) to 1 (far), or reversed (1 near, 0 far) in open-world scenes with a
+// sky or an ocean (`misc.w`).
 
 struct Post {
     inv_proj: mat4x4<f32>,
@@ -7,7 +9,7 @@ struct Post {
     outline_color: vec4<f32>,  // rgb; a = 1 use this color, 0 darken the pixel instead
     outline: vec4<f32>,        // x px, y depth threshold, z normal threshold, w enabled
     tone: vec4<f32>,           // x exposure, y tonemap mode, z encode sRGB manually, w saturation
-    misc: vec4<f32>,           // x darken factor, y bloom strength, z distortion on
+    misc: vec4<f32>,           // x darken factor, y bloom strength, z distortion on, w depth reversed
     fwd: vec4<f32>,            // camera forward (world)
     filt0: vec4<f32>,          // pixel block (px), CRT curvature, scanlines, scanline period (px)
     filt1: vec4<f32>,          // dither, levels, palette, split (0 = off, else screen fraction)
@@ -26,7 +28,7 @@ struct Post {
     sun_color: vec4<f32>,      // rgb sunlight (linear, times intensity), w = point light count
     sky: vec4<f32>,            // ambient sky light: the haze's own glow
     air: vec4<f32>,            // haze density, haze height (m), haze base height (m), light shafts
-    air2: vec4<f32>,           // forward scattering (0..0.95), lamp halos
+    air2: vec4<f32>,           // forward scattering (0..0.95), lamp halos, Gull Sight (0..1)
 };
 
 struct PointLight {
@@ -61,6 +63,15 @@ fn object_w(w: f32) -> bool {
 fn aimed(part: f32, obj: bool) -> bool {
     let t = u32(part + 0.5);
     return t == 0u || (t == 1u) == obj;
+}
+
+// Depth where nothing was drawn (the far plane), and at the near plane.
+fn far_depth() -> f32 {
+    return select(1.0, 0.0, post.misc.w > 0.5);
+}
+
+fn near_depth() -> f32 {
+    return select(0.0, 1.0, post.misc.w > 0.5);
 }
 
 fn view_depth(px: vec2<i32>, sample: i32) -> f32 {
@@ -110,7 +121,7 @@ fn view_pos(px: vec2<i32>, dims: vec2<i32>) -> vec3<f32> {
 // Screen-space global illumination: light bouncing off nearby visible surfaces (colour bleed)
 // and ambient occlusion from nearby geometry. rgb = bounce, a = occlusion.
 fn screen_gi(px: vec2<i32>, dims: vec2<i32>) -> vec4<f32> {
-    if (textureLoad(depth_ms, px, 0) >= 1.0) {
+    if (textureLoad(depth_ms, px, 0) == far_depth()) {
         return vec4<f32>(0.0);
     }
     let p = view_pos(px, dims);
@@ -131,7 +142,7 @@ fn screen_gi(px: vec2<i32>, dims: vec2<i32>) -> vec4<f32> {
         let a = fi * 2.39996 + ign * 6.2831;
         let r = sqrt((fi + 0.5) / f32(count)) * rad_px;
         let q = clamp(px + vec2<i32>(vec2<f32>(cos(a), sin(a)) * r), vec2<i32>(0), dims - vec2<i32>(1));
-        if (textureLoad(depth_ms, q, 0) >= 1.0) {
+        if (textureLoad(depth_ms, q, 0) == far_depth()) {
             continue;
         }
         let v = view_pos(q, dims) - p;
@@ -150,7 +161,7 @@ fn screen_gi(px: vec2<i32>, dims: vec2<i32>) -> vec4<f32> {
     return vec4<f32>(bounce / f32(count), occ / f32(count));
 }
 
-// World position on the camera ray through `ndc` at depth `z` (0 = near plane).
+// World position on the camera ray through `ndc` at depth `z`.
 fn unproject(ndc: vec2<f32>, z: f32) -> vec3<f32> {
     let v = post.inv_proj * vec4<f32>(ndc, z, 1.0);
     return (post.inv_view * vec4<f32>(v.xyz / v.w, 1.0)).xyz;
@@ -178,8 +189,9 @@ fn sun_reaches(x: vec3<f32>) -> f32 {
 fn air_light(px: vec2<i32>, dims: vec2<i32>) -> vec4<f32> {
     let d = textureLoad(depth_ms, px, 0);
     let ndc = vec2<f32>((f32(px.x) + 0.5) / f32(dims.x) * 2.0 - 1.0, 1.0 - (f32(px.y) + 0.5) / f32(dims.y) * 2.0);
-    let ro = unproject(ndc, 0.0);
-    var rd = unproject(ndc, min(d, 0.99999)) - ro;
+    let ro = unproject(ndc, near_depth());
+    // Just short of the far plane (where nothing was drawn).
+    var rd = unproject(ndc, select(min(d, 0.99999), max(d, 0.00001), post.misc.w > 0.5)) - ro;
     var len = length(rd);
     rd = rd / max(len, 1e-4);
     len = min(len, 150.0);
@@ -188,7 +200,7 @@ fn air_light(px: vec2<i32>, dims: vec2<i32>) -> vec4<f32> {
     let sigma0 = post.air.x * 0.05;
     // Pixels with no surface (sky, or the void around a level) get no haze: their ray would
     // run for ever through it.
-    if (sigma0 > 0.0 && d < 1.0) {
+    if (sigma0 > 0.0 && d != far_depth()) {
         let h = post.air.y;
         let base = post.air.z;
         // March only where there is haze to speak of: from a few haze heights above its base
@@ -313,8 +325,19 @@ fn scene_color(p: vec2<f32>, dims: vec2<i32>, chroma: f32) -> vec3<f32> {
         let a = air_light(px, dims);
         col = col * a.a + a.rgb;
     }
-    if (post.misc.y > 0.0) {
-        col += textureSampleLevel(bloom_tex, lin, uv, 0.0).rgb * post.misc.y;
+    // Gull Sight: everything but the XRAY instances (alpha 2 in the scene's colour) turns grey
+    // and dark, and its glow dims.
+    var glow = post.misc.y;
+    let gull = post.air2.z;
+    if (gull > 0.0) {
+        let keep = smoothstep(1.2, 1.7, textureSampleLevel(hdr_tex, lin, uv, 0.0).a);
+        let grey = vec3<f32>(dot(col, vec3<f32>(0.2126, 0.7152, 0.0722))) * vec3<f32>(0.78, 0.86, 1.0);
+        let dim = mix(col, grey, gull) * (1.0 - 0.45 * gull);
+        col = mix(dim, col, keep);
+        glow *= 1.0 - 0.6 * gull * (1.0 - keep);
+    }
+    if (glow > 0.0) {
+        col += textureSampleLevel(bloom_tex, lin, uv, 0.0).rgb * glow;
     }
 
     col = col * post.tone.x;

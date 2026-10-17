@@ -54,6 +54,16 @@ pub mod flags {
     pub const SWAY: u32 = 128;
     /// Bends like grass: far in gusts, and away from the wind's pusher (the player).
     pub const GRASS: u32 = 256;
+    /// Seen through walls (Gull Sight): drawn normally, then again where something hides it,
+    /// as a translucent silhouette in its colour with a bright rim. `Scene::gull` greys out
+    /// everything else.
+    pub const XRAY: u32 = 512;
+    /// A small prop: not drawn (nor its shadow) beyond `Scene::cull_small` metres from the eye.
+    pub const CULL_SMALL: u32 = 1024;
+    /// Vegetation: not drawn beyond `Scene::cull_vegetation` metres.
+    pub const CULL_VEGETATION: u32 = 2048;
+    /// A structure: not drawn beyond `Scene::cull_structure` metres.
+    pub const CULL_STRUCTURE: u32 = 4096;
 }
 
 /// Wind for swaying foliage and grass (vertex shader).
@@ -580,6 +590,240 @@ impl Default for Fog {
     }
 }
 
+/// Fog along the view ray (aerial perspective), for `Scene::fog_ray`: with it the fog of
+/// `Scene::fog` grows with the distance from the eye instead of the horizontal distance from
+/// its centre, the air thins with height, and the sky fades into the fog colour at the horizon.
+#[derive(Clone, Copy, Debug)]
+pub struct FogRay {
+    /// How quickly the fog thins with height above `base` (1/m; 0 = the same everywhere).
+    pub height_falloff: f32,
+    /// Height where the fog is densest (usually sea level).
+    pub base: f32,
+    /// Sunlight scattered in the fog toward the sun (0 = plain fog colour).
+    pub sun_glow: f32,
+}
+
+impl Default for FogRay {
+    fn default() -> Self {
+        Self { height_falloff: 1.0 / 90.0, base: 0.0, sun_glow: 0.35 }
+    }
+}
+
+/// Procedural clouds on a curved plane over the camera (part of [`Sky`]).
+#[derive(Clone, Copy, Debug)]
+pub struct Clouds {
+    /// Fraction of the sky covered (0..1).
+    pub cover: f32,
+    /// Opacity of the clouds (0..1).
+    pub density: f32,
+    /// Linear RGB of the sunlit tops and of the shaded undersides.
+    pub color: Vec3,
+    pub shade: Vec3,
+    /// How far the wind has carried the clouds (m, world x and z).
+    pub offset: glam::Vec2,
+    /// Height of the cloud plane above the eye (m) and how quickly it curves down toward the
+    /// horizon (0 = flat; larger keeps distant clouds bigger).
+    pub height: f32,
+    pub curve: f32,
+    /// Size of a cloud (m).
+    pub size: f32,
+    /// Slow change of the cloud shapes (s).
+    pub time: f32,
+}
+
+impl Default for Clouds {
+    fn default() -> Self {
+        Self {
+            cover: 0.35,
+            density: 0.9,
+            color: Vec3::ONE,
+            shade: Vec3::new(0.55, 0.6, 0.7),
+            offset: glam::Vec2::ZERO,
+            height: 900.0,
+            curve: 0.12,
+            size: 700.0,
+            time: 0.0,
+        }
+    }
+}
+
+/// The sky, drawn on every pixel that no geometry covers (before bloom, haze and tonemapping).
+#[derive(Clone, Copy, Debug)]
+pub struct Sky {
+    /// Linear RGB straight up, at the horizon and below it.
+    pub zenith: Vec3,
+    pub horizon: Vec3,
+    pub ground: Vec3,
+    /// Direction the sunlight travels (as `Sun::direction`).
+    pub sun_dir: Vec3,
+    /// Colour of the sun's disc (linear HDR: values over 1 bloom).
+    pub sun_color: Vec3,
+    /// Angular radius of the disc (degrees) and strength of the glow around it (0..1).
+    pub sun_size: f32,
+    pub sun_glow: f32,
+    pub clouds: Clouds,
+    /// Storm: darker sky and heavier, darker clouds (0..1).
+    pub storm: f32,
+    /// Lightning: sky and clouds flash (0..1).
+    pub flash: f32,
+}
+
+impl Default for Sky {
+    fn default() -> Self {
+        Self {
+            zenith: srgb(0x2f, 0x6d, 0xb5),
+            horizon: srgb(0xbf, 0xe0, 0xf2),
+            ground: srgb(0x6f, 0x8f, 0xa4),
+            sun_dir: Sun::default().direction,
+            sun_color: Vec3::new(1.0, 0.95, 0.85) * 12.0,
+            sun_size: 1.2,
+            sun_glow: 0.5,
+            clouds: Clouds::default(),
+            storm: 0.0,
+            flash: 0.0,
+        }
+    }
+}
+
+/// One Gerstner wave of an [`Ocean`], as `pav_core::ocean` evaluates it.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct OceanWave {
+    /// Unit direction of travel (world x, z).
+    pub dir: glam::Vec2,
+    /// Wavelength (m), wavenumber (2π / wavelength) and angular frequency (rad/s).
+    pub wavelength: f32,
+    pub k: f32,
+    pub omega: f32,
+    /// Crest height above the mean (m).
+    pub amplitude: f32,
+    /// Gerstner Q, already normalised over all six waves.
+    pub q: f32,
+    /// Phase offset (radians).
+    pub phase: f32,
+}
+
+/// Ground height under the sea on a grid, as `pav_core::ocean::Seabed`: heights (m) at cell
+/// centres, `deep` outside. The renderer uploads it when the `Arc` changes.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct SeabedMap {
+    /// World x, z of cell (0, 0)'s corner.
+    pub origin: glam::Vec2,
+    /// Cell size (m).
+    pub cell: f32,
+    pub width: usize,
+    pub depth: usize,
+    /// Row-major (z rows).
+    pub heights: Vec<f32>,
+    pub deep: f32,
+}
+
+/// The open sea: a camera-centred grid displaced by six Gerstner waves on the GPU, exactly as
+/// `pav_core::ocean::SeaState::displacement` moves the water on the CPU (near the camera; far
+/// away the short waves fade out where the grid can no longer hold them). Opaque, writes
+/// depth; lit by `Scene::sun`, fogged by `Scene::fog`.
+#[derive(Clone, Debug)]
+pub struct Ocean {
+    pub waves: [OceanWave; 6],
+    /// Sea time (s): the ocean function's `t`.
+    pub time: f32,
+    /// Mean sea level (world y).
+    pub level: f32,
+    /// Linear RGB: open water, mid water, shallows and foam.
+    pub deep: Vec3,
+    pub mid: Vec3,
+    pub shallow: Vec3,
+    pub foam: Vec3,
+    /// Small ripples (0..1) and crest foam (0..1).
+    pub detail: f32,
+    pub foam_amount: f32,
+    /// Sky colours the water reflects (Fresnel), overhead and at the horizon.
+    pub sky_zenith: Vec3,
+    pub sky_horizon: Vec3,
+    /// Strength of the sun's glitter on the water.
+    pub glint: f32,
+    /// Water shallower than this (m) gets surf foam (needs a seabed).
+    pub shore_foam: f32,
+    pub seabed: Option<std::sync::Arc<SeabedMap>>,
+    /// Grid cells across each of the six LOD rings (128 ≈ 80k vertices; 64 for low quality).
+    pub cells: u32,
+}
+
+impl Default for Ocean {
+    fn default() -> Self {
+        Self {
+            waves: [OceanWave::default(); 6],
+            time: 0.0,
+            level: 0.0,
+            deep: srgb(0x0b, 0x3d, 0x5c),
+            mid: srgb(0x12, 0x70, 0x8a),
+            shallow: srgb(0x3f, 0xc1, 0xc0),
+            foam: srgb(0xf4, 0xf8, 0xf6),
+            detail: 0.5,
+            foam_amount: 0.3,
+            sky_zenith: srgb(0x2f, 0x6d, 0xb5),
+            sky_horizon: srgb(0xbf, 0xe0, 0xf2),
+            glint: 1.0,
+            shore_foam: 1.5,
+            seabed: None,
+            cells: 128,
+        }
+    }
+}
+
+impl Ocean {
+    /// The waves' phase constants for a grid centred at `center` (world x, z): for each wave,
+    /// `k·dot(dir, center) + phase − ω·time` reduced to [0, 2π) in double precision. The GPU then
+    /// evaluates `k·dot(dir, p0 − center) + that`, which keeps the shader's sine arguments small.
+    pub fn phases_at(&self, center: glam::Vec2) -> [f32; 6] {
+        let mut out = [0.0; 6];
+        for (o, w) in out.iter_mut().zip(&self.waves) {
+            let ph = w.k as f64 * (w.dir.x as f64 * center.x as f64 + w.dir.y as f64 * center.y as f64) + w.phase as f64
+                - w.omega as f64 * self.time as f64;
+            *o = ph.rem_euclid(std::f64::consts::TAU) as f32;
+        }
+        out
+    }
+
+    /// Where the water particle resting at `p0` (x, z) is now, (dx, height above `level`, dz),
+    /// evaluated exactly as the vertex shader does with the grid centred at `center` (all waves
+    /// at full strength: the shader fades short waves only far from the eye).
+    pub fn displacement(&self, p0: glam::Vec2, center: glam::Vec2) -> Vec3 {
+        let pc = self.phases_at(center);
+        let r = p0 - center;
+        let mut d = Vec3::ZERO;
+        for (w, pc) in self.waves.iter().zip(pc) {
+            if w.amplitude == 0.0 {
+                continue;
+            }
+            // `wrap_phase` in sea.wgsl.
+            let ph = w.k * w.dir.dot(r) + pc;
+            let ph = ph - std::f32::consts::TAU * (ph / std::f32::consts::TAU).floor();
+            let (s, c) = ph.sin_cos();
+            d.x += w.q * w.amplitude * w.dir.x * c;
+            d.z += w.q * w.amplitude * w.dir.y * c;
+            d.y += w.amplitude * s;
+        }
+        d
+    }
+}
+
+/// Rain: streaks falling around the camera, slanted by the wind, and rings on the ocean.
+#[derive(Clone, Copy, Debug)]
+pub struct Rain {
+    /// 0 = dry, 1 = downpour.
+    pub amount: f32,
+    /// Wind (m/s, world x and z): slants the streaks.
+    pub wind: glam::Vec2,
+    /// Linear RGB of the streaks (lit by the sky).
+    pub color: Vec3,
+}
+
+impl Default for Rain {
+    fn default() -> Self {
+        Self { amount: 0.0, wind: glam::Vec2::ZERO, color: Vec3::new(0.7, 0.75, 0.8) }
+    }
+}
+
 /// Camera helpers that remove geometry hiding the player.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Cutaway {
@@ -628,6 +872,23 @@ pub struct Scene {
     /// same `Arc` and version while the rows are unchanged.
     pub materials: std::sync::Arc<Vec<GpuMaterial>>,
     pub materials_version: u64,
+    /// The sky behind everything (None: the clear colour, as before).
+    pub sky: Option<Sky>,
+    /// The open sea (None: no ocean).
+    pub ocean: Option<Ocean>,
+    pub rain: Option<Rain>,
+    /// Fog along the view ray instead of around `fog.center` (None: the horizontal fog).
+    pub fog_ray: Option<FogRay>,
+    /// Skip mesh and SDF instances outside the view (their shadows are kept when they fall in
+    /// the sun's shadow square or a shadowed lamp's reach).
+    pub frustum_cull: bool,
+    /// Distances (m from the eye) beyond which instances flagged `CULL_SMALL`,
+    /// `CULL_VEGETATION` and `CULL_STRUCTURE` are not drawn (0 = no limit).
+    pub cull_small: f32,
+    pub cull_vegetation: f32,
+    pub cull_structure: f32,
+    /// Gull Sight: greys and darkens everything except `XRAY` instances (0..1).
+    pub gull: f32,
 }
 
 impl Default for Scene {
@@ -654,6 +915,15 @@ impl Default for Scene {
             time: 0.0,
             materials: std::sync::Arc::default(),
             materials_version: 0,
+            sky: None,
+            ocean: None,
+            rain: None,
+            fog_ray: None,
+            frustum_cull: true,
+            cull_small: 0.0,
+            cull_vegetation: 0.0,
+            cull_structure: 0.0,
+            gull: 0.0,
         }
     }
 }
