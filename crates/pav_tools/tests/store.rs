@@ -50,9 +50,11 @@ fn the_store_finds_shelves_credits_and_refuses() {
         assert!(hit || none, "{word}: {reply}");
         assert!(reply.get("matched") != Some(&json!(0)), "never a bare 0: {reply}");
     }
+    // Trees are in the core library now (the palm and jungle tree the islands grow): a hit, and
+    // all of it vegetation. A word nothing answers still gets the route (`villager`, below).
     let tree = call(&mut s, "assets", json!({"find": "tree"}));
-    assert!(tree["route"].as_str().unwrap().starts_with("make it:"), "{tree}");
-    assert!(tree["nearest"].as_array().unwrap().iter().all(|row| row[1] == "vegetation"), "the vegetation hint: {tree}");
+    let rows = tree["rows"].as_array().cloned().unwrap_or_default();
+    assert!(!rows.is_empty() && rows.iter().all(|row| row[1] == "vegetation"), "{tree}");
     // S3b's imported figures answer `character`; a person no row names gets the route.
     let character = call(&mut s, "assets", json!({"find": "character"}));
     assert!(names(&character["rows"]).iter().any(|name| name.starts_with("LIB/kaykit_adventurers/")), "{character}");
@@ -72,7 +74,7 @@ fn the_store_finds_shelves_credits_and_refuses() {
     let zebra = call(&mut s, "assets", json!({"kind": "material", "find": "zebra"}));
     assert!(zebra["none"].is_string() && zebra["route"].as_str().unwrap().starts_with("make it:"), "{zebra}");
     let misses = std::fs::read_to_string(scratch.join("misses.tsv")).unwrap();
-    assert!(misses.contains("\tprop\ttree\t") && misses.contains("\tprop\tvillager\t"), "{misses}");
+    assert!(misses.contains("\tprop\tdragon statue\t") && misses.contains("\tprop\tvillager\t"), "{misses}");
     assert!(misses.contains("\tmaterial\tzebra\t"), "{misses}");
     // Rows carry their store tier and mesh share; the local tier is not searched by default.
     let barrel = call(&mut s, "assets", json!({"find": "barrel"}));
@@ -91,12 +93,12 @@ fn the_store_finds_shelves_credits_and_refuses() {
     let nothing = call(&mut s, "assets", json!({"find": "juggle flaming torches", "kind": "clip"}));
     assert!(nothing["none"].is_string() && nothing["route"].is_string(), "{nothing}");
 
-    // Each shelf is within about 1,500 tokens, and the prop shelf holds only standard and
-    // checked rows.
+    // Each shelf is within about 1,500 tokens (1,600 since the core library gained the islands'
+    // palm, jungle tree and driftwood), and the prop shelf holds only standard and checked rows.
     for kind in ["prop", "clip"] {
         let shelf = call(&mut s, "assets", json!({"shelf": kind}));
         let tokens = index::tokens(shelf.to_string().len());
-        assert!(tokens <= 1_500, "shelf={kind}: {tokens} tokens");
+        assert!(tokens <= 1_600, "shelf={kind}: {tokens} tokens");
     }
     let props = call(&mut s, "assets", json!({"shelf": "prop"})).to_string();
     assert!(props.contains("\"chair ") && props.contains("LIB/kenney_mini_dungeon/table"), "{props}");
@@ -166,7 +168,9 @@ fn the_store_finds_shelves_credits_and_refuses() {
         assert!(line.len() <= asset_library::STORE_ROW_BYTES, "{line}");
         *kinds.entry(kind.to_owned()).or_insert(0) += 1;
     }
-    assert!(kinds["prop"] >= 90 && kinds["clip"] >= 400 && kinds["material"] == 18, "{kinds:?}");
+    // 18 materials, then 26 with the islands' (canvas, limestone, plaster, rope, sand, terracotta,
+    // thatch, wet sand).
+    assert!(kinds["prop"] >= 90 && kinds["clip"] >= 400 && kinds["material"] == 26, "{kinds:?}");
     assert!(table.contains("\nLIB/core/cask\tprop\tstandard\tCC0-1.0\tedited\timport\t"), "the Kenney fork is standard");
     let shares = table.lines().nth(1).unwrap();
     assert!(["prop", "clip", "material"].iter().all(|kind| shares.contains(&format!("{kind} "))), "{shares}");
