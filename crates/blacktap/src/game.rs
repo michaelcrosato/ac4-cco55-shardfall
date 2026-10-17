@@ -380,6 +380,28 @@ impl BlackTap {
         }
     }
 
+    /// The feel of what happened at sea this tick beyond the rules' own (broadsides and hits
+    /// shake in `rounds.rs`): a ram, and shells bursting close aboard, shake the camera and
+    /// rumble the controller.
+    fn sea_feel(&mut self, events: &[SimEvent]) {
+        let Some(me) = self.sea.my_ship().filter(|s| s.alive()).map(|s| Vec3::new(s.pos.x, 0.0, s.pos.y)) else { return };
+        if self.body != Body::Helm || self.mode == Mode::Title {
+            return;
+        }
+        for e in events {
+            let SimEvent::Cue { cue, pos, .. } = e else { continue };
+            let d = Vec2::new(pos.x - me.x, pos.z - me.z).length();
+            match cue.as_str() {
+                "ram_hit" if d < 40.0 => self.shake(0.5, (1.0, 0.55, 280)),
+                "splash_big" | "explosion" if d < 32.0 => {
+                    let k = 1.0 - d / 32.0;
+                    self.shake(0.12 + 0.3 * k, (0.35 + 0.6 * k, 0.2 + 0.3 * k, 120 + (120.0 * k) as u32));
+                }
+                _ => {}
+            }
+        }
+    }
+
     pub fn shake(&mut self, s: f32, rumble: (f32, f32, u32)) {
         self.shake = self.shake.max(s);
         if self.rumble.len() < 8 {
@@ -542,6 +564,8 @@ impl Game for BlackTap {
 
     fn pre(&mut self, sim: &mut Sim, input: &InputFrame, dt: f32, events: &mut Vec<SimEvent>) -> BTreeMap<EntityId, InputFrame> {
         self.caches();
+        // Rumble cues live for one tick: the frame after this tick carries what it started.
+        self.rumble.clear();
         let pressed;
         let input = if self.tool_press != 0 {
             let tp = std::mem::take(&mut self.tool_press);
@@ -600,7 +624,9 @@ impl Game for BlackTap {
         }
         let title_helm = (self.mode == Mode::Title).then(|| crate::rounds::title_helm(self));
         let braced_before = self.sea.my_ship().map(|s| s.brace_cd).unwrap_or(0.0);
+        let first_sea_event = events.len();
         let sea_events = self.sea.step(&c.classes, &w, Some(&ocean), helm.or(title_helm), self.options.difficulty, dt, events);
+        self.sea_feel(&events[first_sea_event..]);
         if self.sea.my_ship().is_some_and(|s| s.brace_cd > braced_before + 1.0) {
             self.show("brace");
         }
@@ -695,6 +721,7 @@ impl Game for BlackTap {
             s.tick(dt);
         }
         crate::foot::post(self, sim, dt, events);
+        crate::vfx::tick_cues(self, sim, dt, events);
         crate::rounds::post(self, sim, dt, events);
         if self.mode == Mode::Drydock {
             crate::drydock::post(self, sim, dt, events);

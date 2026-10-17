@@ -224,10 +224,19 @@ fn presentation_pads() {
     idle(&mut sim, 60 * 26);
     assert!(game(&sim).stealth.last_words.is_none());
     assert_eq!(game(&sim).dock.theatre, None, "the theatre's weather and music restored");
-    // Rumble: shake and a controller cue.
-    stand_on(&mut sim, "rumble:blast");
-    let fx = present(&mut sim).effects.clone();
-    assert!(fx.shake > 0.3 && !fx.rumble.is_empty());
+    // Rumble: shake and a controller cue, carried by the frame of the tick that started it
+    // and gone the tick after (the app collects each tick's cues once).
+    let p = pad(&sim, "rumble:blast");
+    let pid = sim.state.player.expect("player");
+    sim.set_position(pid, p.at + Vec3::Y * 0.05);
+    let mut frames = Vec::new();
+    for _ in 0..4 {
+        idle(&mut sim, 1);
+        frames.push(present(&mut sim).effects.clone());
+    }
+    let first = frames.iter().position(|fx| !fx.rumble.is_empty()).expect("the pad rumbles");
+    assert!(frames[first].shake > 0.3);
+    assert!(frames[first + 1..].iter().all(|fx| fx.rumble.is_empty()), "a rumble cue lasts one tick");
 }
 
 #[test]

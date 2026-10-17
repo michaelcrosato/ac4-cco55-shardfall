@@ -45,6 +45,15 @@ pub struct Spout {
     pub life: f32,
 }
 
+/// Where a ship went down and when (the sea clock): its wreckage floats there a while (drawn
+/// by `vfx.rs`; nothing collides with it).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Wreck {
+    pub id: u32,
+    pub pos: Vec2,
+    pub at: f32,
+}
+
 /// What the player's helm does this tick (from the buttons, see `game.rs`).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct HelmInput {
@@ -96,6 +105,9 @@ pub struct Sea {
     /// Seconds added to the batteries' first volley (from the world seed).
     #[serde(default)]
     pub jitter: f32,
+    /// Ships gone down in the last minute or so (their wreckage is drawn).
+    #[serde(default)]
+    pub wrecks: Vec<Wreck>,
 }
 
 /// Things that happened at sea this tick, for the rules and the bot.
@@ -111,6 +123,36 @@ pub enum SeaEvent {
     Tagged { ship: u32 },
     Telegraph { ship: u32 },
     Spout,
+}
+
+/// Where a weapon's guns are on a ship: the gun ports down the firing side (as the brace glow
+/// draws them), the bow chasers, else amidships.
+pub fn muzzles(v: &Vessel, c: &HullClass, w: Weapon) -> Vec<Vec3> {
+    match w {
+        Weapon::Broadside(side) => {
+            let s = if side == Side::Starboard { 1.0 } else { -1.0 };
+            let n = c.guns_per_side.max(1);
+            (0..n)
+                .map(|i| {
+                    let along = (i as f32 / (n.max(2) - 1) as f32 - 0.5) * c.length * 0.56;
+                    v.world(Vec3::new(s * (c.beam * 0.5 + 0.5), c.freeboard * 0.6, along))
+                })
+                .collect()
+        }
+        Weapon::Chain => vec![v.world(Vec3::new(0.0, c.freeboard, c.length * 0.5))],
+        _ => vec![v.world(Vec3::Y * c.freeboard)],
+    }
+}
+
+/// A volley's cues: the report and flash once, from the middle gun, and a puff of smoke from
+/// every muzzle (`muzzle_smoke` is a look only: fx.toml).
+fn volley(v: &Vessel, c: &HullClass, w: Weapon, cue: &str, gain: f32, events: &mut Vec<SimEvent>) {
+    let guns = muzzles(v, c, w);
+    let mid = guns[guns.len() / 2];
+    events.push(SimEvent::Cue { cue: cue.into(), pos: mid, gain, pitch: 1.0 });
+    for g in guns {
+        events.push(SimEvent::cue("muzzle_smoke", g));
+    }
 }
 
 impl Sea {
@@ -287,8 +329,8 @@ impl Sea {
                             let _ = id;
                             events.push(SimEvent::cue("keg_drop", at));
                         }
-                        Weapon::Chain => events.push(SimEvent::cue("chain_fire", at)),
-                        _ => events.push(SimEvent::Cue { cue: "cannon_fire".into(), pos: at, gain: 1.2, pitch: 1.0 }),
+                        Weapon::Chain => volley(v, &c, weapon, "chain_fire", 1.0, events),
+                        _ => volley(v, &c, weapon, "cannon_fire", 1.2, events),
                     }
                     out.push(SeaEvent::Fired { ship: me, weapon: weapon.name().into() });
                 }
@@ -332,8 +374,7 @@ impl Sea {
             if let Some((w, el)) = orders.fire {
                 let dmg = 0.6 + 0.4 * difficulty;
                 if self.ships[i].fire(&c, w, el, None, &mut self.shots, dmg) {
-                    let at = self.ships[i].world(Vec3::Y * c.freeboard);
-                    events.push(SimEvent::cue(if w == Weapon::Chain { "chain_fire" } else { "cannon_fire" }, at));
+                    volley(&self.ships[i], &c, w, if w == Weapon::Chain { "chain_fire" } else { "cannon_fire" }, 1.0, events);
                 }
             }
             let ev = self.ships[i].sail_step(&c, orders.helm, wind, ocean, &seabed, dt);
@@ -349,14 +390,25 @@ impl Sea {
             (s.world(Vec3::Y), Vec3::new(v.x, 0.0, v.y))
         });
         for b in &mut self.batteries {
+            let primed = b.telegraph > 0.0;
             let (mark, started) = b.step(target, &mut self.shots, dt);
+            // On top of the emplacement (its stand-in box reaches half its height above `pos`).
+            let top = b.pos + Vec3::Y * (b.half.y * 0.5 + 0.6);
             if started && b.kind == BatteryKind::Guns {
                 events.push(SimEvent::cue("ship_bell", b.pos));
                 out.push(SeaEvent::Telegraph { ship: 0 });
             }
+            if primed && b.telegraph <= 0.0 && b.kind == BatteryKind::Guns {
+                // The volley: the report once, smoke from each gun along the parapet.
+                events.push(SimEvent::cue("cannon_fire", top));
+                for i in 0..b.guns {
+                    let along = (i as f32 / b.guns.max(2).saturating_sub(1) as f32 - 0.5) * b.half.x * 1.4;
+                    events.push(SimEvent::cue("muzzle_smoke", top + Vec3::new(along, 0.0, 0.0)));
+                }
+            }
             if let Some(m) = mark {
                 out.push(SeaEvent::Telegraph { ship: 0 });
-                events.push(SimEvent::cue("mortar_launch", b.pos));
+                events.push(SimEvent::cue("mortar_launch", top));
                 events.push(SimEvent::cue("mortar_whistle", m.at));
                 self.shells.push(m);
             }
@@ -427,6 +479,8 @@ impl Sea {
             }
         }
         self.spouts.retain(|s| s.life > 0.0);
+        let clock = self.clock;
+        self.wrecks.retain(|w| clock - w.at < 80.0);
         let spouts = self.spouts.clone();
         for v in &mut self.ships {
             for sp in &spouts {
@@ -466,6 +520,8 @@ impl Sea {
                     // Gone under (the sinking was reported when it began).
                     if let Some(s) = self.ship(id) {
                         events.push(SimEvent::cue("sink", s.world(Vec3::ZERO)));
+                        let wreck = Wreck { id, pos: s.pos, at: self.clock };
+                        self.wrecks.push(wreck);
                     }
                 }
                 NavalEvent::Grounded { id, damage } => {

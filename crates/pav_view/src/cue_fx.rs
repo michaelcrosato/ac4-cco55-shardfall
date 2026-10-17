@@ -9,6 +9,9 @@
 //! water = 1.5        # dents the water surface (m)
 //! flash = { color = "#ffb060", intensity = 4.0, radius = 12.0, seconds = 0.12 }
 //! ```
+//! A particle layer may also lean with the game's wind (`wind = 0.6`: that share of the wind's
+//! speed added to the launch, and the drag eased so it keeps drifting) and override the preset's
+//! `drag`, `gravity` and `floor` (a height above the cue where falling particles land).
 //! Cues without an entry show nothing (the sound bank may still play them).
 
 use std::collections::BTreeMap;
@@ -33,6 +36,13 @@ pub struct CueParticles {
     pub color: String,
     /// Height above the cue's position.
     pub offset: f32,
+    /// Share of the wind's speed added to the launch velocity (smoke drifting downwind).
+    pub wind: f32,
+    /// Overrides of the preset (None = the preset's).
+    pub drag: Option<f32>,
+    pub gravity: Option<f32>,
+    /// Falling particles land this far above the cue's position (splinters on a deck).
+    pub floor: Option<f32>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -70,8 +80,13 @@ impl FxBank {
         toml::from_str(text).map_err(|e| e.to_string())
     }
 
-    /// The bursts for a cue at `pos` (empty when unknown).
+    /// The bursts for a cue at `pos` (empty when unknown), in still air.
     pub fn bursts(&self, name: &str, pos: Vec3, gain: f32) -> Vec<ParticleBurst> {
+        self.bursts_in_wind(name, pos, gain, glam::Vec2::ZERO)
+    }
+
+    /// The bursts for a cue at `pos` with the wind blowing (m/s, x and z).
+    pub fn bursts_in_wind(&self, name: &str, pos: Vec3, gain: f32, wind: glam::Vec2) -> Vec<ParticleBurst> {
         let Some(fx) = self.cue.get(name) else { return Vec::new() };
         fx.particles
             .iter()
@@ -92,6 +107,19 @@ impl FxBank {
                     b.area = Vec3::splat(p.area);
                 }
                 b.vel += Vec3::Y * p.up;
+                if p.wind != 0.0 && wind != glam::Vec2::ZERO {
+                    b.vel += Vec3::new(wind.x, 0.0, wind.y) * p.wind;
+                    b.drag = b.drag.min(0.3);
+                }
+                if let Some(d) = p.drag {
+                    b.drag = d.max(0.0);
+                }
+                if let Some(g) = p.gravity {
+                    b.gravity = g;
+                }
+                if let Some(f) = p.floor {
+                    b.floor = Some(pos.y + f);
+                }
                 if !p.color.is_empty() {
                     let c = pav_core::Color::hex(&p.color).0;
                     let glow = if b.additive { 2.0 } else { 1.0 };

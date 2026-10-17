@@ -94,7 +94,29 @@ fn ship(g: &mut BlackTap, a: &Value) -> Result<Value, String> {
         Some("board") => g.tool_press |= b::INTERACT,
         Some("brace") => g.tool_press |= b::INTERACT,
         Some("repair") => g.tool_press |= b::HEAL,
-        Some(other) => return Err(format!("do is sail, steer, place, fire, board, brace or repair (not '{other}')")),
+        // Effects checks: set the nearest other ship alight, or send her down.
+        Some(what @ ("ignite" | "sink")) => {
+            let at = g.sea.my_ship().map(|s| s.pos).ok_or("no ship")?;
+            let id = g
+                .sea
+                .ships
+                .iter()
+                .filter(|o| o.id != me && o.alive())
+                .min_by(|a, b| a.pos.distance(at).total_cmp(&b.pos.distance(at)))
+                .map(|o| o.id)
+                .ok_or("no other ship afloat")?;
+            let o = g.sea.ship_mut(id).ok_or("no ship")?;
+            if what == "ignite" {
+                o.hull = o.hull.min(o.hull_max * 0.45);
+                o.fire = 12.0;
+            } else {
+                o.hull = 0.0;
+                o.sinking = 0.001;
+            }
+        }
+        Some(other) => {
+            return Err(format!("do is sail, steer, place, fire, board, brace, repair, ignite or sink (not '{other}')"));
+        }
     }
     let s = g.sea.my_ship().ok_or("no ship")?;
     Ok(json!({
@@ -168,9 +190,18 @@ fn ocean(g: &mut BlackTap, a: &Value) -> Result<Value, String> {
         g.sea.wind = Vec2::new(r.sin(), -r.cos()) * speed;
     }
     let o = g.ocean();
-    Ok(
-        json!({ "atmosphere": g.atmos_to, "wind": [round2(g.sea.wind.x), round2(g.sea.wind.y)], "max_height": round2(o.sea.max_height()), "foam": round2(o.sea.foam) }),
-    )
+    // In a storm: seconds until the next lightning strike and where it lands from the player
+    // (with the camera as it is now), to step there and see it.
+    let rain = crate::present::atmosphere(g).rain;
+    let next = (1..60 * 12).map(|k| k as f32 / 60.0).find_map(|dt| {
+        crate::vfx::lightning(g.seed, rain, glam::Vec3::ZERO, g.cam.yaw, g.time + dt)
+            .filter(|s| s.age < 1.0 / 60.0)
+            .map(|s| json!({ "in": round2(dt), "offset": [round2(s.pos.x), round2(s.pos.z)] }))
+    });
+    Ok(json!({
+        "atmosphere": g.atmos_to, "wind": [round2(g.sea.wind.x), round2(g.sea.wind.y)], "max_height": round2(o.sea.max_height()),
+        "foam": round2(o.sea.foam), "next_lightning": next,
+    }))
 }
 
 /// Every reference in the game's data that names something else: markers, routes, dialog

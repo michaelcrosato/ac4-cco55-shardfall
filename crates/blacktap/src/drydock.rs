@@ -1101,8 +1101,6 @@ fn fx_rumble(g: &mut BlackTap, kind: &str) {
         "hull" => (0.45, (0.7, 0.6, 200)),
         _ => (0.7, (1.0, 0.9, 450)),
     };
-    // The game keeps at most eight cues and nothing drains them yet: each pad shows its own.
-    g.rumble.clear();
     g.shake(shake, rumble);
     g.toast(&format!("Rumble: {}", pretty(kind)));
 }

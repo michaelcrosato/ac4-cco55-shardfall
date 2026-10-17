@@ -19,6 +19,7 @@ pub mod rounds;
 pub mod sea;
 pub mod stealth;
 pub mod traverse;
+pub mod vfx;
 pub mod world;
 
 mod embedded {

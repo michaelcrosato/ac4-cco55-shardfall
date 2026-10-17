@@ -8,6 +8,7 @@ use std::sync::Arc;
 
 use glam::{Mat4, Quat, Vec3};
 use pav_core::Color;
+use pav_core::fxdef::EmitterDef;
 use pav_core::play::{CameraHint, DrawItem, Mesh, PlayFrame};
 use pav_render::mesh::{MeshData, MeshKey, Vertex};
 use pav_render::scene::{self as rs, CameraData, MeshInstance, Scene, Style, flags as rflags};
@@ -49,6 +50,8 @@ pub struct PlayView {
     /// Frame time of the last build (cache housekeeping).
     frames: u64,
     used: HashMap<u64, u64>,
+    /// Fractional particles owed per draw-list emitter (by its key).
+    carry: HashMap<u64, f32>,
 }
 
 /// Converts a game mesh to the renderer's vertex format.
@@ -102,9 +105,11 @@ fn same_kind(a: &DrawItem, b: &DrawItem) -> bool {
 }
 
 impl PlayView {
-    /// Adds the play frame's draw list to the scene.
-    pub fn emit(&mut self, scene: &mut Scene, prev: Option<&PlayFrame>, curr: &PlayFrame, alpha: f32) {
+    /// Adds the play frame's draw list to the scene. `dt` (s since the last built scene) runs
+    /// its emitters; `particles` false skips them (the particles setting).
+    pub fn emit(&mut self, scene: &mut Scene, prev: Option<&PlayFrame>, curr: &PlayFrame, alpha: f32, dt: f32, particles: bool) {
         self.frames += 1;
+        let mut live = Vec::new();
         let prev_items = prev.map(|p| &p.draw.items[..]).unwrap_or(&[]);
         for (i, item) in curr.draw.items.iter().enumerate() {
             // Interpolate the placement from the previous frame's matching item.
@@ -116,14 +121,48 @@ impl PlayView {
                 pos = pp.lerp(pos, alpha);
                 rot = pr.slerp(rot, alpha);
             }
+            if let DrawItem::Emitter { key, def, pos, drift } = item {
+                if particles {
+                    self.emit_particles(scene, *key, def, *pos, *drift, dt);
+                    live.push(*key);
+                }
+                continue;
+            }
             self.emit_item(scene, item, pos, rot);
         }
+        self.carry.retain(|k, _| live.contains(k));
         // Forget meshes unused for a while.
         if self.frames.is_multiple_of(600) {
             let now = self.frames;
             self.used.retain(|_, t| now - *t < 600);
             let used = &self.used;
             self.meshes.retain(|k, _| used.contains_key(k));
+        }
+    }
+
+    /// One draw-list emitter's particles this frame; a new key starts in full swing.
+    fn emit_particles(&mut self, scene: &mut Scene, key: u64, def: &EmitterDef, pos: Vec3, drift: Vec3, dt: f32) {
+        let rate = crate::fx::emitter_rate(def);
+        let drifted = |mut b: rs::ParticleBurst| {
+            if drift != Vec3::ZERO {
+                // Carried by the air: launched with it and slowed less, so it keeps leaning.
+                b.vel += drift;
+                b.drag = b.drag.min(0.25);
+            }
+            b
+        };
+        if !self.carry.contains_key(&key) {
+            let mut b = crate::fx::emitter_burst(def, pos, 0);
+            b.count = (rate * b.life.1).min(400.0) as u32;
+            b.prewarm = b.life.1;
+            scene.particles.push(drifted(b));
+        }
+        let carry = self.carry.entry(key).or_insert(0.0);
+        *carry += rate * dt;
+        let n = carry.floor();
+        *carry -= n;
+        if n >= 1.0 {
+            scene.particles.push(drifted(crate::fx::emitter_burst(def, pos, n as u32)));
         }
     }
 
@@ -199,7 +238,7 @@ impl PlayView {
             }
             DrawItem::Decal { radius, ring, color, alpha, .. } => {
                 let q = (ring.clamp(0.0, 0.98) * 50.0).round() as u32;
-                let key = MeshKey::Custom(0x5_eca1_0000 + q as u64);
+                let key = MeshKey::Custom(0x0005_eca1_0000 + q as u64);
                 let data = self.rings.entry(q).or_insert_with(|| Arc::new(ring_mesh(q as f32 / 50.0))).clone();
                 if !scene.custom_meshes.iter().any(|(k, _)| *k == key) {
                     scene.custom_meshes.push((key, data));
@@ -254,6 +293,8 @@ impl PlayView {
                     shadows: false,
                 });
             }
+            DrawItem::Distortion { def, pos } => scene.distortions.push(crate::fx::distortion(def, *pos, scene.time)),
+            DrawItem::Emitter { .. } => {}
             DrawItem::Text { text, size, color, yaw, .. } => {
                 let y = yaw.to_radians();
                 scene.texts.push(pav_render::text::Text3d {

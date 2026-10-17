@@ -1,29 +1,44 @@
 # What each cue looks like (pav_view::cue_fx). Particles use the engine's presets (smoke, steam,
 # sparks, embers, fountain, dust, bubbles, confetti, fire...) with multipliers; shock = a
 # shockwave radius (m); water = a dent in the sea surface (m); flash = a short point light.
-# No blood anywhere: sparks, dust and splinters instead.
+# A particle layer can lean downwind (wind = the share of the wind's speed it is launched with)
+# and override the preset's drag, gravity and floor (m above the cue, where falling bits land).
+# No blood anywhere: sparks, dust and splinters instead. Continuous effects (deck fires, spray,
+# waterspouts, torches, fireflies, gulls...) are the game's draw list (crates/blacktap/src/vfx.rs).
 
 [cue.cannon_fire]
-particles = [{ preset = "smoke", count = 36, spread = 2.5, size = 2.2, life = 2.2, up = 1.2, area = 1.2, color = "#d9d4ca" },
+particles = [{ preset = "smoke", count = 36, spread = 2.5, size = 2.2, life = 2.2, up = 1.2, area = 1.2, color = "#d9d4ca", wind = 0.55 },
+             { preset = "fire", count = 16, spread = 2.2, size = 2.4, life = 0.45, area = 0.6 },
              { preset = "sparks", count = 18, spread = 1.6, color = "#ffc46a" }]
 flash = { color = "#ffb060", intensity = 6.0, radius = 16.0, seconds = 0.12 }
 shock = 4.0
 
+# Not a sound: smoke and a tongue of flame from each gun of a volley (cannon_fire is the report
+# and the flash, from the middle gun).
+[cue.muzzle_smoke]
+particles = [{ preset = "smoke", count = 18, spread = 2.4, size = 4.2, life = 2.6, up = 0.9, area = 0.6, color = "#e6e1d6", wind = 0.55 },
+             { preset = "fire", count = 8, spread = 2.4, size = 2.6, life = 0.35, area = 0.3 }]
+
 [cue.cannon_fire_heavy]
-particles = [{ preset = "smoke", count = 48, spread = 3.0, size = 2.6, life = 2.6, up = 1.4, area = 1.5, color = "#d0cabe" }]
+particles = [{ preset = "smoke", count = 48, spread = 3.0, size = 2.6, life = 2.6, up = 1.4, area = 1.5, color = "#d0cabe", wind = 0.55 },
+             { preset = "fire", count = 20, spread = 2.6, size = 2.8, life = 0.5, area = 0.8 }]
 flash = { color = "#ffa050", intensity = 8.0, radius = 20.0, seconds = 0.14 }
 shock = 5.0
 
 [cue.chain_fire]
-particles = [{ preset = "smoke", count = 24, spread = 2.0, size = 1.6, life = 1.8, up = 1.0, color = "#d9d4ca" }]
+particles = [{ preset = "smoke", count = 24, spread = 2.0, size = 1.6, life = 1.8, up = 1.0, color = "#d9d4ca", wind = 0.55 },
+             { preset = "sparks", count = 12, spread = 1.4, color = "#ffc46a" }]
 flash = { color = "#ffb060", intensity = 4.0, radius = 12.0, seconds = 0.1 }
 
 [cue.swivel_fire]
-particles = [{ preset = "smoke", count = 12, spread = 1.2, size = 0.8, life = 1.2, color = "#e0dcd2" }]
+particles = [{ preset = "smoke", count = 12, spread = 1.2, size = 0.8, life = 1.2, color = "#e0dcd2", wind = 0.5 },
+             { preset = "sparks", count = 8, spread = 1.0, color = "#ffc46a" }]
 flash = { color = "#ffc070", intensity = 3.0, radius = 8.0, seconds = 0.08 }
 
 [cue.mortar_launch]
-particles = [{ preset = "smoke", count = 30, spread = 1.5, size = 2.0, life = 2.4, up = 3.0, color = "#cfc8bc" }]
+particles = [{ preset = "smoke", count = 30, spread = 1.5, size = 2.0, life = 2.4, up = 3.0, color = "#cfc8bc", wind = 0.45 },
+             { preset = "fire", count = 18, spread = 1.4, size = 2.2, life = 0.4, up = 4.0 },
+             { preset = "sparks", count = 16, spread = 1.2, up = 4.0, color = "#ffb060" }]
 flash = { color = "#ff9040", intensity = 6.0, radius = 18.0, seconds = 0.15 }
 
 [cue.splash_big]
@@ -36,17 +51,20 @@ particles = [{ preset = "fountain", count = 26, spread = 1.4, size = 1.0, up = 4
 water = 1.4
 
 [cue.hull_hit]
-particles = [{ preset = "dust", count = 24, spread = 2.0, size = 1.2, color = "#8a6a46" },
-             { preset = "sparks", count = 14, spread = 1.5, color = "#ffd27a" }]
+particles = [{ preset = "dust", count = 26, spread = 2.4, size = 4.0, life = 1.4, up = 0.8, color = "#8a6a46" },
+             { preset = "sparks", count = 16, spread = 1.8, size = 2.0, color = "#ffd27a" }]
 shock = 2.5
 
+# Wood chips flung out and falling to the water, and a puff of dust.
 [cue.splinters]
-particles = [{ preset = "dust", count = 30, spread = 2.6, size = 0.6, up = 2.0, color = "#9b7650" }]
+particles = [{ preset = "confetti", count = 30, spread = 1.6, size = 4.5, life = 0.5, up = 3.5, color = "#8a6440", gravity = 9.8, floor = -2.5 },
+             { preset = "dust", count = 18, spread = 2.2, size = 2.0, up = 1.5, color = "#9b7650" }]
 
 [cue.explosion]
 particles = [{ preset = "fire", count = 50, spread = 2.5, size = 1.8, up = 2.0 },
              { preset = "smoke", count = 40, spread = 2.0, size = 2.8, life = 2.5, up = 2.0, color = "#4a4440" },
-             { preset = "embers", count = 30, spread = 3.0 }]
+             { preset = "embers", count = 30, spread = 3.0 },
+             { preset = "confetti", count = 30, spread = 2.0, size = 2.2, life = 0.6, up = 5.0, color = "#5a3e28", gravity = 9.8, floor = -1.0 }]
 flash = { color = "#ff8a3a", intensity = 10.0, radius = 26.0, seconds = 0.3 }
 shock = 9.0
 water = 2.5
@@ -63,7 +81,8 @@ particles = [{ preset = "embers", count = 10, spread = 0.8 }]
 
 [cue.sink]
 particles = [{ preset = "bubbles", count = 60, spread = 3.0, size = 1.6, area = 4.0 },
-             { preset = "steam", count = 20, spread = 2.0, size = 2.4, area = 3.0, color = "#e8eef4" }]
+             { preset = "steam", count = 20, spread = 2.0, size = 2.4, area = 3.0, color = "#e8eef4" },
+             { preset = "fountain", count = 40, spread = 2.0, size = 1.4, up = 3.0, area = 3.0, color = "#e8f4ff" }]
 water = 6.0
 
 [cue.ram_hit]
@@ -81,11 +100,11 @@ particles = [{ preset = "dust", count = 10, spread = 1.0, size = 0.5, color = "#
 particles = [{ preset = "dust", count = 10, spread = 0.8, size = 0.5, color = "#b8a888" }]
 
 [cue.sword_clash]
-particles = [{ preset = "sparks", count = 18, spread = 2.2, size = 0.8, color = "#ffe6a0" }]
+particles = [{ preset = "sparks", count = 22, spread = 2.4, size = 1.8, color = "#ffe6a0" }]
 flash = { color = "#ffe6a0", intensity = 1.5, radius = 3.0, seconds = 0.06 }
 
 [cue.sword_hit]
-particles = [{ preset = "sparks", count = 22, spread = 2.4, color = "#ffd27a" },
+particles = [{ preset = "sparks", count = 26, spread = 2.6, size = 1.8, color = "#ffd27a" },
              { preset = "dust", count = 10, spread = 1.0, size = 0.5, color = "#d8c8a8" }]
 flash = { color = "#ffd27a", intensity = 2.0, radius = 3.0, seconds = 0.06 }
 
@@ -99,15 +118,27 @@ particles = [{ preset = "sparks", count = 24, spread = 1.6, color = "#e2b04a" },
 flash = { color = "#e2b04a", intensity = 2.0, radius = 4.0, seconds = 0.2 }
 
 [cue.pistol_fire]
-particles = [{ preset = "smoke", count = 14, spread = 1.0, size = 0.8, life = 1.4, color = "#e4e0d8" }]
+particles = [{ preset = "smoke", count = 14, spread = 1.0, size = 0.8, life = 1.4, color = "#e4e0d8", wind = 0.4 },
+             { preset = "sparks", count = 6, spread = 0.8, life = 0.5, color = "#ffd27a" }]
 flash = { color = "#ffc070", intensity = 3.0, radius = 6.0, seconds = 0.07 }
 
 [cue.dart_throw]
 particles = [{ preset = "magic", count = 10, spread = 0.6, color = "#8fc1a9" }]
 
+# Not a sound: wisps along a dart's flight (the game sends one every metre or so).
+[cue.dart_trail]
+particles = [{ preset = "magic", count = 4, spread = 0.12, size = 0.8, life = 0.5, up = -1.0, color = "#9fd6bb" }]
+
 [cue.smoke_keg]
 particles = [{ preset = "smoke", count = 80, spread = 2.5, size = 3.2, life = 3.0, area = 2.5, up = 0.5, color = "#dcd8d0" }]
 shock = 3.0
+
+# Not sounds: dust from the player's footfalls on the beach and on dirt paths (game.rs).
+[cue.footfall_sand]
+particles = [{ preset = "dust", count = 8, spread = 0.8, size = 0.8, life = 0.8, up = 0.5, color = "#d9c08a" }]
+
+[cue.footfall_dust]
+particles = [{ preset = "dust", count = 6, spread = 0.7, size = 0.7, life = 0.7, up = 0.3, color = "#a8957a" }]
 
 [cue.land_hard]
 particles = [{ preset = "dust", count = 22, spread = 1.6, size = 0.9, color = "#c8b898" }]
@@ -116,8 +147,8 @@ particles = [{ preset = "dust", count = 22, spread = 1.6, size = 0.9, color = "#
 particles = [{ preset = "dust", count = 12, spread = 1.0, size = 0.6, color = "#c8b898" }]
 
 [cue.hay_land]
-particles = [{ preset = "confetti", count = 40, spread = 2.4, size = 0.8, up = 2.0, color = "#e2c66a" },
-             { preset = "dust", count = 20, spread = 1.4, size = 1.0, color = "#d8c27a" }]
+particles = [{ preset = "confetti", count = 50, spread = 2.0, size = 3.0, up = 2.5, color = "#e2c66a" },
+             { preset = "dust", count = 24, spread = 1.6, size = 2.2, up = 0.6, color = "#d8c27a" }]
 
 [cue.water_dive]
 particles = [{ preset = "fountain", count = 36, spread = 1.4, up = 4.0, color = "#e8f4ff" }]
@@ -171,6 +202,12 @@ flash = { color = "#cfe0ff", intensity = 12.0, radius = 120.0, seconds = 0.18 }
 
 [cue.gull_sight_on]
 particles = [{ preset = "magic", count = 20, spread = 2.0, color = "#9fd3ff" }]
+shock = 6.0
+
+# The survey begins: a swirl of feathers and light round the perch (the gulls are the draw list).
+[cue.survey_swirl]
+particles = [{ preset = "confetti", count = 40, spread = 2.2, size = 1.2, up = 3.0, color = "#f4f1e8", offset = 1.0 },
+             { preset = "magic", count = 30, spread = 2.5, size = 1.2, color = "#fff2cc", offset = 1.2 }]
 
 # Not a sound: foam astern of ships under way (sent every few ticks).
 [cue.wake_foam]
