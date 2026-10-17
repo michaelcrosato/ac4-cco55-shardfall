@@ -413,7 +413,7 @@ pub fn t_ray(s: &mut Session, a: &Args) -> Result<Output> {
     let d = glam::Vec3::new(dir[0], dir[1], dir[2]);
     let r = |x: f32| (x * 1000.0).round() / 1000.0;
     Ok(Output::Json(match s.sim.raycast_block(o, d, max) {
-        None => json!({ "hit": false }),
+        None => json!({ "hit": false, "searched": max, "note": "nothing within max= metres (raise max= to look further)" }),
         Some((h, b)) => json!({
             "hit": true,
             "point": [r(h.point.x), r(h.point.y), r(h.point.z)],

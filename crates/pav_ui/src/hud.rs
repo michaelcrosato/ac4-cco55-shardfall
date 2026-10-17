@@ -287,12 +287,20 @@ fn compass(p: &Painter, safe: Rect, c: &Compass, env: &HudEnv) {
         }
         d
     };
+    // Where the marks sit: a letter under one gives way.
+    let mark_xs: Vec<f32> = c
+        .marks
+        .iter()
+        .filter(|m| m.kind != MarkerKind::Threat)
+        .map(|m| to_x(rel(m.bearing).clamp(-span * 0.92, span * 0.92)))
+        .collect();
     let mut deg = 0;
     while deg < 360 {
         let r = rel(deg as f32);
         if r.abs() <= span {
             let x = to_x(r);
-            let a = fade(r);
+            let under = mark_xs.iter().any(|mx| (mx - x).abs() < 24.0);
+            let a = fade(r) * if under { 0.2 } else { 1.0 };
             let (label, big) = match deg {
                 0 => ("N", true),
                 90 => ("E", true),
@@ -814,6 +822,15 @@ fn marker(p: &Painter, scr: Rect, safe: Rect, m: &WorldMarker, env: &HudEnv) {
     let col = theme.marker_color(m.kind, acc.colorblind, acc.high_contrast);
     let on = env.proj.project(m.pos).filter(|q| safe.contains(*q));
     let dist = env.proj.distance_hint(m.pos);
+    let health = |at: Pos2, b: f32| {
+        let bar = Rect::from_center_size(at, vec2(110.0, 10.0));
+        p.rect_filled(bar.expand(2.5), 3.0, alpha(Color32::BLACK, 0.7));
+        p.rect_filled(
+            Rect::from_min_size(bar.min, vec2(bar.width() * b.clamp(0.0, 1.0), bar.height())),
+            2.0,
+            theme.danger(acc.colorblind),
+        );
+    };
     match on {
         Some(q) => {
             match m.kind {
@@ -849,6 +866,10 @@ fn marker(p: &Painter, scr: Rect, safe: Rect, m: &WorldMarker, env: &HudEnv) {
                 _ => {
                     marker_icon(p, q, 34.0, m.kind, col, theme);
                     let mut y = q.y + 24.0;
+                    if let Some(b) = m.bar {
+                        health(pos2(q.x, y + 7.0), b);
+                        y += 18.0;
+                    }
                     if m.distance {
                         if let Some(d) = dist {
                             let r = paint::text_shadowed(
@@ -876,17 +897,9 @@ fn marker(p: &Painter, scr: Rect, safe: Rect, m: &WorldMarker, env: &HudEnv) {
                     }
                 }
             }
-            if let Some(b) = m.bar {
-                let bar = Rect::from_center_size(
-                    q + vec2(0.0, if m.kind == MarkerKind::Interact { 64.0 } else { 26.0 }),
-                    vec2(110.0, 10.0),
-                );
-                p.rect_filled(bar.expand(2.5), 3.0, alpha(Color32::BLACK, 0.7));
-                p.rect_filled(
-                    Rect::from_min_size(bar.min, vec2(bar.width() * b.clamp(0.0, 1.0), bar.height())),
-                    2.0,
-                    theme.danger(acc.colorblind),
-                );
+            // Objective-like markers stack their bar under the icon themselves.
+            if let (Some(b), MarkerKind::Interact | MarkerKind::Enemy | MarkerKind::Ally) = (m.bar, m.kind) {
+                health(q + vec2(0.0, if m.kind == MarkerKind::Interact { 64.0 } else { 26.0 }), b);
             }
         }
         None => {
