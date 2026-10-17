@@ -186,6 +186,7 @@ pub static TOOLS: &[Tool] = &[
             arg("width", "integer", "per shot, default 640"),
             arg("height", "integer", "per shot, default 360"),
             arg("out", "string", "default out/tour.png"),
+            arg("stats", "boolean", "adds each shot's render stats"),
         ],
         run: crate::kit_tools::t_tour,
     },
@@ -1345,13 +1346,22 @@ fn t_camera(s: &mut Session, a: &Args) -> Result<Output> {
     }
 }
 
-/// What the last frame cost to draw (main pass), from the renderer's own counters.
+/// What the last frame cost to draw (main pass), from the renderer's own counters:
+/// `instances` is what was submitted after culling (meshes + SDFs), `culled` what culling
+/// removed (outside the view, past the distance limits), `ocean_vertices` the sea grid,
+/// `particles` the GPU particle slots in use, `shadow_map` the sun's map size (texels a side).
 pub(crate) fn render_stats(s: &mut Session) -> Result<Value> {
-    let st = s.gpu()?.renderer.stats;
+    let r = &s.gpu()?.renderer;
+    let st = r.stats;
     Ok(json!({
-        "triangles": st.triangles, "batches": st.batches, "mesh_instances": st.mesh_instances,
-        "sdf": st.sdf_instances, "lights": st.lights, "materials": st.materials,
+        "triangles": st.triangles, "batches": st.batches, "instances": st.mesh_instances + st.sdf_instances,
+        "mesh_instances": st.mesh_instances, "sdf": st.sdf_instances, "lights": st.lights, "materials": st.materials,
         "custom_meshes": st.custom_meshes, "mesh_kb": st.mesh_bytes.div_ceil(1024), "draw_calls": st.draw_calls,
+        "culled": { "frustum": st.culled_frustum, "distance": st.culled_distance },
+        "by_class": { "small": st.drawn_by_class[0], "vegetation": st.drawn_by_class[1],
+            "structure": st.drawn_by_class[2], "other": st.drawn_by_class[3] },
+        "shadow_instances": st.shadow_instances, "shadow_map": r.shadow_size(), "ocean_vertices": st.ocean_vertices,
+        "particles": st.particles, "render_scale": r.render_scale,
     }))
 }
 

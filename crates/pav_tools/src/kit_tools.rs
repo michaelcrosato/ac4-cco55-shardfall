@@ -463,6 +463,7 @@ pub fn t_tour(s: &mut Session, a: &Args) -> Result<Output> {
         bail!("the game listed no tour shots");
     }
     let [w, h] = size(a, 640, 360)?;
+    let stats = get_bool(a, "stats", false)?;
     let cols = 3usize;
     let rows = shots.len().div_ceil(cols);
     let (sw, sh) = (w as usize * cols, h as usize * rows);
@@ -473,12 +474,21 @@ pub fn t_tour(s: &mut Session, a: &Args) -> Result<Output> {
         let scene = shot["scene"].as_str().unwrap_or("blacktap/freeroam");
         let mut sess = Session::new(scene, shot["seed"].as_u64().unwrap_or(1))?;
         sess.gpu = s.gpu.take();
+        // The caller's view settings and look (`set view.quality=low`, `look name=...`).
+        sess.view = s.view.clone();
+        sess.look = s.look.clone();
         let mut args = serde_json::Map::new();
         args.insert("shot".into(), json!(i));
-        let setup = sess.sim.game_command("tour", &Value::Object(args)).transpose().map_err(|e| anyhow!(e))?;
+        let setup = sess.sim.game_command("tour", &Value::Object(args.clone())).transpose().map_err(|e| anyhow!(e))?;
         sess.step(shot["ticks"].as_u64().unwrap_or(30));
-        let eye = shot["eye"].as_array().map(|v| v.iter().map(|x| x.as_f64().unwrap_or(0.0) as f32).collect::<Vec<_>>());
-        let look = shot["look"].as_array().map(|v| v.iter().map(|x| x.as_f64().unwrap_or(0.0) as f32).collect::<Vec<_>>());
+        // Shots on something that moves are framed now, in their own scene.
+        args.insert("frame".into(), json!(true));
+        let framed = sess.sim.game_command("tour", &Value::Object(args)).transpose().map_err(|e| anyhow!(e))?;
+        // One more tick shows what the frame call settled.
+        sess.step(1);
+        let pick = |k: &str| framed.as_ref().and_then(|f| f.get(k)).filter(|v| v.is_array()).unwrap_or(&shot[k]).clone();
+        let floats = |v: Value| v.as_array().map(|v| v.iter().map(|x| x.as_f64().unwrap_or(0.0) as f32).collect::<Vec<_>>());
+        let (eye, look) = (floats(pick("eye")), floats(pick("look")));
         if let (Some(e), Some(l)) = (eye, look) {
             if e.len() == 3 && l.len() == 3 {
                 sess.shot = Some(pav_core::play::CameraHint {
@@ -491,8 +501,10 @@ pub fn t_tour(s: &mut Session, a: &Args) -> Result<Output> {
                 });
             }
         }
-        let rgba = sess.render(w, h)?;
+        let rgba = sess.render(w, h);
+        let shot_stats = if stats && rgba.is_ok() { Some(crate::tools::render_stats(&mut sess)?) } else { None };
         s.gpu = sess.gpu.take();
+        let rgba = rgba?;
         let (cx, cy) = (i % cols, i / cols);
         for y in 0..h as usize {
             let src = &rgba[y * w as usize * 4..(y + 1) * w as usize * 4];
@@ -500,7 +512,11 @@ pub fn t_tour(s: &mut Session, a: &Args) -> Result<Output> {
             let start = (dy * sw + cx * w as usize) * 4;
             sheet[start..start + w as usize * 4].copy_from_slice(src);
         }
-        names.push(json!({ "name": shot["name"], "scene": scene, "setup": setup }));
+        let mut entry = json!({ "name": shot["name"], "scene": scene, "setup": setup });
+        if let Some(st) = shot_stats {
+            entry["stats"] = st;
+        }
+        names.push(entry);
     }
     let path = PathBuf::from(get_str(a, "out").unwrap_or("out/tour.png"));
     let png = write_png(&path, sw as u32, sh as u32, &sheet)?;
