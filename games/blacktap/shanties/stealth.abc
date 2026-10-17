@@ -1,0 +1,10 @@
+X:14
+T:Behind the Barrel
+C:Original state music (stealth) for Assassin's Keg
+M:4/4
+L:1/8
+Q:1/4=88
+K:Dm
+% A drone and slow harmony; music.toml adds pulses that quicken with awareness (stems).
+"Dm"D8- | D4 E2 F2 | "Bb"D8 | z8 | "Gm"G,8- | G,4 A,2 B,2 | "A"A,8 | z8 |
+"Dm"D8- | D4 F2 A2 | "Bb"G8 | F4 E4 | "Gm"D8 | "A"^C4 E4 | "Dm"D8 | z8 |]

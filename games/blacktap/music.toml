@@ -1,0 +1,889 @@
+# Music for Assassin's Keg: Black Tap. Songs are ABC files in shanties/ (by file name); each
+# [song.*] arranges one for the band (pav_audio::instruments: accordion squeeze fiddle cello
+# tremolo whistle guitar bass stomp bodhran clap choir solo horn drone pulse tick bell timpani
+# snare shout hum). Parts:
+#   role    melody harmony choir bass chords arp drums drone
+#   stem    plays when the game's intensity >= stem (it fades in over +-0.1); stem_max caps it
+#   pattern one bar, evenly divided: bass R/F/O/T, chords x X u(up-strum) _ (hold), arp 1-9,
+#           drums X x o(ghost) . (rest). Default patterns follow the meter (oom-pah, jig, waltz).
+#   sections / bars / passes   limit a part to section roles, bar ranges or passes
+# Choir parts sing the melody: the solo shantyman on "call" sections, the crew on "response",
+# and the crew with an octave below and a fifth on "chorus". Bars count through the repeats;
+# a pickup bar is bar 0. States are playlists (looping); MusicCue.song names a state or a song.
+
+crossfade = 2.0
+
+# ------------------------------------------------------------------ shanties
+
+[song.drunken_sailor]
+about = "the anthem: call and response verses, a roaring chorus"
+passes = 1
+gap = 4
+section = [
+  { bars = "1-4,17-20,33-36,49-52", role = "call" },
+  { bars = "5-8,21-24,37-40,53-56", role = "response" },
+  { bars = "9-16,25-32,41-48,57-64", role = "chorus" },
+]
+[[song.drunken_sailor.part]]
+inst = "choir"
+role = "choir"
+gain = 1.0
+[[song.drunken_sailor.part]]
+inst = "accordion"
+role = "melody"
+gain = 0.55
+pan = -0.3
+[[song.drunken_sailor.part]]
+inst = "squeeze"
+role = "chords"
+gain = 0.75
+pan = 0.3
+stem = 0.1
+[[song.drunken_sailor.part]]
+inst = "bass"
+role = "bass"
+gain = 0.85
+stem = 0.05
+[[song.drunken_sailor.part]]
+inst = "stomp"
+role = "drums"
+gain = 0.9
+stem = 0.25
+[[song.drunken_sailor.part]]
+inst = "clap"
+role = "drums"
+gain = 0.7
+pan = 0.15
+stem = 0.45
+sections = ["chorus"]
+[[song.drunken_sailor.part]]
+inst = "bodhran"
+role = "drums"
+gain = 0.6
+pan = -0.15
+stem = 0.6
+[[song.drunken_sailor.part]]
+inst = "fiddle"
+role = "harmony"
+gain = 0.45
+pan = 0.4
+stem = 0.7
+bars = "17-64"
+[[song.drunken_sailor.part]]
+inst = "whistle"
+role = "melody"
+octave = 1
+gain = 0.4
+pan = 0.2
+stem = 0.85
+sections = ["chorus"]
+
+[song.haul_away_joe]
+about = "a short-drag shanty: the crew hauls on every 'Joe!'"
+passes = 2
+gap = 4
+section = [
+  { bars = "1-2,5-6,13-14,17-18", role = "call" },
+  { bars = "3-4,7-8,15-16,19-20", role = "response" },
+  { bars = "9-12,21-24", role = "chorus" },
+]
+[[song.haul_away_joe.part]]
+inst = "choir"
+role = "choir"
+[[song.haul_away_joe.part]]
+inst = "fiddle"
+role = "melody"
+gain = 0.5
+pan = -0.35
+[[song.haul_away_joe.part]]
+inst = "squeeze"
+role = "chords"
+gain = 0.7
+pan = 0.3
+stem = 0.1
+[[song.haul_away_joe.part]]
+inst = "bass"
+role = "bass"
+gain = 0.8
+stem = 0.05
+[[song.haul_away_joe.part]]
+inst = "stomp"
+role = "drums"
+pattern = "X.......X......."
+gain = 1.0
+stem = 0.2
+sections = ["response", "chorus"]
+[[song.haul_away_joe.part]]
+inst = "bodhran"
+role = "drums"
+gain = 0.6
+stem = 0.5
+[[song.haul_away_joe.part]]
+inst = "accordion"
+role = "melody"
+gain = 0.4
+pan = 0.35
+stem = 0.7
+passes = [2]
+[[song.haul_away_joe.part]]
+inst = "shout"
+role = "drums"
+pattern = "......X."
+gain = 0.6
+stem = 0.85
+bars = "4,8,16,20"
+
+[song.leave_her_johnny]
+about = "a slow pumping shanty for the end of a voyage"
+passes = 2
+gap = 4
+section = [
+  { bars = "0-2,5-6", role = "call" },
+  { bars = "3-4,7-8", role = "response" },
+  { bars = "9-16", role = "chorus" },
+]
+[[song.leave_her_johnny.part]]
+inst = "choir"
+role = "choir"
+[[song.leave_her_johnny.part]]
+inst = "accordion"
+role = "melody"
+gain = 0.45
+pan = -0.3
+[[song.leave_her_johnny.part]]
+inst = "squeeze"
+role = "chords"
+pattern = "x___x___"
+gain = 0.55
+pan = 0.3
+stem = 0.1
+[[song.leave_her_johnny.part]]
+inst = "bass"
+role = "bass"
+pattern = "R...F..."
+gain = 0.8
+stem = 0.05
+[[song.leave_her_johnny.part]]
+inst = "stomp"
+role = "drums"
+pattern = "X...x..."
+gain = 0.9
+stem = 0.3
+[[song.leave_her_johnny.part]]
+inst = "cello"
+role = "harmony"
+octave = -1
+gain = 0.45
+pan = 0.4
+stem = 0.6
+passes = [2]
+[[song.leave_her_johnny.part]]
+inst = "hum"
+role = "chords"
+gain = 0.35
+stem = 0.75
+sections = ["chorus"]
+
+[song.spanish_ladies]
+about = "a forebitter waltz: solo verses, the crew on the chorus"
+passes = 2
+gap = 3
+section = [
+  { bars = "0-8", role = "call" },
+  { bars = "9-15", role = "response" },
+  { bars = "16-29", role = "chorus" },
+]
+[[song.spanish_ladies.part]]
+inst = "choir"
+role = "choir"
+[[song.spanish_ladies.part]]
+inst = "fiddle"
+role = "melody"
+gain = 0.5
+pan = -0.3
+[[song.spanish_ladies.part]]
+inst = "guitar"
+role = "chords"
+gain = 0.7
+pan = 0.35
+stem = 0.1
+[[song.spanish_ladies.part]]
+inst = "bass"
+role = "bass"
+gain = 0.8
+stem = 0.05
+[[song.spanish_ladies.part]]
+inst = "bodhran"
+role = "drums"
+gain = 0.6
+stem = 0.35
+[[song.spanish_ladies.part]]
+inst = "squeeze"
+role = "chords"
+gain = 0.5
+pan = -0.2
+stem = 0.55
+sections = ["chorus"]
+[[song.spanish_ladies.part]]
+inst = "whistle"
+role = "melody"
+octave = 1
+gain = 0.35
+stem = 0.8
+sections = ["chorus"]
+
+[song.blow_the_man_down]
+about = "a halyard shanty in a lilting three"
+passes = 4
+gap = 3
+section = [
+  { bars = "0-4,8-11", role = "call" },
+  { bars = "5-7", role = "response" },
+  { bars = "12-14", role = "chorus" },
+]
+[[song.blow_the_man_down.part]]
+inst = "choir"
+role = "choir"
+[[song.blow_the_man_down.part]]
+inst = "accordion"
+role = "melody"
+gain = 0.5
+pan = -0.3
+[[song.blow_the_man_down.part]]
+inst = "squeeze"
+role = "chords"
+gain = 0.7
+pan = 0.3
+stem = 0.1
+[[song.blow_the_man_down.part]]
+inst = "bass"
+role = "bass"
+gain = 0.85
+stem = 0.05
+[[song.blow_the_man_down.part]]
+inst = "stomp"
+role = "drums"
+gain = 0.9
+stem = 0.25
+[[song.blow_the_man_down.part]]
+inst = "clap"
+role = "drums"
+pattern = "..x.x."
+gain = 0.6
+stem = 0.5
+passes = [2, 3, 4]
+[[song.blow_the_man_down.part]]
+inst = "whistle"
+role = "melody"
+octave = 1
+gain = 0.35
+pan = 0.25
+stem = 0.75
+passes = [3, 4]
+
+[song.south_australia]
+about = "a capstan shanty, bound round the Horn"
+passes = 2
+gap = 4
+section = [
+  { bars = "0-2,5-6", role = "call" },
+  { bars = "3-4,7-8", role = "response" },
+  { bars = "9-16", role = "chorus" },
+]
+[[song.south_australia.part]]
+inst = "choir"
+role = "choir"
+[[song.south_australia.part]]
+inst = "fiddle"
+role = "melody"
+gain = 0.45
+pan = -0.3
+[[song.south_australia.part]]
+inst = "guitar"
+role = "chords"
+gain = 0.65
+pan = 0.35
+stem = 0.1
+[[song.south_australia.part]]
+inst = "bass"
+role = "bass"
+gain = 0.85
+stem = 0.05
+[[song.south_australia.part]]
+inst = "stomp"
+role = "drums"
+gain = 0.9
+stem = 0.25
+[[song.south_australia.part]]
+inst = "bodhran"
+role = "drums"
+gain = 0.55
+stem = 0.5
+[[song.south_australia.part]]
+inst = "accordion"
+role = "harmony"
+gain = 0.35
+pan = 0.3
+stem = 0.65
+sections = ["chorus"]
+
+# ------------------------------------------------------------------ the title theme
+
+[song.the_black_tap]
+about = "original title theme: stately D minor, the crew joins on the climb"
+passes = 1
+gap = 6
+section = [{ bars = "17-32", role = "chorus", vowel = "ah" }]
+[[song.the_black_tap.part]]
+inst = "cello"
+role = "melody"
+gain = 0.55
+pan = -0.2
+bars = "1-16"
+[[song.the_black_tap.part]]
+inst = "fiddle"
+role = "melody"
+gain = 0.45
+pan = -0.25
+bars = "9-32"
+[[song.the_black_tap.part]]
+inst = "choir"
+role = "choir"
+gain = 0.8
+vowel = "ah"
+bars = "17-32"
+voices = ["unison", "octave", "third"]
+[[song.the_black_tap.part]]
+inst = "squeeze"
+role = "chords"
+pattern = "x_____"
+gain = 0.45
+pan = 0.3
+[[song.the_black_tap.part]]
+inst = "bass"
+role = "bass"
+pattern = "R....."
+legato = 0.95
+gain = 0.8
+[[song.the_black_tap.part]]
+inst = "bodhran"
+role = "drums"
+pattern = "X...o."
+gain = 0.45
+bars = "9-32"
+[[song.the_black_tap.part]]
+inst = "timpani"
+role = "drums"
+pattern = "X....."
+gain = 0.55
+bars = "16,20,24,28,32"
+[[song.the_black_tap.part]]
+inst = "horn"
+role = "harmony"
+gain = 0.35
+pan = 0.35
+bars = "17-32"
+[[song.the_black_tap.part]]
+inst = "bell"
+role = "drums"
+pattern = "X....."
+octave = 2
+gain = 0.25
+bars = "1,9,17,25"
+
+# ------------------------------------------------------------------ state music
+
+[song.sea_combat]
+about = "broadsides: a driving minor jig; stems add drums, horns and shouts"
+abc = "sea_combat"
+passes = 2
+[[song.sea_combat.part]]
+inst = "fiddle"
+role = "melody"
+gain = 0.55
+pan = -0.25
+[[song.sea_combat.part]]
+inst = "squeeze"
+role = "chords"
+pattern = "x.xx.x"
+gain = 0.6
+pan = 0.3
+[[song.sea_combat.part]]
+inst = "bass"
+role = "bass"
+pattern = "R.FR.F"
+gain = 0.85
+[[song.sea_combat.part]]
+inst = "stomp"
+role = "drums"
+pattern = "X..X.."
+gain = 0.9
+stem = 0.2
+[[song.sea_combat.part]]
+inst = "bodhran"
+role = "drums"
+pattern = "XoxXox"
+gain = 0.65
+stem = 0.35
+[[song.sea_combat.part]]
+inst = "horn"
+role = "harmony"
+gain = 0.35
+pan = 0.4
+stem = 0.55
+[[song.sea_combat.part]]
+inst = "timpani"
+role = "drums"
+pattern = "X....."
+gain = 0.6
+stem = 0.7
+[[song.sea_combat.part]]
+inst = "shout"
+role = "drums"
+pattern = "...X.."
+gain = 0.5
+stem = 0.85
+bars = "4,8,12,16,20,24,28,32"
+
+[song.fort_siege]
+about = "Last Call at Fort Abstinence: horn calls, snare and timpani"
+abc = "fort_siege"
+passes = 2
+[[song.fort_siege.part]]
+inst = "horn"
+role = "melody"
+gain = 0.6
+pan = -0.15
+[[song.fort_siege.part]]
+inst = "cello"
+role = "harmony"
+octave = -1
+gain = 0.45
+pan = 0.3
+[[song.fort_siege.part]]
+inst = "bass"
+role = "bass"
+pattern = "R.R.F.R."
+gain = 0.8
+[[song.fort_siege.part]]
+inst = "snare"
+role = "drums"
+pattern = "X.xxX.x.X.xxXxxx"
+gain = 0.55
+stem = 0.2
+[[song.fort_siege.part]]
+inst = "timpani"
+role = "drums"
+pattern = "X.......X......."
+gain = 0.65
+stem = 0.35
+[[song.fort_siege.part]]
+inst = "tremolo"
+role = "chords"
+gain = 0.35
+pan = -0.35
+stem = 0.6
+[[song.fort_siege.part]]
+inst = "choir"
+role = "chords"
+vowel = "oh"
+gain = 0.55
+stem = 0.8
+
+[song.explore]
+about = "Saltwind Shore: guitar picking with a wandering whistle"
+abc = "explore"
+passes = 2
+gap = 3
+[[song.explore.part]]
+inst = "guitar"
+role = "arp"
+pattern = "1.3.5.8.5.3."
+legato = 2.0
+gain = 0.7
+pan = 0.2
+[[song.explore.part]]
+inst = "bass"
+role = "bass"
+pattern = "R....."
+gain = 0.55
+stem = 0.15
+[[song.explore.part]]
+inst = "whistle"
+role = "melody"
+octave = 1
+gain = 0.38
+pan = -0.25
+stem = 0.25
+[[song.explore.part]]
+inst = "bodhran"
+role = "drums"
+pattern = "x..o.."
+gain = 0.35
+stem = 0.6
+[[song.explore.part]]
+inst = "hum"
+role = "chords"
+gain = 0.3
+stem = 0.75
+
+[song.stealth]
+about = "Behind the Barrel: a drone, then pulses that quicken with awareness"
+abc = "stealth"
+passes = 1
+[[song.stealth.part]]
+inst = "drone"
+role = "drone"
+gain = 0.45
+[[song.stealth.part]]
+inst = "pulse"
+role = "bass"
+pattern = "R.......R......."
+gain = 0.95
+stem = 0.15
+[[song.stealth.part]]
+inst = "pulse"
+role = "bass"
+pattern = "....R.......R..."
+gain = 0.85
+stem = 0.4
+[[song.stealth.part]]
+inst = "tick"
+role = "drums"
+pattern = "x.x.x.x.x.x.x.x."
+gain = 0.7
+stem = 0.55
+[[song.stealth.part]]
+inst = "cello"
+role = "melody"
+gain = 0.5
+pan = -0.2
+stem = 0.3
+[[song.stealth.part]]
+inst = "pulse"
+role = "bass"
+pattern = "R.R.R.R.R.R.R.R."
+octave = 1
+gain = 0.6
+stem = 0.7
+[[song.stealth.part]]
+inst = "tremolo"
+role = "chords"
+gain = 0.5
+pan = 0.3
+stem = 0.8
+[[song.stealth.part]]
+inst = "timpani"
+role = "drums"
+pattern = "X.......X......."
+octave = -1
+gain = 0.8
+stem = 0.9
+
+[song.detected]
+about = "Spotted!: urgent fiddle over a racing arpeggio"
+abc = "detected"
+passes = 2
+[[song.detected.part]]
+inst = "fiddle"
+role = "melody"
+octave = -1
+gain = 0.55
+pan = -0.2
+[[song.detected.part]]
+inst = "squeeze"
+role = "arp"
+pattern = "1535"
+legato = 0.6
+gain = 0.6
+pan = 0.3
+[[song.detected.part]]
+inst = "bass"
+role = "bass"
+pattern = "RRRR"
+gain = 0.8
+[[song.detected.part]]
+inst = "snare"
+role = "drums"
+pattern = "xxXx"
+gain = 0.45
+stem = 0.3
+[[song.detected.part]]
+inst = "stomp"
+role = "drums"
+pattern = "X.X."
+gain = 0.8
+stem = 0.2
+[[song.detected.part]]
+inst = "horn"
+role = "harmony"
+octave = -1
+gain = 0.3
+stem = 0.6
+
+[song.skirmish]
+about = "Cutlass Reel: combat on land"
+passes = 2
+[[song.skirmish.part]]
+inst = "fiddle"
+role = "melody"
+gain = 0.55
+pan = -0.25
+[[song.skirmish.part]]
+inst = "squeeze"
+role = "chords"
+pattern = ".xx.xx"
+gain = 0.6
+pan = 0.3
+[[song.skirmish.part]]
+inst = "bass"
+role = "bass"
+pattern = "R..F.."
+gain = 0.85
+[[song.skirmish.part]]
+inst = "bodhran"
+role = "drums"
+pattern = "XoxXox"
+gain = 0.7
+[[song.skirmish.part]]
+inst = "stomp"
+role = "drums"
+pattern = "X..X.."
+gain = 0.85
+stem = 0.3
+[[song.skirmish.part]]
+inst = "whistle"
+role = "harmony"
+octave = 1
+gain = 0.3
+stem = 0.6
+
+[song.storm_escape]
+about = "Through the Squall: horns and crew over tremolo and rolling drums"
+abc = "storm_escape"
+passes = 2
+[[song.storm_escape.part]]
+inst = "horn"
+role = "melody"
+gain = 0.55
+pan = -0.15
+[[song.storm_escape.part]]
+inst = "tremolo"
+role = "chords"
+gain = 0.45
+pan = 0.35
+[[song.storm_escape.part]]
+inst = "bass"
+role = "bass"
+pattern = "RRRFFF"
+gain = 0.8
+[[song.storm_escape.part]]
+inst = "timpani"
+role = "drums"
+pattern = "X.xX.x"
+gain = 0.6
+stem = 0.25
+[[song.storm_escape.part]]
+inst = "bodhran"
+role = "drums"
+pattern = "XoxXox"
+gain = 0.55
+stem = 0.4
+[[song.storm_escape.part]]
+inst = "choir"
+role = "choir"
+vowel = "oh"
+octave = -1
+gain = 0.6
+stem = 0.6
+
+[song.last_words]
+about = "Last Words: a lone whistle over a hum and a drone"
+abc = "last_words"
+passes = 2
+gap = 6
+[[song.last_words.part]]
+inst = "whistle"
+role = "melody"
+gain = 0.4
+pan = -0.1
+[[song.last_words.part]]
+inst = "hum"
+role = "chords"
+gain = 0.5
+pan = 0.2
+[[song.last_words.part]]
+inst = "drone"
+role = "drone"
+gain = 0.45
+[[song.last_words.part]]
+inst = "guitar"
+role = "arp"
+pattern = "1....."
+legato = 3.0
+gain = 0.35
+stem = 0.5
+
+[song.results]
+about = "Full Pour: a bright fanfare"
+abc = "results"
+passes = 1
+gap = 4
+[[song.results.part]]
+inst = "horn"
+role = "melody"
+gain = 0.6
+[[song.results.part]]
+inst = "fiddle"
+role = "melody"
+octave = 1
+gain = 0.35
+pan = -0.3
+[[song.results.part]]
+inst = "squeeze"
+role = "chords"
+pattern = "x.x.x.x."
+gain = 0.55
+pan = 0.3
+[[song.results.part]]
+inst = "bass"
+role = "bass"
+pattern = "R.F.R.F."
+gain = 0.8
+[[song.results.part]]
+inst = "bodhran"
+role = "drums"
+pattern = "X.x.X.xo"
+gain = 0.6
+[[song.results.part]]
+inst = "timpani"
+role = "drums"
+pattern = "X......."
+gain = 0.6
+bars = "1,4,8"
+[[song.results.part]]
+inst = "choir"
+role = "chords"
+vowel = "ah"
+gain = 0.5
+bars = "5-8"
+
+# ------------------------------------------------------------------ stingers
+
+[song.stinger_detection]
+abc = "stinger_detection"
+[[song.stinger_detection.part]]
+inst = "tremolo"
+role = "melody"
+gain = 0.6
+[[song.stinger_detection.part]]
+inst = "horn"
+role = "melody"
+octave = -1
+gain = 0.5
+[[song.stinger_detection.part]]
+inst = "timpani"
+role = "drums"
+pattern = "X..............."
+octave = -1
+gain = 0.8
+[[song.stinger_detection.part]]
+inst = "snare"
+role = "drums"
+pattern = "xxxxxxxxxxxxxxxX"
+gain = 0.35
+bars = "1"
+
+[song.stinger_objective]
+abc = "stinger_objective"
+[[song.stinger_objective.part]]
+inst = "whistle"
+role = "melody"
+octave = 1
+gain = 0.45
+[[song.stinger_objective.part]]
+inst = "bell"
+role = "melody"
+octave = 1
+gain = 0.4
+[[song.stinger_objective.part]]
+inst = "squeeze"
+role = "chords"
+pattern = "x___x___"
+gain = 0.5
+
+[song.stinger_fort]
+abc = "stinger_fort"
+[[song.stinger_fort.part]]
+inst = "horn"
+role = "melody"
+gain = 0.65
+[[song.stinger_fort.part]]
+inst = "choir"
+role = "chords"
+vowel = "ah"
+gain = 0.6
+[[song.stinger_fort.part]]
+inst = "timpani"
+role = "drums"
+pattern = "X...X..."
+gain = 0.7
+[[song.stinger_fort.part]]
+inst = "shout"
+role = "drums"
+pattern = "X......."
+gain = 0.6
+bars = "4"
+
+[stinger.detection]
+about = "a guard has seen you"
+song = "stinger_detection"
+duck = 0.7
+[stinger.objective]
+about = "a new objective"
+song = "stinger_objective"
+duck = 0.4
+[stinger.fort_captured]
+about = "Last Call: the Tap flag rises over the fort"
+song = "stinger_fort"
+duck = 0.8
+
+# ------------------------------------------------------------------ states
+
+[state.title]
+about = "the title screen"
+songs = ["the_black_tap"]
+[state.sailing]
+about = "at the helm: the crew sings (D-pad left/right skips)"
+songs = ["drunken_sailor", "haul_away_joe", "spanish_ladies", "blow_the_man_down", "south_australia", "leave_her_johnny"]
+shuffle = true
+[state.attract]
+about = "attract mode"
+songs = ["the_black_tap", "drunken_sailor", "haul_away_joe", "blow_the_man_down"]
+[state.sea_combat]
+songs = ["sea_combat"]
+crossfade = 1.5
+[state.fort_siege]
+songs = ["fort_siege"]
+crossfade = 1.5
+[state.explore]
+songs = ["explore"]
+crossfade = 3.0
+[state.stealth]
+about = "intensity = the highest guard awareness"
+songs = ["stealth"]
+crossfade = 2.5
+[state.detected]
+songs = ["detected"]
+crossfade = 0.8
+[state.combat]
+songs = ["skirmish", "detected"]
+crossfade = 1.0
+[state.storm]
+songs = ["storm_escape"]
+[state.last_words]
+songs = ["last_words"]
+crossfade = 4.0
+[state.results]
+intro = "results"
+songs = ["leave_her_johnny"]

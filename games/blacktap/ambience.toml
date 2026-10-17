@@ -1,0 +1,270 @@
+# Ambience layers for Assassin's Keg: Black Tap (pav_audio::ambience). The game sets a level
+# (0..1) per layer every frame in AudioState.ambience; layers not named fade out.
+#   bed    held layers (sounds.toml layer fields; give them sustain = 1), faded by the level
+#   event  random one-shots: cue = a sounds.toml cue (or inline layers), every = [min, max] s
+#          (shorter at higher levels), min_level, gain, spread (pan), pitch_rand, gain_rand
+#   fade   seconds to follow the level; curve: gain = level^curve
+#   level_cutoff / level_pitch   octaves the beds' filter / pitch move from level 0 to 1
+
+[layer.sea]
+about = "open water: a deep swell and a breaking wash"
+fade = 2.0
+[[layer.sea.bed]]
+wave = "brown"
+filter = "lp"
+cutoff = 520
+attack = 2.0
+sustain = 1.0
+release = 2.0
+stereo = true
+gain = 0.9
+lfo = [{ to = "amp", rate = 0.11, depth = 0.55 }, { to = "cutoff", rate = 0.11, depth = 0.5 }]
+[[layer.sea.bed]]
+wave = "pink"
+filter = "bp"
+cutoff = 900
+q = 0.8
+attack = 2.0
+sustain = 1.0
+release = 2.0
+stereo = true
+gain = 0.35
+lfo = [{ to = "amp", rate = 0.17, depth = 0.8, shape = "random" }, { to = "cutoff", rate = 0.11, depth = 0.7 }]
+
+[layer.wind]
+about = "band-passed noise in gusts; louder and higher with wind speed"
+fade = 1.5
+level_cutoff = 1.3
+[[layer.wind.bed]]
+wave = "pink"
+filter = "bp"
+cutoff = 650
+q = 2.2
+attack = 1.5
+sustain = 1.0
+release = 1.5
+stereo = true
+gain = 0.8
+lfo = [{ to = "cutoff", rate = 0.3, depth = 0.8, shape = "random" }, { to = "amp", rate = 0.25, depth = 0.6, shape = "random" }]
+[[layer.wind.bed]]
+wave = "noise"
+filter = "bp"
+cutoff = 1700
+q = 9
+attack = 1.5
+sustain = 1.0
+release = 1.5
+gain = 0.22
+pan = 0.3
+lfo = [{ to = "cutoff", rate = 0.2, depth = 0.6, shape = "random" }, { to = "amp", rate = 0.3, depth = 0.8, shape = "random" }]
+
+[layer.rain]
+about = "rain hiss and drops"
+fade = 2.0
+[[layer.rain.bed]]
+wave = "pink"
+filter = "hp"
+cutoff = 1500
+attack = 2.0
+sustain = 1.0
+release = 2.0
+stereo = true
+gain = 0.45
+lfo = [{ to = "amp", rate = 0.2, depth = 0.3, shape = "random" }]
+[[layer.rain.bed]]
+wave = "dust"
+density = 420
+filter = "hp"
+cutoff = 3500
+attack = 2.0
+sustain = 1.0
+release = 2.0
+stereo = true
+gain = 0.5
+[[layer.rain.event]]
+cue = "rain_burst"
+every = [10.0, 25.0]
+min_level = 0.4
+gain = 0.8
+
+[layer.thunder]
+about = "distant storms: thunder at random (the game can also play the thunder cue)"
+[[layer.thunder.event]]
+cue = "thunder"
+every = [8.0, 25.0]
+min_level = 0.15
+gain = 0.9
+spread = 0.3
+[[layer.thunder.event]]
+cue = "lightning_crack"
+every = [20.0, 60.0]
+min_level = 0.6
+gain = 0.7
+
+[layer.creak]
+about = "the ship's timbers working"
+[[layer.creak.event]]
+cue = "ship_creak"
+every = [1.5, 5.0]
+spread = 0.6
+gain = 0.8
+
+[layer.sails]
+about = "canvas fluttering and the odd crack of a loose sail"
+fade = 1.5
+[[layer.sails.bed]]
+wave = "noise"
+filter = "lp"
+cutoff = 750
+attack = 1.0
+sustain = 1.0
+release = 1.0
+stereo = true
+gain = 0.22
+lfo = [{ to = "amp", rate = 6, depth = 0.55, shape = "random" }]
+[[layer.sails.event]]
+cue = "sail_flap"
+every = [3.0, 9.0]
+spread = 0.5
+gain = 0.7
+
+[layer.gulls]
+about = "gulls wheeling overhead"
+[[layer.gulls.event]]
+cue = "gull_cry"
+every = [3.0, 10.0]
+spread = 0.85
+gain = 0.8
+
+[layer.harbour]
+about = "water lapping at piers, a bell across the harbour"
+fade = 1.5
+[[layer.harbour.bed]]
+wave = "brown"
+filter = "bp"
+cutoff = 500
+q = 1
+attack = 1.5
+sustain = 1.0
+release = 1.5
+stereo = true
+gain = 0.55
+lfo = [{ to = "amp", rate = 1.4, depth = 0.8, shape = "random" }]
+[[layer.harbour.event]]
+cue = "wave_lap"
+every = [0.6, 2.0]
+spread = 0.7
+gain = 0.8
+[[layer.harbour.event]]
+cue = "ship_bell"
+every = [15.0, 40.0]
+spread = 0.8
+gain = 0.3
+pitch_rand = 2
+
+[layer.jungle]
+about = "insects pulsing and birds calling"
+fade = 2.0
+[[layer.jungle.bed]]
+wave = "noise"
+filter = "bp"
+cutoff = 4600
+q = 6
+attack = 2.0
+sustain = 1.0
+release = 2.0
+stereo = true
+gain = 0.35
+lfo = [{ to = "amp", rate = 27, depth = 0.7, shape = "square" }, { to = "cutoff", rate = 0.1, depth = 0.15 }]
+[[layer.jungle.bed]]
+wave = "dust"
+density = 60
+filter = "bp"
+cutoff = 6000
+q = 4
+attack = 2.0
+sustain = 1.0
+release = 2.0
+stereo = true
+gain = 0.4
+[[layer.jungle.event]]
+cue = "bird_chirp"
+every = [2.0, 6.0]
+spread = 0.9
+gain = 0.8
+
+[layer.town]
+about = "townsfolk murmuring (babbling formant voices)"
+fade = 1.5
+[[layer.town.bed]]
+wave = "voice"
+freq = 128
+unison = 4
+detune = 320
+drift = 60
+noise = 0.08
+formant = "eh"
+attack = 1.5
+sustain = 1.0
+release = 1.5
+pan = -0.4
+filter = "lp"
+cutoff = 2500
+gain = 0.3
+lfo = [{ to = "amp", rate = 5, depth = 0.85, shape = "random" }, { to = "pitch", rate = 3, depth = 3, shape = "random" }]
+[[layer.town.bed]]
+wave = "voice"
+freq = 175
+unison = 4
+detune = 320
+drift = 60
+noise = 0.08
+formant = "ah"
+attack = 1.5
+sustain = 1.0
+release = 1.5
+pan = 0.4
+filter = "lp"
+cutoff = 2500
+gain = 0.25
+lfo = [{ to = "amp", rate = 4.3, depth = 0.85, shape = "random" }, { to = "pitch", rate = 2.5, depth = 3, shape = "random" }]
+[[layer.town.event]]
+cue = "repair"
+every = [6.0, 15.0]
+spread = 0.8
+gain = 0.25
+
+[layer.fire]
+about = "something burning nearby"
+fade = 1.0
+[[layer.fire.bed]]
+wave = "dust"
+density = 22
+filter = "bp"
+cutoff = 2600
+q = 0.7
+attack = 0.5
+sustain = 1.0
+release = 1.0
+stereo = true
+gain = 0.6
+[[layer.fire.bed]]
+wave = "brown"
+filter = "lp"
+cutoff = 380
+attack = 0.8
+sustain = 1.0
+release = 1.0
+gain = 0.55
+lfo = [{ to = "amp", rate = 3, depth = 0.5, shape = "random" }]
+[[layer.fire.event]]
+every = [0.3, 1.5]
+spread = 0.5
+gain = 0.6
+[[layer.fire.event.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 1500
+q = 1
+decay = 0.04
+gain = 0.5

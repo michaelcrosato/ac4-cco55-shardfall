@@ -1,0 +1,2453 @@
+# Sound bank for Assassin's Keg: Black Tap. Every sound is synthesized (pav_audio::bank).
+# A cue is layers; a layer is a source (sine square saw triangle noise pink brown dust pluck
+# voice) -> optional formant (ah eh ee oh oo uh mm) -> filter (lp bp hp notch) -> drive ->
+# envelope (attack decay sustain hold release; decay/release are times to about -48 dB).
+# freq_end/glide sweep pitch, cutoff_end sweeps the filter, pitch_curve = [[s, semitones]...],
+# lfo = [{ to = pitch|amp|cutoff|pan|fm, rate, depth, shape = sine|triangle|square|saw|random|hold }].
+# Per play: pitch_rand (semitones), gain_rand (dB), delay_rand (s), spread (pan); repeat and
+# repeat_gap play a layer several times; variant = n picks one variant per play.
+# Cue fields: range (m to -6 dB), bus (sfx music ambience voice ui), positional, reverb, echo,
+# rumble = { low, high, ms } (controller), stinger (music.toml), cooldown (s).
+
+# ================================================================== naval guns
+
+[cue.cannon_fire]
+about = "a long gun: boom, blast and a slap-back off the water"
+range = 90
+reverb = 0.3
+echo = 0.35
+pitch_rand = 1.2
+gain_rand = 1.5
+rumble = { low = 0.9, high = 0.5, ms = 120 }
+[[cue.cannon_fire.layer]]
+wave = "sine"
+freq = 74
+freq_end = 34
+glide = 0.3
+decay = 1.0
+drive = 0.55
+gain = 0.95
+[[cue.cannon_fire.layer]]
+wave = "brown"
+filter = "lp"
+cutoff = 2800
+cutoff_end = 150
+cutoff_time = 1.2
+decay = 1.5
+gain = 1.1
+stereo = true
+lfo = [{ to = "amp", rate = 14, depth = 0.35, shape = "random" }]
+[[cue.cannon_fire.layer]]
+wave = "noise"
+filter = "hp"
+cutoff = 1800
+decay = 0.06
+gain = 0.45
+
+[cue.cannon_fire_heavy]
+about = "the heavy shot: deeper, longer, a rolling tail"
+range = 110
+reverb = 0.35
+echo = 0.4
+pitch_rand = 1.0
+gain_rand = 1.0
+rumble = { low = 1.0, high = 0.6, ms = 180 }
+[[cue.cannon_fire_heavy.layer]]
+wave = "sine"
+freq = 58
+freq_end = 27
+glide = 0.45
+decay = 1.5
+drive = 0.65
+gain = 1.0
+[[cue.cannon_fire_heavy.layer]]
+wave = "brown"
+filter = "lp"
+cutoff = 2000
+cutoff_end = 110
+cutoff_time = 1.6
+decay = 2.2
+gain = 1.2
+stereo = true
+lfo = [{ to = "amp", rate = 11, depth = 0.4, shape = "random" }]
+[[cue.cannon_fire_heavy.layer]]
+wave = "noise"
+filter = "hp"
+cutoff = 1500
+decay = 0.08
+gain = 0.5
+[[cue.cannon_fire_heavy.layer]]
+wave = "pink"
+filter = "lp"
+cutoff = 420
+delay = 0.15
+attack = 0.2
+decay = 2.6
+gain = 0.6
+stereo = true
+lfo = [{ to = "amp", rate = 4, depth = 0.5, shape = "random" }]
+
+[cue.chain_fire]
+about = "chain shot: a lighter boom and the whirr of chain through the air"
+range = 90
+reverb = 0.3
+echo = 0.3
+pitch_rand = 1.0
+rumble = { low = 0.8, high = 0.5, ms = 110 }
+[[cue.chain_fire.layer]]
+wave = "sine"
+freq = 82
+freq_end = 40
+glide = 0.25
+decay = 0.8
+drive = 0.5
+gain = 0.85
+[[cue.chain_fire.layer]]
+wave = "brown"
+filter = "lp"
+cutoff = 2600
+cutoff_end = 200
+decay = 1.0
+gain = 0.9
+[[cue.chain_fire.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 1500
+cutoff_end = 550
+q = 3
+attack = 0.05
+decay = 1.1
+delay = 0.05
+gain = 0.6
+lfo = [{ to = "amp", rate = 21, depth = 0.85, shape = "square" }]
+[[cue.chain_fire.layer]]
+wave = "sine"
+freq = 640
+fm_ratio = 2.71
+fm_index = 3.0
+fm_index_end = 0.2
+decay = 0.3
+delay = 0.03
+gain = 0.12
+
+[cue.swivel_fire]
+about = "a swivel gun on the rail: sharp and close"
+range = 45
+reverb = 0.22
+echo = 0.25
+pitch_rand = 1.5
+gain_rand = 1.5
+rumble = { low = 0.4, high = 0.6, ms = 70 }
+[[cue.swivel_fire.layer]]
+wave = "sine"
+freq = 150
+freq_end = 60
+glide = 0.12
+decay = 0.3
+drive = 0.5
+gain = 0.7
+[[cue.swivel_fire.layer]]
+wave = "noise"
+filter = "lp"
+cutoff = 5000
+cutoff_end = 600
+decay = 0.4
+gain = 0.6
+[[cue.swivel_fire.layer]]
+wave = "noise"
+filter = "hp"
+cutoff = 2500
+decay = 0.035
+gain = 0.45
+
+[cue.mortar_launch]
+about = "a mortar's deep cough and the shell rushing up"
+range = 120
+reverb = 0.35
+echo = 0.35
+rumble = { low = 1.0, high = 0.3, ms = 200 }
+[[cue.mortar_launch.layer]]
+wave = "sine"
+freq = 52
+freq_end = 28
+glide = 0.4
+decay = 1.3
+drive = 0.6
+gain = 1.0
+[[cue.mortar_launch.layer]]
+wave = "brown"
+filter = "lp"
+cutoff = 1300
+cutoff_end = 100
+decay = 1.6
+gain = 1.0
+stereo = true
+[[cue.mortar_launch.layer]]
+wave = "pink"
+filter = "bp"
+cutoff = 400
+cutoff_end = 2400
+q = 1.5
+attack = 0.15
+decay = 0.9
+delay = 0.08
+gain = 0.35
+
+[cue.mortar_whistle]
+about = "an incoming shell falling (about 2.4 s)"
+range = 80
+reverb = 0.25
+[[cue.mortar_whistle.layer]]
+wave = "sine"
+freq = 1900
+freq_end = 420
+glide = 2.4
+attack = 0.4
+decay = 1.6
+sustain = 0.8
+hold = 0.5
+release = 0.15
+gain = 0.2
+lfo = [{ to = "pitch", rate = 7, depth = 0.15 }]
+[[cue.mortar_whistle.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 2600
+cutoff_end = 700
+cutoff_time = 2.4
+q = 3
+attack = 0.6
+decay = 1.6
+sustain = 0.8
+hold = 0.4
+release = 0.15
+gain = 0.2
+
+[cue.splash_big]
+about = "a cannonball or a body into the sea"
+range = 60
+reverb = 0.2
+pitch_rand = 1.5
+gain_rand = 1.5
+[[cue.splash_big.layer]]
+wave = "sine"
+freq = 75
+freq_end = 38
+decay = 0.35
+drive = 0.3
+gain = 0.55
+[[cue.splash_big.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 1500
+cutoff_end = 700
+q = 0.7
+attack = 0.01
+decay = 0.7
+gain = 0.8
+stereo = true
+[[cue.splash_big.layer]]
+wave = "brown"
+filter = "lp"
+cutoff = 3000
+cutoff_end = 300
+decay = 1.3
+gain = 0.7
+[[cue.splash_big.layer]]
+wave = "dust"
+density = 70
+filter = "bp"
+cutoff = 3200
+q = 1.2
+delay = 0.12
+decay = 1.5
+gain = 0.6
+stereo = true
+
+[cue.splash_small]
+about = "something small into the water"
+range = 25
+reverb = 0.15
+pitch_rand = 2
+gain_rand = 2
+[[cue.splash_small.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 2300
+cutoff_end = 1100
+q = 0.8
+attack = 0.005
+decay = 0.28
+gain = 0.6
+[[cue.splash_small.layer]]
+wave = "dust"
+density = 45
+filter = "hp"
+cutoff = 2500
+decay = 0.5
+delay = 0.05
+gain = 0.5
+[[cue.splash_small.layer]]
+wave = "sine"
+freq = 320
+freq_end = 900
+glide = 0.07
+decay = 0.08
+delay = 0.03
+gain = 0.12
+
+[cue.hull_hit]
+about = "a shot striking our timbers"
+range = 70
+reverb = 0.25
+pitch_rand = 1.5
+gain_rand = 1.5
+cooldown = 0.05
+rumble = { low = 0.7, high = 0.4, ms = 90 }
+[[cue.hull_hit.layer]]
+wave = "sine"
+freq = 115
+freq_end = 52
+glide = 0.15
+decay = 0.4
+drive = 0.45
+gain = 0.8
+[[cue.hull_hit.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 900
+cutoff_end = 400
+q = 1.2
+decay = 0.18
+gain = 0.9
+[[cue.hull_hit.layer]]
+wave = "dust"
+density = 220
+filter = "bp"
+cutoff = 2600
+q = 0.8
+decay = 0.5
+delay = 0.02
+gain = 0.6
+
+[cue.splinters]
+about = "timber shattering into flying splinters"
+range = 40
+reverb = 0.2
+pitch_rand = 2
+[[cue.splinters.layer]]
+wave = "dust"
+density = 320
+filter = "hp"
+cutoff = 2000
+decay = 0.7
+gain = 0.65
+stereo = true
+[[cue.splinters.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 3400
+q = 2
+decay = 0.09
+repeat = 4
+repeat_gap = 0.045
+delay_rand = 0.03
+gain_rand = 4
+gain = 0.45
+spread = 0.5
+[[cue.splinters.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 700
+q = 1.5
+decay = 0.12
+gain = 0.4
+
+[cue.explosion]
+about = "a powder store going up"
+range = 110
+reverb = 0.35
+echo = 0.3
+pitch_rand = 1
+rumble = { low = 1.0, high = 0.8, ms = 250 }
+[[cue.explosion.layer]]
+wave = "sine"
+freq = 62
+freq_end = 24
+glide = 0.6
+decay = 1.7
+drive = 0.75
+gain = 1.0
+[[cue.explosion.layer]]
+wave = "brown"
+filter = "lp"
+cutoff = 3200
+cutoff_end = 140
+cutoff_time = 1.8
+decay = 2.4
+gain = 1.2
+stereo = true
+lfo = [{ to = "amp", rate = 10, depth = 0.45, shape = "random" }]
+[[cue.explosion.layer]]
+wave = "noise"
+filter = "hp"
+cutoff = 1400
+decay = 0.1
+gain = 0.6
+[[cue.explosion.layer]]
+wave = "dust"
+density = 90
+filter = "bp"
+cutoff = 2000
+q = 0.8
+delay = 0.25
+decay = 1.6
+gain = 0.6
+stereo = true
+
+[cue.keg_drop]
+about = "a fire keg rolled off the stern: thunk, splash, fizzing fuse"
+range = 40
+reverb = 0.2
+[[cue.keg_drop.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 420
+q = 2
+decay = 0.09
+gain = 0.8
+[[cue.keg_drop.layer]]
+wave = "sine"
+freq = 190
+freq_end = 120
+decay = 0.16
+gain = 0.4
+[[cue.keg_drop.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 1800
+cutoff_end = 900
+q = 0.8
+delay = 0.12
+decay = 0.45
+gain = 0.55
+[[cue.keg_drop.layer]]
+wave = "noise"
+filter = "hp"
+cutoff = 5200
+attack = 0.05
+decay = 0.6
+sustain = 0.5
+hold = 0.6
+release = 0.2
+delay = 0.2
+gain = 0.18
+lfo = [{ to = "amp", rate = 13, depth = 0.4, shape = "random" }]
+
+[cue.sail_rip]
+about = "canvas tearing"
+range = 35
+reverb = 0.15
+pitch_rand = 1
+[[cue.sail_rip.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 3400
+cutoff_end = 1300
+q = 1.4
+attack = 0.02
+decay = 0.9
+gain = 0.9
+lfo = [{ to = "amp", rate = 45, depth = 0.85, shape = "random" }]
+[[cue.sail_rip.layer]]
+wave = "dust"
+density = 300
+filter = "hp"
+cutoff = 3000
+decay = 0.8
+gain = 0.45
+
+[cue.ship_creak]
+about = "timbers working (stick-slip pulses through a wooden resonance)"
+range = 22
+reverb = 0.2
+pitch_rand = 3
+gain_rand = 3
+[[cue.ship_creak.layer]]
+variant = 1
+wave = "saw"
+freq = 42
+freq_end = 74
+glide = 0.9
+filter = "bp"
+cutoff = 650
+q = 6
+attack = 0.15
+decay = 0.9
+gain = 0.55
+lfo = [{ to = "pitch", rate = 6, depth = 3, shape = "random" }]
+[[cue.ship_creak.layer]]
+variant = 2
+wave = "saw"
+freq = 30
+freq_end = 48
+glide = 1.2
+filter = "bp"
+cutoff = 950
+q = 7
+attack = 0.25
+decay = 1.2
+gain = 0.5
+lfo = [{ to = "pitch", rate = 4, depth = 4, shape = "random" }]
+[[cue.ship_creak.layer]]
+variant = 3
+wave = "saw"
+freq = 70
+freq_end = 55
+glide = 0.6
+filter = "bp"
+cutoff = 480
+q = 5
+attack = 0.08
+decay = 0.6
+gain = 0.55
+lfo = [{ to = "pitch", rate = 9, depth = 2, shape = "random" }]
+
+[cue.sail_flap]
+about = "a loose sail cracking in the wind"
+range = 30
+reverb = 0.12
+pitch_rand = 2
+gain_rand = 2
+[[cue.sail_flap.layer]]
+wave = "noise"
+filter = "lp"
+cutoff = 1100
+cutoff_end = 500
+attack = 0.02
+decay = 0.6
+gain = 0.8
+lfo = [{ to = "amp", rate = 9, depth = 0.9, shape = "random" }]
+[[cue.sail_flap.layer]]
+wave = "brown"
+filter = "lp"
+cutoff = 350
+decay = 0.14
+gain = 0.6
+
+[cue.ship_bell]
+about = "the ship's bell, struck twice"
+range = 45
+reverb = 0.35
+echo = 0.15
+[[cue.ship_bell.layer]]
+wave = "sine"
+freq = 880
+fm_ratio = 1.41
+fm_index = 3.2
+fm_index_end = 0.3
+fm_time = 1.5
+decay = 3.5
+repeat = 2
+repeat_gap = 0.38
+gain = 0.3
+[[cue.ship_bell.layer]]
+wave = "sine"
+freq = 2210
+decay = 1.2
+repeat = 2
+repeat_gap = 0.38
+gain = 0.08
+[[cue.ship_bell.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 4000
+q = 3
+decay = 0.012
+repeat = 2
+repeat_gap = 0.38
+gain = 0.3
+
+[cue.brace]
+about = "the crew braces for a broadside: a shout and a heave"
+range = 30
+bus = "sfx"
+reverb = 0.2
+[[cue.brace.layer]]
+wave = "voice"
+freq = 170
+unison = 4
+detune = 60
+drift = 20
+noise = 0.12
+formant = "eh"
+formant_end = "ee"
+formant_time = 0.25
+pitch_curve = [[0.0, 0.0], [0.08, 2.0], [0.35, -2.0]]
+attack = 0.02
+decay = 0.25
+sustain = 0.5
+hold = 0.1
+release = 0.12
+drive = 0.3
+gain = 0.7
+[[cue.brace.layer]]
+wave = "saw"
+freq = 38
+freq_end = 60
+glide = 0.5
+filter = "bp"
+cutoff = 600
+q = 5
+attack = 0.1
+decay = 0.5
+delay = 0.1
+gain = 0.35
+lfo = [{ to = "pitch", rate = 7, depth = 3, shape = "random" }]
+
+[cue.grapple]
+about = "grappling hook: thrown, it bites, the rope goes taut"
+range = 30
+reverb = 0.2
+rumble = { low = 0.4, high = 0.6, ms = 80 }
+[[cue.grapple.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 600
+cutoff_end = 2200
+q = 1.5
+attack = 0.08
+decay = 0.25
+gain = 0.6
+[[cue.grapple.layer]]
+wave = "sine"
+freq = 1250
+fm_ratio = 3.1
+fm_index = 3.5
+fm_index_end = 0.3
+decay = 0.25
+delay = 0.3
+gain = 0.22
+[[cue.grapple.layer]]
+wave = "saw"
+freq = 55
+freq_end = 90
+glide = 0.4
+filter = "bp"
+cutoff = 800
+q = 6
+attack = 0.05
+decay = 0.45
+delay = 0.35
+gain = 0.35
+
+[cue.ram_hit]
+about = "ramming: a hull-crushing crunch"
+range = 90
+reverb = 0.3
+rumble = { low = 1.0, high = 0.6, ms = 220 }
+[[cue.ram_hit.layer]]
+wave = "sine"
+freq = 56
+freq_end = 28
+glide = 0.5
+decay = 0.9
+drive = 0.6
+gain = 1.0
+[[cue.ram_hit.layer]]
+wave = "brown"
+filter = "lp"
+cutoff = 1600
+cutoff_end = 200
+decay = 1.1
+gain = 1.0
+stereo = true
+[[cue.ram_hit.layer]]
+wave = "dust"
+density = 260
+filter = "bp"
+cutoff = 2100
+q = 0.8
+decay = 0.9
+gain = 0.6
+stereo = true
+[[cue.ram_hit.layer]]
+wave = "saw"
+freq = 32
+freq_end = 45
+glide = 0.9
+filter = "bp"
+cutoff = 500
+q = 5
+attack = 0.1
+decay = 0.9
+delay = 0.15
+gain = 0.45
+lfo = [{ to = "pitch", rate = 5, depth = 4, shape = "random" }]
+
+[cue.sink]
+about = "a ship going down: a groaning hull, gurgles and bubbles (4 s)"
+range = 120
+reverb = 0.35
+[[cue.sink.layer]]
+wave = "saw"
+freq = 36
+freq_end = 24
+glide = 3.5
+filter = "bp"
+cutoff = 420
+q = 4
+attack = 0.4
+decay = 3.0
+gain = 0.55
+lfo = [{ to = "pitch", rate = 3, depth = 3, shape = "random" }]
+[[cue.sink.layer]]
+wave = "brown"
+filter = "lp"
+cutoff = 650
+attack = 0.5
+decay = 3.5
+sustain = 0.4
+hold = 0.5
+release = 1.0
+gain = 0.8
+stereo = true
+lfo = [{ to = "amp", rate = 2.5, depth = 0.5, shape = "random" }]
+[[cue.sink.layer]]
+wave = "sine"
+freq = 340
+attack = 0.3
+decay = 3.0
+sustain = 0.3
+hold = 0.6
+release = 0.6
+delay = 0.4
+gain = 0.12
+lfo = [{ to = "pitch", rate = 11, depth = 9, shape = "hold" }, { to = "amp", rate = 11, depth = 0.9, shape = "square" }]
+
+[cue.repair]
+about = "carpenter's hammer on a patch"
+range = 20
+reverb = 0.15
+pitch_rand = 1.5
+[[cue.repair.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 1800
+q = 2
+decay = 0.05
+repeat = 3
+repeat_gap = 0.28
+delay_rand = 0.03
+gain_rand = 2
+gain = 0.7
+[[cue.repair.layer]]
+wave = "sine"
+freq = 620
+freq_end = 520
+decay = 0.05
+repeat = 3
+repeat_gap = 0.28
+gain = 0.2
+[[cue.repair.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 380
+q = 2
+decay = 0.09
+repeat = 3
+repeat_gap = 0.28
+gain = 0.45
+
+[cue.fire_crackle]
+about = "burning timber (loopable with start_loop)"
+range = 25
+reverb = 0.12
+[[cue.fire_crackle.layer]]
+wave = "dust"
+density = 26
+filter = "bp"
+cutoff = 2600
+q = 0.7
+attack = 0.1
+decay = 1.6
+sustain = 1.0
+release = 0.5
+gain = 0.7
+stereo = true
+[[cue.fire_crackle.layer]]
+wave = "brown"
+filter = "lp"
+cutoff = 380
+attack = 0.3
+decay = 1.6
+sustain = 1.0
+release = 0.6
+gain = 0.6
+lfo = [{ to = "amp", rate = 3, depth = 0.5, shape = "random" }]
+
+[cue.bow_spray]
+about = "the bow slamming into a wave"
+range = 30
+reverb = 0.12
+pitch_rand = 2
+gain_rand = 2
+[[cue.bow_spray.layer]]
+wave = "noise"
+filter = "lp"
+cutoff = 6000
+cutoff_end = 2000
+attack = 0.06
+decay = 0.9
+gain = 0.55
+stereo = true
+[[cue.bow_spray.layer]]
+wave = "brown"
+filter = "lp"
+cutoff = 800
+attack = 0.03
+decay = 0.6
+gain = 0.6
+[[cue.bow_spray.layer]]
+wave = "dust"
+density = 120
+filter = "hp"
+cutoff = 3000
+delay = 0.15
+decay = 0.8
+gain = 0.35
+stereo = true
+
+# ================================================================== swords and pistols
+
+[cue.sword_swing]
+about = "a cutlass slicing air"
+range = 15
+pitch_rand = 2
+gain_rand = 2
+[[cue.sword_swing.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 700
+cutoff_end = 2600
+cutoff_time = 0.15
+q = 1.6
+attack = 0.04
+decay = 0.18
+gain = 0.8
+
+[cue.sword_clash]
+about = "steel on steel"
+range = 25
+reverb = 0.22
+pitch_rand = 1.5
+gain_rand = 1.5
+rumble = { low = 0.2, high = 0.7, ms = 60 }
+[[cue.sword_clash.layer]]
+wave = "sine"
+freq = 1650
+fm_ratio = 3.7
+fm_index = 4.0
+fm_index_end = 0.5
+decay = 0.6
+gain = 0.3
+[[cue.sword_clash.layer]]
+wave = "sine"
+freq = 2430
+fm_ratio = 2.41
+fm_index = 2.0
+fm_index_end = 0.2
+decay = 0.45
+gain = 0.18
+[[cue.sword_clash.layer]]
+wave = "noise"
+filter = "hp"
+cutoff = 3000
+decay = 0.05
+gain = 0.6
+
+[cue.sword_hit]
+about = "a blade landing (cloth and a thump)"
+range = 15
+pitch_rand = 2
+gain_rand = 2
+[[cue.sword_hit.layer]]
+wave = "noise"
+filter = "lp"
+cutoff = 1300
+decay = 0.09
+gain = 0.8
+[[cue.sword_hit.layer]]
+wave = "sine"
+freq = 170
+freq_end = 70
+glide = 0.1
+decay = 0.13
+drive = 0.3
+gain = 0.6
+[[cue.sword_hit.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 2600
+q = 1.5
+decay = 0.03
+gain = 0.45
+
+[cue.counter]
+about = "a parry and riposte"
+range = 20
+reverb = 0.2
+pitch_rand = 1
+[[cue.counter.layer]]
+wave = "sine"
+freq = 2100
+fm_ratio = 3.3
+fm_index = 3.5
+fm_index_end = 0.4
+decay = 0.35
+gain = 0.3
+[[cue.counter.layer]]
+wave = "noise"
+filter = "hp"
+cutoff = 3500
+decay = 0.04
+gain = 0.55
+[[cue.counter.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 900
+cutoff_end = 3000
+q = 1.5
+attack = 0.03
+decay = 0.15
+delay = 0.12
+gain = 0.6
+
+[cue.assassinate]
+about = "the Tap Blade: a spring, a strike, a heartbeat"
+range = 20
+reverb = 0.25
+rumble = { low = 0.6, high = 0.6, ms = 150 }
+[[cue.assassinate.layer]]
+wave = "sine"
+freq = 4100
+fm_ratio = 1.5
+fm_index = 2
+decay = 0.05
+gain = 0.2
+[[cue.assassinate.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 2000
+cutoff_end = 5500
+cutoff_time = 0.08
+q = 1.5
+attack = 0.01
+decay = 0.08
+gain = 0.6
+[[cue.assassinate.layer]]
+wave = "sine"
+freq = 130
+freq_end = 60
+glide = 0.12
+decay = 0.22
+delay = 0.07
+drive = 0.4
+gain = 0.7
+[[cue.assassinate.layer]]
+wave = "noise"
+filter = "lp"
+cutoff = 600
+decay = 0.16
+delay = 0.07
+gain = 0.55
+[[cue.assassinate.layer]]
+wave = "sine"
+freq = 52
+freq_end = 44
+decay = 0.6
+delay = 0.12
+gain = 0.45
+reverb = 0.4
+
+[cue.pistol_fire]
+about = "a flintlock: pan flash, then the bang"
+range = 70
+reverb = 0.25
+echo = 0.3
+pitch_rand = 1
+gain_rand = 1
+rumble = { low = 0.5, high = 0.7, ms = 90 }
+[[cue.pistol_fire.layer]]
+wave = "noise"
+filter = "hp"
+cutoff = 3500
+decay = 0.06
+gain = 0.35
+[[cue.pistol_fire.layer]]
+wave = "noise"
+filter = "lp"
+cutoff = 5500
+cutoff_end = 700
+decay = 0.4
+delay = 0.035
+gain = 0.9
+[[cue.pistol_fire.layer]]
+wave = "sine"
+freq = 190
+freq_end = 60
+glide = 0.12
+decay = 0.22
+delay = 0.035
+drive = 0.5
+gain = 0.7
+
+[cue.pistol_reload]
+about = "ramrod scrapes and the cock clicking back"
+range = 12
+[[cue.pistol_reload.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 3600
+q = 3
+attack = 0.04
+decay = 0.14
+repeat = 3
+repeat_gap = 0.18
+gain = 0.55
+[[cue.pistol_reload.layer]]
+wave = "sine"
+freq = 3100
+fm_ratio = 2.2
+fm_index = 2
+decay = 0.015
+delay = 0.62
+gain = 0.3
+[[cue.pistol_reload.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 2400
+q = 4
+decay = 0.012
+delay = 0.66
+gain = 0.6
+
+[cue.dart_throw]
+about = "a Nightcap or Grog dart: a flick and a thip"
+range = 15
+pitch_rand = 2
+[[cue.dart_throw.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 1500
+cutoff_end = 4500
+cutoff_time = 0.1
+q = 2
+attack = 0.02
+decay = 0.1
+gain = 0.6
+[[cue.dart_throw.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 3000
+q = 3
+decay = 0.03
+delay = 0.12
+gain = 0.5
+
+[cue.smoke_keg]
+about = "a Smoke Keg popping and billowing"
+range = 25
+reverb = 0.2
+[[cue.smoke_keg.layer]]
+wave = "sine"
+freq = 95
+freq_end = 50
+decay = 0.16
+gain = 0.6
+[[cue.smoke_keg.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 900
+q = 1
+decay = 0.05
+gain = 0.5
+[[cue.smoke_keg.layer]]
+wave = "pink"
+filter = "hp"
+cutoff = 1400
+attack = 0.06
+decay = 2.0
+gain = 0.45
+stereo = true
+lfo = [{ to = "amp", rate = 6, depth = 0.3, shape = "random" }]
+
+[cue.whistle]
+about = "Cask whistles to lure a guard"
+range = 30
+reverb = 0.25
+pitch_rand = 0.5
+[[cue.whistle.layer]]
+wave = "sine"
+freq = 1500
+pitch_curve = [[0.0, -6.0], [0.14, 0.0], [0.24, -1.5], [0.5, -9.0]]
+attack = 0.03
+decay = 0.3
+sustain = 0.8
+hold = 0.25
+release = 0.06
+gain = 0.28
+lfo = [{ to = "pitch", rate = 6, depth = 0.1 }]
+[[cue.whistle.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 3000
+q = 2
+attack = 0.03
+decay = 0.3
+sustain = 0.6
+hold = 0.25
+release = 0.06
+gain = 0.06
+
+# ================================================================== moving about
+
+[cue.footstep_stone]
+about = "a boot on cobbles"
+range = 12
+pitch_rand = 2
+gain_rand = 2
+[[cue.footstep_stone.layer]]
+variant = 1
+wave = "noise"
+filter = "bp"
+cutoff = 1800
+q = 0.9
+decay = 0.05
+gain = 0.55
+[[cue.footstep_stone.layer]]
+variant = 2
+wave = "noise"
+filter = "bp"
+cutoff = 2300
+q = 1.1
+decay = 0.045
+gain = 0.5
+[[cue.footstep_stone.layer]]
+wave = "sine"
+freq = 140
+freq_end = 90
+decay = 0.04
+gain = 0.25
+[[cue.footstep_stone.layer]]
+wave = "dust"
+density = 500
+filter = "hp"
+cutoff = 3000
+decay = 0.06
+gain = 0.3
+
+[cue.footstep_sand]
+about = "a boot in soft sand"
+range = 10
+pitch_rand = 2
+gain_rand = 2
+[[cue.footstep_sand.layer]]
+wave = "noise"
+filter = "lp"
+cutoff = 1500
+attack = 0.02
+decay = 0.13
+gain = 0.45
+[[cue.footstep_sand.layer]]
+wave = "dust"
+density = 900
+filter = "hp"
+cutoff = 2500
+attack = 0.01
+decay = 0.13
+gain = 0.35
+
+[cue.footstep_wood]
+about = "a boot on deck planks"
+range = 12
+pitch_rand = 2
+gain_rand = 2
+[[cue.footstep_wood.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 620
+q = 2.5
+decay = 0.07
+gain = 0.7
+[[cue.footstep_wood.layer]]
+wave = "sine"
+freq = 230
+freq_end = 150
+decay = 0.06
+gain = 0.3
+[[cue.footstep_wood.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 2400
+q = 2
+decay = 0.02
+gain = 0.2
+
+[cue.land_hard]
+about = "a heavy landing"
+range = 15
+pitch_rand = 1.5
+rumble = { low = 0.6, high = 0.2, ms = 100 }
+[[cue.land_hard.layer]]
+wave = "sine"
+freq = 95
+freq_end = 40
+glide = 0.12
+decay = 0.28
+drive = 0.4
+gain = 0.8
+[[cue.land_hard.layer]]
+wave = "noise"
+filter = "lp"
+cutoff = 1300
+cutoff_end = 200
+decay = 0.2
+gain = 0.7
+[[cue.land_hard.layer]]
+wave = "dust"
+density = 400
+filter = "hp"
+cutoff = 2500
+decay = 0.12
+gain = 0.3
+
+[cue.land_roll]
+about = "landing into a roll"
+range = 12
+pitch_rand = 1.5
+[[cue.land_roll.layer]]
+wave = "noise"
+filter = "lp"
+cutoff = 700
+cutoff_end = 1700
+attack = 0.05
+decay = 0.38
+gain = 0.6
+[[cue.land_roll.layer]]
+wave = "sine"
+freq = 110
+freq_end = 60
+decay = 0.12
+gain = 0.35
+
+[cue.climb_grab]
+about = "hands catching a ledge"
+range = 10
+pitch_rand = 2
+gain_rand = 2
+[[cue.climb_grab.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 1500
+q = 1
+decay = 0.045
+gain = 0.55
+[[cue.climb_grab.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 3200
+q = 1.2
+attack = 0.01
+decay = 0.12
+delay = 0.02
+gain = 0.3
+
+[cue.leap_whoosh]
+about = "the Leap of Spirits: falling air"
+range = 20
+reverb = 0.25
+[[cue.leap_whoosh.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 300
+cutoff_end = 1600
+cutoff_time = 1.0
+q = 1
+attack = 0.25
+decay = 1.0
+gain = 0.6
+stereo = true
+[[cue.leap_whoosh.layer]]
+wave = "pink"
+filter = "hp"
+cutoff = 2000
+attack = 0.4
+decay = 1.1
+gain = 0.3
+stereo = true
+lfo = [{ to = "amp", rate = 7, depth = 0.3, shape = "random" }]
+
+[cue.hay_land]
+about = "landing in a hay cart"
+range = 15
+pitch_rand = 1.5
+[[cue.hay_land.layer]]
+wave = "dust"
+density = 900
+filter = "bp"
+cutoff = 3000
+q = 0.8
+decay = 0.45
+gain = 0.6
+stereo = true
+[[cue.hay_land.layer]]
+wave = "noise"
+filter = "lp"
+cutoff = 1500
+decay = 0.28
+gain = 0.45
+[[cue.hay_land.layer]]
+wave = "sine"
+freq = 90
+freq_end = 55
+decay = 0.15
+gain = 0.35
+
+[cue.water_dive]
+about = "diving in: splash, then muffled bubbles"
+range = 25
+reverb = 0.2
+[[cue.water_dive.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 1600
+cutoff_end = 800
+q = 0.8
+decay = 0.4
+gain = 0.7
+stereo = true
+[[cue.water_dive.layer]]
+wave = "brown"
+filter = "lp"
+cutoff = 420
+delay = 0.12
+attack = 0.05
+decay = 1.2
+gain = 0.7
+[[cue.water_dive.layer]]
+wave = "sine"
+freq = 480
+attack = 0.05
+decay = 0.9
+delay = 0.25
+gain = 0.1
+lfo = [{ to = "pitch", rate = 14, depth = 10, shape = "hold" }, { to = "amp", rate = 14, depth = 0.9, shape = "square" }]
+
+[cue.swim_stroke]
+about = "an arm through the water"
+range = 12
+pitch_rand = 2
+gain_rand = 2
+[[cue.swim_stroke.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 900
+cutoff_end = 1400
+q = 1
+attack = 0.08
+decay = 0.3
+gain = 0.5
+[[cue.swim_stroke.layer]]
+wave = "dust"
+density = 60
+filter = "hp"
+cutoff = 3000
+decay = 0.3
+delay = 0.1
+gain = 0.35
+
+[cue.body_drop]
+about = "a sleeping guard hitting the ground"
+range = 15
+pitch_rand = 1.5
+[[cue.body_drop.layer]]
+wave = "sine"
+freq = 85
+freq_end = 45
+decay = 0.3
+drive = 0.3
+gain = 0.7
+[[cue.body_drop.layer]]
+wave = "noise"
+filter = "lp"
+cutoff = 650
+decay = 0.22
+gain = 0.6
+[[cue.body_drop.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 2200
+q = 1
+decay = 0.08
+delay = 0.03
+gain = 0.2
+
+[cue.poster_tear]
+about = "a wanted poster torn down"
+range = 10
+pitch_rand = 1.5
+[[cue.poster_tear.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 3000
+cutoff_end = 2000
+q = 1.2
+attack = 0.02
+decay = 0.45
+gain = 0.7
+lfo = [{ to = "amp", rate = 50, depth = 0.9, shape = "random" }]
+
+[cue.pickpocket]
+about = "a purse lifted: cloth and a jingle"
+range = 8
+pitch_rand = 1
+[[cue.pickpocket.layer]]
+wave = "sine"
+freq = 2800
+fm_ratio = 3.3
+fm_index = 2.2
+fm_index_end = 0.3
+decay = 0.15
+repeat = 3
+repeat_gap = 0.06
+delay_rand = 0.02
+pitch_rand = 2
+gain = 0.18
+[[cue.pickpocket.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 2500
+q = 1
+attack = 0.02
+decay = 0.12
+gain = 0.3
+
+# ================================================================== guards and alarms
+
+[cue.guard_alert]
+about = "a guard shouts 'Hey!'"
+range = 35
+reverb = 0.2
+pitch_rand = 1.5
+[[cue.guard_alert.layer]]
+wave = "voice"
+freq = 160
+noise = 0.08
+formant = "eh"
+formant_end = "ee"
+formant_time = 0.2
+pitch_curve = [[0.0, -2.0], [0.07, 2.0], [0.35, -1.0]]
+attack = 0.015
+decay = 0.25
+sustain = 0.6
+hold = 0.12
+release = 0.1
+drive = 0.35
+gain = 0.8
+[[cue.guard_alert.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 1400
+q = 0.7
+decay = 0.05
+gain = 0.25
+
+[cue.guard_suspicious]
+about = "a guard's 'Hm?'"
+range = 25
+reverb = 0.15
+pitch_rand = 1
+[[cue.guard_suspicious.layer]]
+wave = "voice"
+freq = 118
+noise = 0.04
+formant = "mm"
+formant_end = "uh"
+formant_time = 0.35
+pitch_curve = [[0.0, 0.0], [0.2, 0.5], [0.45, 4.0]]
+attack = 0.04
+decay = 0.3
+sustain = 0.7
+hold = 0.2
+release = 0.1
+gain = 0.7
+
+[cue.detection_stinger]
+about = "you are spotted: a low hit, a rising swell and the music stinger"
+positional = false
+stinger = "detection"
+reverb = 0.3
+[[cue.detection_stinger.layer]]
+wave = "sine"
+freq = 55
+freq_end = 41
+decay = 1.0
+drive = 0.4
+gain = 0.7
+[[cue.detection_stinger.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 600
+cutoff_end = 3000
+q = 2
+attack = 0.4
+decay = 0.4
+gain = 0.3
+
+[cue.alarm_bell]
+about = "the fort's alarm bell, rung hard"
+range = 90
+reverb = 0.35
+echo = 0.2
+[[cue.alarm_bell.layer]]
+wave = "sine"
+freq = 1100
+fm_ratio = 2.4
+fm_index = 3
+fm_index_end = 0.5
+decay = 0.7
+repeat = 8
+repeat_gap = 0.19
+delay_rand = 0.02
+gain = 0.28
+[[cue.alarm_bell.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 4200
+q = 3
+decay = 0.01
+repeat = 8
+repeat_gap = 0.19
+gain = 0.3
+
+[cue.crowd_scream]
+about = "townsfolk crying out"
+range = 40
+reverb = 0.25
+[[cue.crowd_scream.layer]]
+wave = "voice"
+freq = 270
+unison = 4
+detune = 140
+drift = 30
+noise = 0.1
+formant = "ah"
+formant_end = "eh"
+formant_shift = 1.15
+pitch_curve = [[0.0, 2.0], [0.15, 4.0], [0.6, -3.0]]
+attack = 0.03
+decay = 0.5
+sustain = 0.4
+hold = 0.2
+release = 0.2
+gain = 0.6
+[[cue.crowd_scream.layer]]
+wave = "voice"
+freq = 340
+unison = 3
+detune = 100
+drift = 30
+formant = "eh"
+formant_end = "ee"
+formant_shift = 1.2
+pitch_curve = [[0.0, 3.0], [0.5, -4.0]]
+attack = 0.05
+decay = 0.45
+sustain = 0.3
+hold = 0.15
+release = 0.2
+delay = 0.12
+gain = 0.45
+
+# ================================================================== pickups and progress
+
+[cue.pickup_chest]
+about = "a Treasure Chest: the lid creaks, coins spill"
+positional = false
+reverb = 0.25
+[[cue.pickup_chest.layer]]
+wave = "saw"
+freq = 48
+freq_end = 80
+glide = 0.35
+filter = "bp"
+cutoff = 750
+q = 6
+attack = 0.05
+decay = 0.35
+gain = 0.4
+lfo = [{ to = "pitch", rate = 8, depth = 2, shape = "random" }]
+[[cue.pickup_chest.layer]]
+wave = "sine"
+freq = 2600
+fm_ratio = 3.3
+fm_index = 2.5
+fm_index_end = 0.3
+decay = 0.25
+delay = 0.3
+repeat = 6
+repeat_gap = 0.045
+delay_rand = 0.03
+pitch_rand = 3
+gain = 0.16
+[[cue.pickup_chest.layer]]
+wave = "sine"
+freq = 2093
+decay = 0.8
+delay = 0.5
+gain = 0.12
+[[cue.pickup_chest.layer]]
+wave = "sine"
+freq = 2637
+decay = 0.9
+delay = 0.58
+gain = 0.1
+
+[cue.pickup_sheet]
+about = "a Shanty Sheet: paper and a little whistled phrase"
+positional = false
+reverb = 0.3
+echo = 0.15
+[[cue.pickup_sheet.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 3500
+q = 1.2
+attack = 0.02
+decay = 0.2
+gain = 0.3
+lfo = [{ to = "amp", rate = 30, depth = 0.7, shape = "random" }]
+[[cue.pickup_sheet.layer]]
+wave = "triangle"
+freq = 1175
+attack = 0.02
+decay = 0.25
+delay = 0.1
+gain = 0.2
+[[cue.pickup_sheet.layer]]
+wave = "triangle"
+freq = 1480
+attack = 0.02
+decay = 0.25
+delay = 0.2
+gain = 0.2
+[[cue.pickup_sheet.layer]]
+wave = "triangle"
+freq = 1760
+attack = 0.02
+decay = 0.6
+delay = 0.3
+gain = 0.22
+lfo = [{ to = "pitch", rate = 5.5, depth = 0.15, delay = 0.2 }]
+
+[cue.pickup_bottle]
+about = "a Message Bottle: glass clink and a cork pop"
+positional = false
+reverb = 0.3
+[[cue.pickup_bottle.layer]]
+wave = "sine"
+freq = 2400
+fm_ratio = 5.2
+fm_index = 1.5
+fm_index_end = 0.1
+decay = 0.5
+gain = 0.2
+[[cue.pickup_bottle.layer]]
+wave = "sine"
+freq = 600
+freq_end = 200
+glide = 0.04
+decay = 0.06
+delay = 0.15
+gain = 0.4
+[[cue.pickup_bottle.layer]]
+wave = "sine"
+freq = 1976
+decay = 0.7
+delay = 0.3
+gain = 0.1
+
+[cue.pickup_tap]
+about = "a Keg Tap: a knock and a pour"
+positional = false
+reverb = 0.25
+[[cue.pickup_tap.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 450
+q = 2.5
+decay = 0.08
+repeat = 2
+repeat_gap = 0.12
+gain = 0.6
+[[cue.pickup_tap.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 800
+cutoff_end = 1800
+cutoff_time = 0.8
+q = 4
+attack = 0.05
+decay = 0.8
+delay = 0.25
+gain = 0.45
+lfo = [{ to = "amp", rate = 16, depth = 0.4, shape = "random" }]
+[[cue.pickup_tap.layer]]
+wave = "sine"
+freq = 1568
+decay = 0.6
+delay = 0.9
+gain = 0.12
+
+[cue.pickup_flotsam]
+about = "salvage hauled from the water"
+positional = false
+reverb = 0.2
+[[cue.pickup_flotsam.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 520
+q = 2
+decay = 0.1
+gain = 0.55
+[[cue.pickup_flotsam.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 2000
+q = 0.8
+decay = 0.3
+delay = 0.06
+gain = 0.35
+[[cue.pickup_flotsam.layer]]
+wave = "sine"
+freq = 1760
+decay = 0.4
+delay = 0.25
+gain = 0.1
+
+[cue.survey_swirl]
+about = "Survey from a Crow's Perch: wind spirals and a held chord"
+positional = false
+reverb = 0.45
+[[cue.survey_swirl.layer]]
+wave = "pink"
+filter = "bp"
+cutoff = 350
+cutoff_end = 3000
+cutoff_time = 2.0
+q = 2
+attack = 0.6
+decay = 2.0
+gain = 0.45
+stereo = true
+lfo = [{ to = "pan", rate = 0.6, depth = 0.8 }]
+[[cue.survey_swirl.layer]]
+wave = "voice"
+freq = 146.8
+unison = 3
+detune = 16
+drift = 5
+formant = "oh"
+formant_end = "ah"
+formant_time = 1.5
+attack = 0.6
+decay = 1.5
+sustain = 0.7
+hold = 0.6
+release = 1.0
+gain = 0.35
+[[cue.survey_swirl.layer]]
+wave = "voice"
+freq = 220
+unison = 3
+detune = 16
+drift = 5
+formant = "oh"
+formant_end = "ah"
+formant_time = 1.5
+attack = 0.7
+decay = 1.5
+sustain = 0.7
+hold = 0.6
+release = 1.0
+gain = 0.25
+
+[cue.gull_sight_on]
+about = "Gull Sight opening: a low swell and a shimmer"
+positional = false
+bus = "ui"
+reverb = 0.4
+[[cue.gull_sight_on.layer]]
+wave = "sine"
+freq = 110
+freq_end = 220
+glide = 0.4
+attack = 0.15
+decay = 0.8
+gain = 0.35
+[[cue.gull_sight_on.layer]]
+wave = "sine"
+freq = 2637
+fm_ratio = 1.007
+fm_index = 0.8
+attack = 0.1
+decay = 1.2
+gain = 0.08
+[[cue.gull_sight_on.layer]]
+wave = "noise"
+filter = "hp"
+cutoff = 4000
+attack = 0.3
+decay = 0.6
+gain = 0.08
+
+[cue.gull_sight_off]
+about = "Gull Sight closing"
+positional = false
+bus = "ui"
+reverb = 0.3
+[[cue.gull_sight_off.layer]]
+wave = "sine"
+freq = 220
+freq_end = 110
+glide = 0.35
+attack = 0.02
+decay = 0.5
+gain = 0.3
+[[cue.gull_sight_off.layer]]
+wave = "noise"
+filter = "hp"
+cutoff = 3500
+cutoff_end = 1500
+decay = 0.4
+gain = 0.06
+
+[cue.objective_new]
+about = "a new objective (with the music stinger)"
+positional = false
+stinger = "objective"
+reverb = 0.35
+[[cue.objective_new.layer]]
+wave = "sine"
+freq = 1318.5
+fm_ratio = 2.0
+fm_index = 1.2
+fm_index_end = 0.1
+decay = 1.0
+gain = 0.2
+[[cue.objective_new.layer]]
+wave = "sine"
+freq = 1760
+fm_ratio = 2.0
+fm_index = 1.0
+fm_index_end = 0.1
+decay = 0.9
+delay = 0.12
+gain = 0.18
+
+[cue.objective_done]
+about = "an objective complete: two bright notes"
+positional = false
+reverb = 0.35
+[[cue.objective_done.layer]]
+wave = "triangle"
+freq = 1174.7
+decay = 0.5
+gain = 0.22
+[[cue.objective_done.layer]]
+wave = "triangle"
+freq = 1568
+decay = 0.9
+delay = 0.11
+gain = 0.24
+[[cue.objective_done.layer]]
+wave = "sine"
+freq = 3136
+fm_ratio = 2.0
+fm_index = 0.6
+decay = 1.0
+delay = 0.11
+gain = 0.06
+
+[cue.round_complete]
+about = "a Round complete: a bell arpeggio over the crew's 'ah'"
+positional = false
+reverb = 0.45
+[[cue.round_complete.layer]]
+wave = "sine"
+freq = 587.3
+fm_ratio = 3.5
+fm_index = 1.8
+fm_index_end = 0.1
+decay = 2.0
+gain = 0.2
+[[cue.round_complete.layer]]
+wave = "sine"
+freq = 740
+fm_ratio = 3.5
+fm_index = 1.8
+fm_index_end = 0.1
+decay = 2.0
+delay = 0.12
+gain = 0.18
+[[cue.round_complete.layer]]
+wave = "sine"
+freq = 880
+fm_ratio = 3.5
+fm_index = 1.8
+fm_index_end = 0.1
+decay = 2.0
+delay = 0.24
+gain = 0.18
+[[cue.round_complete.layer]]
+wave = "sine"
+freq = 1174.7
+fm_ratio = 3.5
+fm_index = 1.8
+fm_index_end = 0.1
+decay = 2.4
+delay = 0.36
+gain = 0.18
+[[cue.round_complete.layer]]
+wave = "voice"
+freq = 146.8
+unison = 3
+detune = 16
+formant = "ah"
+attack = 0.3
+decay = 1.0
+sustain = 0.8
+hold = 1.2
+release = 0.8
+gain = 0.3
+[[cue.round_complete.layer]]
+wave = "voice"
+freq = 185
+unison = 3
+detune = 16
+formant = "ah"
+attack = 0.35
+decay = 1.0
+sustain = 0.8
+hold = 1.2
+release = 0.8
+gain = 0.22
+
+[cue.fort_captured]
+about = "Last Call at the fort: the crew cheers (and the stinger)"
+positional = false
+stinger = "fort_captured"
+reverb = 0.35
+[[cue.fort_captured.layer]]
+wave = "voice"
+freq = 190
+unison = 4
+detune = 70
+drift = 25
+noise = 0.1
+formant = "eh"
+formant_end = "ee"
+formant_time = 0.2
+pitch_curve = [[0.0, -1.0], [0.1, 2.0], [0.4, -2.0]]
+attack = 0.02
+decay = 0.3
+sustain = 0.4
+hold = 0.15
+release = 0.12
+repeat = 3
+repeat_gap = 0.55
+drive = 0.3
+gain = 0.7
+[[cue.fort_captured.layer]]
+wave = "noise"
+filter = "lp"
+cutoff = 1100
+delay = 1.4
+attack = 0.02
+decay = 0.6
+gain = 0.4
+lfo = [{ to = "amp", rate = 9, depth = 0.9, shape = "random" }]
+
+[cue.spilled]
+about = "Spilled: the memory pours away"
+positional = false
+reverb = 0.4
+[[cue.spilled.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 2200
+cutoff_end = 350
+cutoff_time = 1.2
+q = 4
+attack = 0.02
+decay = 1.2
+gain = 0.6
+lfo = [{ to = "amp", rate = 9, depth = 0.7, shape = "sine" }]
+[[cue.spilled.layer]]
+wave = "sine"
+freq = 440
+freq_end = 110
+glide = 1.3
+attack = 0.05
+decay = 1.3
+gain = 0.25
+lfo = [{ to = "amp", rate = 6, depth = 0.4 }]
+
+# ================================================================== weather
+
+[cue.thunder]
+about = "thunder: a crack and a long rolling boom (the game triggers it)"
+bus = "ambience"
+positional = false
+reverb = 0.3
+rumble = { low = 0.8, high = 0.2, ms = 600 }
+pitch_rand = 2
+gain_rand = 2
+[[cue.thunder.layer]]
+wave = "noise"
+filter = "hp"
+cutoff = 1800
+decay = 0.15
+gain = 0.45
+lfo = [{ to = "amp", rate = 50, depth = 0.8, shape = "random" }]
+[[cue.thunder.layer]]
+wave = "brown"
+filter = "lp"
+cutoff = 420
+cutoff_end = 140
+attack = 0.06
+decay = 5.0
+gain = 1.4
+stereo = true
+lfo = [{ to = "amp", rate = 5, depth = 0.7, shape = "random" }]
+[[cue.thunder.layer]]
+wave = "pink"
+filter = "lp"
+cutoff = 800
+cutoff_end = 180
+delay = 0.3
+attack = 0.4
+decay = 6.0
+gain = 0.7
+stereo = true
+lfo = [{ to = "amp", rate = 3, depth = 0.6, shape = "random" }]
+
+[cue.lightning_crack]
+about = "a lightning strike close by"
+bus = "ambience"
+positional = false
+reverb = 0.3
+rumble = { low = 0.5, high = 0.9, ms = 120 }
+[[cue.lightning_crack.layer]]
+wave = "noise"
+filter = "hp"
+cutoff = 1500
+decay = 0.3
+gain = 0.8
+lfo = [{ to = "amp", rate = 60, depth = 0.8, shape = "random" }]
+[[cue.lightning_crack.layer]]
+wave = "sine"
+freq = 85
+freq_end = 38
+decay = 0.6
+drive = 0.6
+gain = 0.8
+
+[cue.rain_burst]
+about = "a gust of rain sweeping over"
+bus = "ambience"
+positional = false
+[[cue.rain_burst.layer]]
+wave = "pink"
+filter = "hp"
+cutoff = 1200
+attack = 0.4
+decay = 2.6
+gain = 0.6
+stereo = true
+[[cue.rain_burst.layer]]
+wave = "dust"
+density = 600
+filter = "hp"
+cutoff = 4000
+attack = 0.3
+decay = 2.5
+gain = 0.45
+stereo = true
+
+[cue.gull_cry]
+about = "a gull's cry (FM glide); used by the gulls ambience"
+bus = "ambience"
+positional = false
+reverb = 0.3
+echo = 0.1
+pitch_rand = 2
+[[cue.gull_cry.layer]]
+wave = "sine"
+freq = 1500
+fm_ratio = 2.02
+fm_index = 1.6
+fm_index_end = 0.6
+pitch_curve = [[0.0, -4.0], [0.08, 2.0], [0.3, -6.0]]
+attack = 0.02
+decay = 0.3
+sustain = 0.5
+hold = 0.05
+release = 0.08
+repeat = 2
+repeat_gap = 0.32
+delay_rand = 0.06
+gain = 0.2
+[[cue.gull_cry.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 2800
+q = 3
+attack = 0.02
+decay = 0.25
+repeat = 2
+repeat_gap = 0.32
+gain = 0.05
+
+[cue.bird_chirp]
+about = "a jungle bird (used by the jungle ambience)"
+bus = "ambience"
+positional = false
+reverb = 0.3
+pitch_rand = 3
+[[cue.bird_chirp.layer]]
+variant = 1
+wave = "sine"
+freq = 2600
+pitch_curve = [[0.0, -3.0], [0.06, 4.0], [0.1, -2.0]]
+decay = 0.12
+repeat = 3
+repeat_gap = 0.13
+gain = 0.13
+[[cue.bird_chirp.layer]]
+variant = 2
+wave = "sine"
+freq = 1700
+fm_ratio = 0.5
+fm_index = 0.8
+pitch_curve = [[0.0, 0.0], [0.25, 7.0]]
+attack = 0.02
+decay = 0.3
+sustain = 0.6
+hold = 0.1
+release = 0.05
+repeat = 2
+repeat_gap = 0.5
+gain = 0.13
+
+[cue.wave_lap]
+about = "water slapping a hull or a pier (used by the harbour ambience)"
+bus = "ambience"
+positional = false
+pitch_rand = 3
+gain_rand = 3
+[[cue.wave_lap.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 700
+cutoff_end = 1300
+q = 1.2
+attack = 0.05
+decay = 0.35
+gain = 0.45
+[[cue.wave_lap.layer]]
+wave = "sine"
+freq = 260
+freq_end = 520
+glide = 0.06
+decay = 0.07
+delay = 0.06
+gain = 0.06
+
+# ================================================================== dialog voices and the parrot
+
+[cue.parrot_squawk]
+about = "Ballast the parrot: a harsh FM squawk"
+bus = "voice"
+positional = false
+reverb = 0.12
+pitch_rand = 1.5
+[[cue.parrot_squawk.layer]]
+wave = "sine"
+freq = 1150
+fm_ratio = 1.47
+fm_index = 4.5
+fm_index_end = 2.0
+pitch_curve = [[0.0, -2.0], [0.05, 3.0], [0.18, 0.0], [0.3, -5.0]]
+attack = 0.006
+decay = 0.3
+sustain = 0.6
+hold = 0.1
+release = 0.05
+gain = 0.3
+lfo = [{ to = "amp", rate = 38, depth = 0.55, shape = "square" }]
+[[cue.parrot_squawk.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 2700
+q = 1.5
+attack = 0.006
+decay = 0.25
+sustain = 0.5
+hold = 0.1
+release = 0.05
+gain = 0.25
+lfo = [{ to = "amp", rate = 38, depth = 0.5, shape = "square" }]
+
+[speaker.bung]
+about = "Old Bung Abernathy, quartermaster: low and gravelly"
+pitch = 92
+vowels = ["ah", "oh", "uh", "eh"]
+shift = 0.92
+rough = 0.45
+breath = 0.06
+speed = 1.2
+range = 3
+[speaker.pip]
+about = "Pip Carrow, navigator: young and quick"
+pitch = 178
+vowels = ["eh", "ee", "ah", "oh"]
+shift = 1.12
+rough = 0.08
+speed = 0.8
+range = 4
+[speaker.cask]
+about = "Captain Rowan Cask: even, warm"
+pitch = 140
+vowels = ["ah", "eh", "oh", "uh"]
+shift = 1.03
+rough = 0.12
+speed = 1.0
+range = 3
+[speaker.drye]
+about = "Commodore Josiah Drye: prim and nasal"
+pitch = 128
+vowels = ["ee", "eh", "uh"]
+shift = 1.06
+rough = 0.05
+breath = 0.02
+speed = 1.1
+range = 2
+[speaker.sobers]
+about = "Captain Sobers: clipped and stiff"
+pitch = 112
+vowels = ["oh", "uh", "eh"]
+shift = 0.98
+rough = 0.15
+speed = 0.85
+range = 1.5
+[speaker.molasses]
+about = "Mother Molasses: warm and low for a woman"
+pitch = 205
+vowels = ["ah", "oh", "oo", "eh"]
+shift = 1.17
+rough = 0.12
+breath = 0.08
+speed = 1.15
+range = 4
+[speaker.guard]
+about = "a Temperance guard: gruff"
+pitch = 104
+vowels = ["uh", "oh", "eh"]
+shift = 0.96
+rough = 0.3
+speed = 0.95
+range = 2.5
+[speaker.crew]
+about = "the crew answering together"
+pitch = 120
+vowels = ["ah", "oh", "eh"]
+shift = 0.95
+rough = 0.3
+speed = 1.0
+range = 2
+unison = 4
+[speaker.crier]
+about = "the town crier: loud and sing-song"
+pitch = 150
+vowels = ["oh", "ee", "ah"]
+shift = 1.0
+rough = 0.18
+speed = 1.3
+range = 5
+gain = 1.2
+[speaker.ballast]
+about = "Ballast the parrot"
+cue = "parrot_squawk"
+
+# ================================================================== UI
+
+[cue.ui_move]
+about = "moving the focus: a soft wooden tick"
+bus = "ui"
+[[cue.ui_move.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 2200
+q = 4
+decay = 0.025
+gain = 0.5
+[[cue.ui_move.layer]]
+wave = "sine"
+freq = 1500
+decay = 0.02
+gain = 0.08
+
+[cue.ui_confirm]
+about = "confirm: a wooden tick and two rising notes"
+bus = "ui"
+reverb = 0.12
+[[cue.ui_confirm.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 1800
+q = 4
+decay = 0.03
+gain = 0.45
+[[cue.ui_confirm.layer]]
+wave = "triangle"
+freq = 784
+decay = 0.12
+gain = 0.2
+[[cue.ui_confirm.layer]]
+wave = "triangle"
+freq = 1174.7
+decay = 0.2
+delay = 0.06
+gain = 0.2
+
+[cue.ui_back]
+about = "back: two falling notes"
+bus = "ui"
+reverb = 0.1
+[[cue.ui_back.layer]]
+wave = "triangle"
+freq = 880
+decay = 0.1
+gain = 0.18
+[[cue.ui_back.layer]]
+wave = "triangle"
+freq = 587.3
+decay = 0.16
+delay = 0.06
+gain = 0.18
+[[cue.ui_back.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 1500
+q = 4
+decay = 0.025
+gain = 0.3
+
+[cue.ui_toggle]
+about = "a toggle: click-clack"
+bus = "ui"
+[[cue.ui_toggle.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 3000
+q = 5
+decay = 0.015
+gain = 0.55
+[[cue.ui_toggle.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 2100
+q = 5
+decay = 0.02
+delay = 0.05
+gain = 0.5
+
+[cue.ui_slider]
+about = "a slider step"
+bus = "ui"
+pitch_rand = 0.5
+[[cue.ui_slider.layer]]
+wave = "sine"
+freq = 2000
+decay = 0.015
+gain = 0.12
+[[cue.ui_slider.layer]]
+wave = "noise"
+filter = "bp"
+cutoff = 2800
+q = 5
+decay = 0.012
+gain = 0.3
+
+[cue.ui_error]
+about = "not allowed: a low double buzz"
+bus = "ui"
+[[cue.ui_error.layer]]
+wave = "square"
+freq = 140
+duty = 0.3
+filter = "lp"
+cutoff = 900
+decay = 0.16
+gain = 0.2
+[[cue.ui_error.layer]]
+wave = "square"
+freq = 132
+duty = 0.3
+filter = "lp"
+cutoff = 900
+decay = 0.2
+delay = 0.12
+gain = 0.2
+
+[cue.ui_start]
+about = "press start: a bright bell flourish"
+bus = "ui"
+reverb = 0.3
+[[cue.ui_start.layer]]
+wave = "sine"
+freq = 587.3
+fm_ratio = 3.5
+fm_index = 1.5
+fm_index_end = 0.1
+decay = 0.9
+gain = 0.18
+[[cue.ui_start.layer]]
+wave = "sine"
+freq = 740
+fm_ratio = 3.5
+fm_index = 1.5
+fm_index_end = 0.1
+decay = 0.9
+delay = 0.07
+gain = 0.17
+[[cue.ui_start.layer]]
+wave = "sine"
+freq = 880
+fm_ratio = 3.5
+fm_index = 1.5
+fm_index_end = 0.1
+decay = 0.9
+delay = 0.14
+gain = 0.17
+[[cue.ui_start.layer]]
+wave = "sine"
+freq = 1174.7
+fm_ratio = 3.5
+fm_index = 1.5
+fm_index_end = 0.1
+decay = 1.4
+delay = 0.21
+gain = 0.18
