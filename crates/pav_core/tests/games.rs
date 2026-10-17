@@ -68,3 +68,85 @@ fn game_keys_name_one_scene_each() {
         assert!(Sim::new(g.key, 1).unwrap().play().is_some_and(|p| p.key() == g.key));
     }
 }
+
+/// A game that only listens: what zone events its `post` sees.
+#[derive(Clone, Default, serde::Serialize, serde::Deserialize)]
+struct ZoneProbe {
+    seen: Vec<String>,
+}
+
+impl pav_core::games::Game for ZoneProbe {
+    const KEY: &'static str = "zone_probe";
+
+    fn post(&mut self, _sim: &mut Sim, _dt: f32, events: &mut Vec<pav_core::SimEvent>) {
+        for e in events.iter() {
+            match e {
+                pav_core::SimEvent::Checkpoint { .. } => self.seen.push("checkpoint".into()),
+                pav_core::SimEvent::Splash { .. } => self.seen.push("splash".into()),
+                _ => {}
+            }
+        }
+    }
+
+    fn status(&self, _sim: &Sim) -> serde_json::Value {
+        serde_json::json!({ "seen": self.seen })
+    }
+}
+
+#[test]
+fn zone_events_reach_the_games_post() {
+    use pav_core::glam::Vec3;
+    use pav_core::statics::RegionKey;
+    use pav_core::zones::{Zone, ZoneKind};
+    let mut sim = Sim::new("starter", 1).expect("starter builds");
+    sim.state.play = Some(pav_core::games::GameBox::new(ZoneProbe::default()));
+    let feet = sim.state.player.and_then(|id| sim.feet(id)).expect("a player");
+    let zone = |kind, min: Vec3, max: Vec3| Zone {
+        min,
+        max,
+        kind,
+        course: String::new(),
+        index: 0,
+        params: Default::default(),
+        camera: None,
+        label: String::new(),
+        label_size: None,
+        color: None,
+        facing: None,
+        speed: 0.0,
+        signal: String::new(),
+        note: String::new(),
+    };
+    let key = RegionKey::chunk_of(feet);
+    sim.state.statics.add_zone_to(key, zone(ZoneKind::Checkpoint, feet - Vec3::new(1.0, 0.5, 1.0), feet + Vec3::new(1.0, 2.0, 1.0)));
+    sim.state.statics.add_zone_to(key, zone(ZoneKind::Water, feet - Vec3::new(1.0, 0.5, 1.0), feet + Vec3::new(1.0, 0.3, 1.0)));
+    for _ in 0..3 {
+        sim.step(&InputFrame::default());
+    }
+    let seen = sim.play().map(|g| g.status(&sim)).unwrap_or_default();
+    let seen: Vec<&str> = seen["seen"].as_array().map(|a| a.iter().filter_map(|v| v.as_str()).collect()).unwrap_or_default();
+    assert!(seen.contains(&"checkpoint"), "the checkpoint zone's event never reached post: {seen:?}");
+    assert!(seen.contains(&"splash"), "the water zone's event never reached post: {seen:?}");
+}
+
+#[test]
+fn hook_games_can_turn_the_bombs_off() {
+    use pav_core::character::Weapon;
+    // Holding the fire buttons for a second: bombs (and shots) with the engine's default
+    // weapon, nothing with `weapon = none`.
+    let fired = |weapon: Weapon| {
+        let mut sim = Sim::new("starter", 1).expect("starter builds");
+        sim.config.bombs.weapon = weapon;
+        let mut press = InputFrame::default();
+        press.held = pav_core::input::buttons::PRIMARY | pav_core::input::buttons::USE;
+        press.pressed = press.held;
+        let mut n = 0;
+        for _ in 0..60 {
+            sim.step(&press);
+            n = n.max(sim.state.entities.iter().filter(|e| e.name == "bomb").count() + sim.state.projectiles.list.len());
+        }
+        n
+    };
+    assert!(fired(Weapon::Bombs) > 0, "the default weapon should throw bombs");
+    assert_eq!(fired(Weapon::None), 0, "weapon = none still fired");
+}
