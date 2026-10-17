@@ -659,6 +659,8 @@ fn poll_ready(session: &mut Session, service: &Service) -> Vec<Value> {
             notes.push(record.info.clone());
         }
         drop(book);
+        // Closes the file (releases the lock) before what follows; clippy 1.98 flags File.
+        #[allow(clippy::drop_non_drop)]
         drop(file_lock);
     }
     notes

@@ -389,7 +389,8 @@ impl Sim {
 
     /// Time scale for this tick (hit-stop).
     pub(crate) fn game_time_scale(&self) -> f32 {
-        self.state.game.as_ref().map(|g| g.time_scale()).unwrap_or(1.0)
+        let hook = self.state.play.as_ref().map(|g| g.time_scale()).unwrap_or(1.0);
+        self.state.game.as_ref().map(|g| g.time_scale()).unwrap_or(1.0) * hook
     }
 
     pub(crate) fn game_pre(&mut self, input: &InputFrame, dt: f32, events: &mut Vec<SimEvent>) -> BTreeMap<EntityId, InputFrame> {

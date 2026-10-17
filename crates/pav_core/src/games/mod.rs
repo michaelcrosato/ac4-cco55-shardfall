@@ -17,13 +17,35 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use crate::entity::EntityId;
 use crate::frame::SimEvent;
 use crate::input::InputFrame;
+use crate::params::ParamVisitor;
+use crate::play::{Atmosphere, AudioState, CameraHint, DrawList, FrameEffects, FrontEndInfo, PlayFrame, UiModel};
 use crate::sim::Sim;
 
 pub mod starter;
 
-/// Every game the engine knows. `load scene=<key>` (or `<key>/<rest>`) builds it.
+/// The games built into the engine crate. `load scene=<key>` (or `<key>/<rest>`) builds it.
+/// Games in their own crates add themselves at run time with [`register`].
 pub static GAMES: &[Entry] =
     &[entry::<starter::Starter>("Starter: collect every shard while slimes chase you (the template to copy).", starter::build)];
+
+/// Games registered at run time (a game crate's `register()`), after [`GAMES`].
+static REGISTERED: std::sync::Mutex<Vec<&'static Entry>> = std::sync::Mutex::new(Vec::new());
+
+/// Adds a game that lives in its own crate. Call it once at startup, before loading its
+/// scenes (the app's `main`, the `pav` binary, a test); calling it again is harmless.
+pub fn register(e: Entry) {
+    let mut list = REGISTERED.lock().unwrap_or_else(|p| p.into_inner());
+    if GAMES.iter().any(|g| g.key == e.key) || list.iter().any(|g| g.key == e.key) {
+        return;
+    }
+    list.push(Box::leak(Box::new(e)));
+}
+
+/// Every game: the built-in ones, then the registered ones.
+pub fn all() -> Vec<&'static Entry> {
+    let list = REGISTERED.lock().unwrap_or_else(|p| p.into_inner());
+    GAMES.iter().chain(list.iter().copied()).collect()
+}
 
 /// Still playing, won or lost.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -80,6 +102,52 @@ pub trait Game: Clone + Serialize + DeserializeOwned + Send + Sync + 'static {
     fn bot(&self, _sim: &Sim) -> InputFrame {
         InputFrame::default()
     }
+
+    // ---- hook v2: presentation (`crate::play`). Read-only, called once per published frame.
+
+    /// Where the camera should be (None: the engine's camera follows the player).
+    fn camera(&self, _sim: &Sim) -> Option<CameraHint> {
+        None
+    }
+
+    /// HUD and overlays, drawn by `pav_ui` in the window and in `capture ui=true`.
+    fn ui(&self, _sim: &Sim) -> UiModel {
+        UiModel::default()
+    }
+
+    /// Things to draw from the game's own state (ships, sails, telegraph rings, highlights).
+    fn draw(&self, _sim: &Sim, _out: &mut DrawList) {}
+
+    /// Sky, light, fog, sea and weather (None: the level's `[view]`).
+    fn atmosphere(&self, _sim: &Sim) -> Option<Atmosphere> {
+        None
+    }
+
+    /// Music and ambience that should be playing.
+    fn audio(&self, _sim: &Sim) -> AudioState {
+        AudioState::default()
+    }
+
+    /// Camera shake, tints, transitions and rumble.
+    fn effects(&self, _sim: &Sim) -> FrameEffects {
+        FrameEffects::default()
+    }
+
+    /// The game's tunables (`pav params prefix=game`, `pav set path=game.<name>`).
+    fn tunables(&mut self, _v: &mut dyn ParamVisitor) {}
+
+    /// Simulation speed for slow motion (1 = normal); applies to the whole world's tick.
+    fn time_scale(&self) -> f32 {
+        1.0
+    }
+
+    /// Progress to save (settings are the app's): None when the game saves nothing.
+    fn progress(&self) -> Option<serde_json::Value> {
+        None
+    }
+
+    /// Restores saved progress (called by the app after building a scene).
+    fn restore(&mut self, _v: &serde_json::Value) {}
 }
 
 /// One line of [`GAMES`]: made with [`entry`].
@@ -90,11 +158,22 @@ pub struct Entry {
     /// after `<key>/` (a level number, say), if any.
     pub build: fn(&mut Sim, Option<&str>) -> Result<()>,
     load: fn(ciborium::Value) -> Result<GameBox, String>,
+    /// The app's front end for this game (title, menus, attract playlist, banks): a game with
+    /// one starts on its title screen when it is the start scene.
+    pub front_end: Option<fn() -> FrontEndInfo>,
 }
 
-/// A [`GAMES`] line for the game type `G`.
+/// A [`GAMES`] line (or a [`register`] argument) for the game type `G`.
 pub const fn entry<G: Game>(about: &'static str, build: fn(&mut Sim, Option<&str>) -> Result<()>) -> Entry {
-    Entry { key: G::KEY, about, build, load: load_as::<G> }
+    Entry { key: G::KEY, about, build, load: load_as::<G>, front_end: None }
+}
+
+impl Entry {
+    /// Gives the game a front end (title screen, menus, attract mode).
+    pub const fn with_front_end(mut self, f: fn() -> FrontEndInfo) -> Self {
+        self.front_end = Some(f);
+        self
+    }
 }
 
 fn load_as<G: Game>(v: ciborium::Value) -> Result<GameBox, String> {
@@ -115,9 +194,12 @@ pub fn level_text(key: &str, built_in: &'static str) -> std::borrow::Cow<'static
     built_in.into()
 }
 
-/// The game registered under `key`.
+/// The game registered under `key` (built in or registered at run time).
 pub fn find(key: &str) -> Option<&'static Entry> {
-    GAMES.iter().find(|g| g.key == key)
+    GAMES.iter().find(|g| g.key == key).or_else(|| {
+        let list = REGISTERED.lock().unwrap_or_else(|p| p.into_inner());
+        list.iter().copied().find(|g| g.key == key)
+    })
 }
 
 /// A running game in `SimState::play`: clones (rewind, snapshots) and serializes (snapshot
@@ -157,6 +239,27 @@ impl GameBox {
     pub fn bot(&self, sim: &Sim) -> InputFrame {
         self.0.bot(sim)
     }
+
+    /// The game's presentation for this frame.
+    pub fn present(&self, sim: &Sim) -> PlayFrame {
+        self.0.present(sim)
+    }
+
+    pub fn tunables(&mut self, v: &mut dyn ParamVisitor) {
+        self.0.tunables(v)
+    }
+
+    pub fn time_scale(&self) -> f32 {
+        self.0.time_scale()
+    }
+
+    pub fn progress(&self) -> Option<serde_json::Value> {
+        self.0.progress()
+    }
+
+    pub fn restore(&mut self, v: &serde_json::Value) {
+        self.0.restore(v)
+    }
 }
 
 impl Clone for GameBox {
@@ -182,7 +285,7 @@ impl<'de> Deserialize<'de> for GameBox {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let saved = Saved::deserialize(d)?;
         let Some(entry) = find(&saved.key) else {
-            let known: Vec<&str> = GAMES.iter().map(|g| g.key).collect();
+            let known: Vec<&str> = all().iter().map(|g| g.key).collect();
             return Err(D::Error::custom(format!("unknown game '{}' (known: {})", saved.key, known.join(", "))));
         };
         (entry.load)(saved.state).map_err(D::Error::custom)
@@ -200,6 +303,11 @@ trait DynGame: Send + Sync {
     fn status(&self, sim: &Sim) -> serde_json::Value;
     fn outcome(&self) -> Outcome;
     fn bot(&self, sim: &Sim) -> InputFrame;
+    fn present(&self, sim: &Sim) -> PlayFrame;
+    fn tunables(&mut self, v: &mut dyn ParamVisitor);
+    fn time_scale(&self) -> f32;
+    fn progress(&self) -> Option<serde_json::Value>;
+    fn restore(&mut self, v: &serde_json::Value);
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
@@ -231,6 +339,30 @@ impl<G: Game> DynGame for G {
     }
     fn bot(&self, sim: &Sim) -> InputFrame {
         Game::bot(self, sim)
+    }
+    fn present(&self, sim: &Sim) -> PlayFrame {
+        let mut draw = DrawList::default();
+        Game::draw(self, sim, &mut draw);
+        PlayFrame {
+            camera: Game::camera(self, sim),
+            ui: Game::ui(self, sim),
+            draw,
+            atmosphere: Game::atmosphere(self, sim),
+            audio: Game::audio(self, sim),
+            effects: Game::effects(self, sim),
+        }
+    }
+    fn tunables(&mut self, v: &mut dyn ParamVisitor) {
+        Game::tunables(self, v)
+    }
+    fn time_scale(&self) -> f32 {
+        Game::time_scale(self)
+    }
+    fn progress(&self) -> Option<serde_json::Value> {
+        Game::progress(self)
+    }
+    fn restore(&mut self, v: &serde_json::Value) {
+        Game::restore(self, v)
     }
     fn as_any(&self) -> &dyn Any {
         self

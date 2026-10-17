@@ -15,6 +15,9 @@ pav_render = { path = "crates/pav_render" }
 pav_view = { path = "crates/pav_view" }
 pav_tools = { path = "crates/pav_tools" }
 pav_audio = { path = "crates/pav_audio" }
+pav_kit = { path = "crates/pav_kit" }
+pav_ui = { path = "crates/pav_ui" }
+blacktap = { path = "crates/blacktap" }
 glam = { version = "0.33", features = ["serde", "bytemuck"] }
 # Vulkan + DX12 only (no OpenGL); "webgpu" is for the later browser build.
 wgpu = { version = "30", default-features = false, features = ["std", "parking_lot", "dx12", "vulkan", "wgsl", "webgpu"] }

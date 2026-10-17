@@ -208,6 +208,27 @@ pub enum SimEvent {
     Travel {
         place: u32,
     },
+    /// A game-defined one-shot sound and effect, by name: the app's sound bank and the view's
+    /// FX bank resolve `cue` (unknown names are logged once and ignored).
+    Cue {
+        cue: String,
+        pos: Vec3,
+        #[serde(default = "one")]
+        gain: f32,
+        #[serde(default = "one")]
+        pitch: f32,
+    },
+}
+
+fn one() -> f32 {
+    1.0
+}
+
+impl SimEvent {
+    /// A [`SimEvent::Cue`] at full gain and pitch.
+    pub fn cue(cue: &str, pos: Vec3) -> Self {
+        SimEvent::Cue { cue: cue.to_string(), pos, gain: 1.0, pitch: 1.0 }
+    }
 }
 
 /// The room the player is in, for the HUD (info card, control guide, camera defaults).
@@ -292,6 +313,8 @@ pub struct RenderFrame {
     pub hud: HudFrame,
     /// Shardfall state for the view and HUD (None outside the game).
     pub game: Option<std::sync::Arc<crate::arpg::GameFrame>>,
+    /// A hook game's presentation (camera, UI, draw list, atmosphere, audio, effects).
+    pub play: Option<std::sync::Arc<crate::play::PlayFrame>>,
     /// Agent-readable playback controls for the animation stage.
     pub animation_preview: Option<crate::animation_preview::PreviewInfo>,
     pub studio_mode: crate::prop_preview::StudioMode,

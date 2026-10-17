@@ -171,6 +171,18 @@ pub struct Sim {
     replaying: bool,
     /// Shared copy of `config` for frames (refreshed when it changes).
     config_arc: std::sync::Arc<SimConfig>,
+    /// The game's checkpoint: one snapshot kept outside `SimState`, so history clones and
+    /// snapshot files don't carry it (`checkpoint_save` / `checkpoint_load`).
+    pub checkpoint: Option<Box<SimState>>,
+    /// A checkpoint save or load asked for during a tick (by game code), done at its end.
+    checkpoint_request: Option<CheckpointRequest>,
+}
+
+/// What a game asked of the checkpoint this tick.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CheckpointRequest {
+    Save,
+    Load,
 }
 
 const MAX_RECORDING_TICKS: u64 = 60 * 60 * 60;
@@ -215,6 +227,32 @@ impl Sim {
             events: Vec::new(),
             replaying: false,
             config_arc: std::sync::Arc::new(SimConfig::default()),
+            checkpoint: None,
+            checkpoint_request: None,
+        }
+    }
+
+    /// Keeps the current state as the checkpoint (outside `SimState`).
+    pub fn checkpoint_save(&mut self) {
+        self.checkpoint = Some(Box::new(self.snapshot()));
+    }
+
+    /// Goes back to the checkpoint, keeping the tick counter running forward (replays and the
+    /// recording stay one input per tick). False when there is none.
+    pub fn checkpoint_load(&mut self) -> bool {
+        let Some(cp) = self.checkpoint.clone() else { return false };
+        let tick = self.state.tick;
+        self.restore(*cp);
+        self.state.tick = tick;
+        true
+    }
+
+    /// For game code inside a tick (`pre`/`post`, where the game is out of the state): save
+    /// or load the checkpoint once the tick is done.
+    pub fn request_checkpoint(&mut self, r: CheckpointRequest) {
+        // A load wins over a save asked for in the same tick.
+        if self.checkpoint_request != Some(CheckpointRequest::Load) {
+            self.checkpoint_request = Some(r);
         }
     }
 
@@ -708,13 +746,14 @@ impl Sim {
         }
 
         self.game_post(dt, raw_dt, &mut events);
-        self.play_post(dt, &mut events);
-        self.game_travel(&mut events);
-
         if let Some(p) = self.player() {
             self.state.focus = p.pos;
         }
+        // Zones before the hook game's rules, so its `post` sees this tick's checkpoint,
+        // splash, pad and respawn events.
         self.update_zones(&mut events);
+        self.play_post(dt, &mut events);
+        self.game_travel(&mut events);
         self.measure_feel(input);
         self.update_room_tracking(&mut events);
         if self.state.tick.is_multiple_of(15) {
@@ -723,6 +762,13 @@ impl Sim {
         self.state.tick += 1;
         if !self.replaying {
             self.events.extend(events);
+        }
+        match self.checkpoint_request.take() {
+            Some(CheckpointRequest::Save) => self.checkpoint_save(),
+            Some(CheckpointRequest::Load) => {
+                self.checkpoint_load();
+            }
+            None => {}
         }
     }
 
@@ -1069,6 +1115,7 @@ impl Sim {
                 .collect(),
             hud,
             game: self.state.game.as_ref().map(|g| std::sync::Arc::new(g.frame(self))),
+            play: self.state.play.as_ref().map(|g| std::sync::Arc::new(g.present(self))),
             animation_preview: None,
             studio_mode: crate::prop_preview::StudioMode::World,
             prop_preview: None,

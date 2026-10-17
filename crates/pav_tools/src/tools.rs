@@ -1102,7 +1102,7 @@ pub(crate) fn get_bool(a: &Args, k: &str, default: bool) -> Result<bool> {
 fn t_scenes(_: &mut Session, _: &Args) -> Result<Output> {
     Ok(Output::Json(json!({
         "scenes": pav_core::scenes::SCENES.iter().map(|(n, d)| json!({"name": n, "about": d})).collect::<Vec<_>>(),
-        "games": pav_core::games::GAMES.iter().map(|g| json!({"name": g.key, "about": g.about})).collect::<Vec<_>>(),
+        "games": pav_core::games::all().into_iter().map(|g| json!({"name": g.key, "about": g.about})).collect::<Vec<_>>(),
         "standalone_rooms": pav_core::scenes::names()
             .into_iter()
             .filter(|n| !pav_core::scenes::SCENES.iter().any(|s| s.0 == n) && pav_core::games::find(n).is_none())

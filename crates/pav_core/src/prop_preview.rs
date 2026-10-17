@@ -293,6 +293,7 @@ impl PropPreviewState {
             projectiles: Vec::new(),
             hud: HudFrame::default(),
             game: None,
+            play: None,
             studio_mode: StudioMode::Prop,
             animation_preview: None,
             prop_preview: Some(info),

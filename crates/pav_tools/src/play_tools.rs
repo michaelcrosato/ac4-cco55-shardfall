@@ -3,7 +3,7 @@
 
 use anyhow::{Result, bail};
 use pav_core::Sim;
-use pav_core::games::{GAMES, Outcome};
+use pav_core::games::Outcome;
 use serde_json::json;
 
 use crate::session::Session;
@@ -12,7 +12,7 @@ use crate::tools::{Args, Output, get_bool, get_u64};
 /// `play`: the running game's HUD, outcome and state; `bot=true` lets its bot play on;
 /// `seeds=N` plays fresh runs on seeds 1..N with the bot and leaves the session alone.
 pub fn t_play(s: &mut Session, a: &Args) -> Result<Output> {
-    let keys = || GAMES.iter().map(|g| g.key).collect::<Vec<_>>().join(", ");
+    let keys = || pav_core::games::all().into_iter().map(|g| g.key).collect::<Vec<_>>().join(", ");
     let Some(key) = s.sim.play().map(|g| g.key()) else {
         bail!("no game is running: `load scene=<key>` with one of: {}", keys());
     };

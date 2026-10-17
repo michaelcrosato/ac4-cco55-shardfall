@@ -311,6 +311,7 @@ pub(crate) fn empty_frame(config: Arc<SimConfig>, dt: f32, ticket: u64) -> Rende
         projectiles: Vec::new(),
         hud: HudFrame::default(),
         game: None,
+        play: None,
         studio_mode: StudioMode::Creature,
         animation_preview: None,
         prop_preview: None,

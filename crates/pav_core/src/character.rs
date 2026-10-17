@@ -246,6 +246,8 @@ choice_enum! {
         #[default]
         Bombs => "bombs",
         Blaster => "blaster",
+        /// The fire buttons do nothing here: the game reads them (hook games with weapons).
+        None => "none",
     }
 }
 
@@ -275,7 +277,7 @@ impl Tunable for BombParams {
         v.float("throw_range", &mut self.throw_range, 0.0, 30.0, "Maximum throw distance (m)");
         v.float("flight_time", &mut self.flight_time, 0.1, 2.0, "Throw arc duration (s)");
         v.float("push", &mut self.push, 0.0, 40.0, "Blast push strength");
-        self.weapon.visit_choice(v, "weapon", "Fire button: bombs or blaster (hold to shoot)");
+        self.weapon.visit_choice(v, "weapon", "Fire button: bombs, blaster (hold to shoot) or none (the game's)");
         v.float("fire_interval", &mut self.fire_interval, 0.03, 1.0, "Blaster: seconds between shots");
         v.float("bullet_speed", &mut self.bullet_speed, 2.0, 60.0, "Blaster: bullet speed (m/s)");
         v.float("shoot_angle", &mut self.shoot_angle, -1.0, 360.0, "Blaster: fixed direction (deg, 180 = north), -1 = aim");
@@ -1124,7 +1126,8 @@ pub fn tick(
         }
     }
     // --- bombs
-    else if (pressed(buttons::USE) || pressed(buttons::PRIMARY))
+    else if bp.weapon == Weapon::Bombs
+        && (pressed(buttons::USE) || pressed(buttons::PRIMARY))
         && ch.bomb_cooldown <= 0.0
         && !climbing
         && !hanging

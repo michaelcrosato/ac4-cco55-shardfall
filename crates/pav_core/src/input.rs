@@ -22,6 +22,30 @@ pub mod buttons {
     pub const DODGE: u32 = 1 << 13;
     pub const POTION: u32 = 1 << 14;
 
+    /// Bits 15-31 are free for games: they name them in their bindings (`register_names`).
+    pub const fn bit(n: u32) -> u32 {
+        1 << n
+    }
+
+    static GAME_NAMES: std::sync::Mutex<Vec<(String, u32)>> = std::sync::Mutex::new(Vec::new());
+
+    /// Names a game gives to button bits (its bindings' actions), so tools accept
+    /// `press=<name>`. Later names for the same text replace earlier ones.
+    pub fn register_names(names: &[(&str, u32)]) {
+        let mut list = GAME_NAMES.lock().unwrap_or_else(|p| p.into_inner());
+        for (n, b) in names {
+            list.retain(|(k, _)| !k.eq_ignore_ascii_case(n));
+            list.push((n.to_string(), *b));
+        }
+    }
+
+    /// Every known name: the engine's, then the games'.
+    pub fn all_names() -> Vec<(String, u32)> {
+        let mut v: Vec<(String, u32)> = NAMES.iter().map(|(k, b)| (k.to_string(), *b)).collect();
+        v.extend(GAME_NAMES.lock().unwrap_or_else(|p| p.into_inner()).iter().cloned());
+        v
+    }
+
     pub const NAMES: &[(&str, u32)] = &[
         ("jump", JUMP),
         ("crouch", CROUCH),
@@ -41,7 +65,13 @@ pub mod buttons {
     ];
 
     pub fn from_name(n: &str) -> Option<u32> {
-        NAMES.iter().find(|(k, _)| k.eq_ignore_ascii_case(n)).map(|(_, v)| *v)
+        if let Some((_, v)) = GAME_NAMES.lock().unwrap_or_else(|p| p.into_inner()).iter().find(|(k, _)| k.eq_ignore_ascii_case(n)) {
+            return Some(*v);
+        }
+        NAMES.iter().find(|(k, _)| k.eq_ignore_ascii_case(n)).map(|(_, v)| *v).or_else(|| {
+            // b15 .. b31: a game's bit by number.
+            n.strip_prefix('b').and_then(|d| d.parse::<u32>().ok()).filter(|d| (15..32).contains(d)).map(bit)
+        })
     }
 }
 
@@ -64,6 +94,21 @@ pub struct InputFrame {
     /// A menu action this tick (Shardfall: equip, sell, travel...), queued one per tick.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cmd: Option<crate::arpg::GameCmd>,
+    /// Camera look this tick (right stick or mouse), degrees: x = yaw right, y = pitch up.
+    /// Games that own their camera turn it with this, so replays include the camera.
+    #[serde(default, skip_serializing_if = "is_zero2")]
+    pub look: Vec2,
+    /// Analog triggers 0..1: [L2, R2].
+    #[serde(default, skip_serializing_if = "is_zero_pair")]
+    pub triggers: [f32; 2],
+}
+
+fn is_zero2(v: &Vec2) -> bool {
+    *v == Vec2::ZERO
+}
+
+fn is_zero_pair(v: &[f32; 2]) -> bool {
+    *v == [0.0, 0.0]
 }
 
 impl InputFrame {
