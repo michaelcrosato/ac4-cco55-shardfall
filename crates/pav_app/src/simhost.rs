@@ -73,6 +73,9 @@ pub struct Shared {
     pub crashed: Mutex<Option<String>>,
     /// Events for sound and effects, drained by the render thread.
     pub events: Mutex<Vec<SimEvent>>,
+    /// Controller rumble started by the ticks run since the render thread last looked (each
+    /// tick's `FrameEffects::rumble`, collected once per tick; rewinds and scrubs add none).
+    pub rumble: Mutex<Vec<pav_core::play::RumbleCue>>,
     /// When the input that is waiting for the next tick was pressed (latency measurement).
     pub input_stamp: Mutex<Option<Instant>>,
     /// (pressed, consumed by a tick, that tick's number) for the latest measured press.
@@ -118,6 +121,7 @@ fn shared_for(sim: &mut Sim) -> Arc<Shared> {
         stats: Mutex::new(SimStats::default()),
         crashed: Mutex::new(None),
         events: Mutex::new(Vec::new()),
+        rumble: Mutex::new(Vec::new()),
         input_stamp: Mutex::new(None),
         latency_probe: Mutex::new(None),
         cmds: Mutex::new(Default::default()),
@@ -220,7 +224,7 @@ impl Drop for SimHost {
     }
 }
 
-fn publish(sim: &mut Sim, sh: &Shared, tick_wall: f32, at: Instant) {
+fn publish(sim: &mut Sim, sh: &Shared, tick_wall: f32, at: Instant) -> Arc<RenderFrame> {
     let events = sim.drain_events();
     if !events.is_empty() {
         let mut q = sh.events.lock().unwrap();
@@ -232,9 +236,24 @@ fn publish(sim: &mut Sim, sh: &Shared, tick_wall: f32, at: Instant) {
     }
     let frame = Arc::new(sim.frame());
     let mut f = sh.frames.lock().unwrap();
-    f.prev = std::mem::replace(&mut f.curr, frame);
+    f.prev = std::mem::replace(&mut f.curr, frame.clone());
     f.curr_at = at;
     f.tick_wall = tick_wall;
+    frame
+}
+
+/// Queues the rumble a fresh tick started (at most a handful wait: the oldest go first).
+fn collect_rumble(frame: &RenderFrame, sh: &Shared) {
+    let Some(play) = &frame.play else { return };
+    if play.effects.rumble.is_empty() {
+        return;
+    }
+    let mut q = sh.rumble.lock().unwrap();
+    q.extend(play.effects.rumble.iter().copied());
+    let n = q.len();
+    if n > 16 {
+        q.drain(..n - 16);
+    }
 }
 
 /// Fixed-rate ticking with time controls (pause, single steps, speed, rewind, scrubbing).
@@ -295,7 +314,10 @@ impl Clock {
                 *sh.latency_probe.lock().unwrap() = Some((s, Instant::now(), sim.state.tick));
             }
             *window_ticks += 1;
-            publish(sim, sh, tick_wall, at);
+            let frame = publish(sim, sh, tick_wall, at);
+            if !previewing {
+                collect_rumble(&frame, sh);
+            }
         };
 
         let now = Instant::now();

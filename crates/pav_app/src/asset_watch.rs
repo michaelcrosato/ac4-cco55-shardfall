@@ -44,6 +44,8 @@ pub struct AssetWatcher {
 pub struct AssetWatcher;
 
 impl AssetWatcher {
+    // In the browser it is a unit struct; natively it has fields: `default` serves both.
+    #[allow(clippy::default_constructed_unit_structs)]
     pub fn new() -> Self {
         Self::default()
     }

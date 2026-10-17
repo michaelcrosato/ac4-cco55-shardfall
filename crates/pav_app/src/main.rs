@@ -24,6 +24,7 @@ mod panel;
 mod platform;
 mod quality;
 mod rooms;
+mod rumble;
 mod save;
 mod settings;
 mod simhost;

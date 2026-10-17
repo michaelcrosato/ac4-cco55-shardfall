@@ -84,6 +84,8 @@ pub(crate) struct PlayApp {
     fx_bank: Option<std::sync::Arc<pav_view::cue_fx::FxBank>>,
     /// The next scene load is a Continue (the game's progress names the scene).
     continue_next: bool,
+    /// The controller's rumble (the game's `FrameEffects::rumble`, when Vibration is on).
+    rumble: crate::rumble::Rumble,
 }
 
 /// `MobileMenu` → `mobile_menu`.
@@ -288,6 +290,7 @@ impl PlayApp {
             wall_dt: 0.0,
             fx_bank,
             continue_next: false,
+            rumble: Default::default(),
         })
     }
 
@@ -708,6 +711,13 @@ impl App {
         let (prev, curr, curr_at, tick_wall) = host.frames();
         let alpha = ((now - curr_at).as_secs_f32() / tick_wall.max(1e-4)).clamp(0.0, 1.0);
         let p = self.play.as_mut().unwrap();
+        // ---- rumble: while playing (not in menus or attract), when Vibration is on
+        let cues: Vec<_> = std::mem::take(&mut *host.shared.rumble.lock().unwrap());
+        if p.fe.game_input() && p.fe.settings().controls.vibration {
+            p.rumble.play(self.input.gilrs.as_mut(), &cues);
+        } else {
+            p.rumble.stop();
+        }
         if let Some(h) = curr.play.as_ref().and_then(|f| f.camera) {
             p.last_hint = Some(h);
             self.rig.snap(h.target);
