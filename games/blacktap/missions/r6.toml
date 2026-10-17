@@ -1,0 +1,73 @@
+# Last Orders — Tapped Out (~7 min, fort infiltration → storm escape).
+id = "r6"
+title = "Last Orders — Tapped Out"
+setup = [{ game = "player_at:r6_start" }, { atmosphere = "sunset" }]
+on_start = [{ music = "stealth" }, { line = "r6_intro" }, { atmosphere = "sunset" }, { game = "has_key" }, { game = "spawn_fort_guards" }, { game = "drye_balcony" }]
+
+[[step]]
+id = "infiltrate"
+objective = "Get into Fort Abstinence"
+markers = ["marker:fort_cliff", "marker:cave", "marker:fort_gate"]
+done = { flag = "in_fort" }
+checkpoint = true
+bot = "infiltrate"
+
+[[step]]
+id = "drye"
+objective = "Assassinate Commodore Drye"
+markers = ["npc:drye"]
+on_start = [{ line = "r6_drye" }, { game = "teach:gull" }]
+done = { flag = "drye_dead" }
+on_done = [{ game = "last_words" }]
+bot = "assassinate:drye"
+
+[[step]]
+id = "last_words"
+objective = "Last Words"
+done = { flag = "last_words_done" }
+checkpoint = true
+bot = "wait"
+
+[[step]]
+id = "flag"
+objective = "Raise the Tap flag over the keep"
+markers = ["marker:flagpole"]
+on_start = [{ line = "r6_flag" }]
+done = { flag = "flag_raised" }
+on_done = [{ banner = "FORT CAPTURED" }, { game = "alarm" }, { game = "ship_under_cliffs" }]
+bot = "raise_flag"
+
+[[step]]
+id = "dive"
+objective = "Dive from the battlement and swim to the Black Tap"
+markers = ["ship:black_tap"]
+on_start = [{ line = "r6_escape" }, { music = "storm" }]
+done = { game = "at_helm" }
+checkpoint = true
+bot = "escape_to_ship"
+
+[[step]]
+id = "escape"
+objective = "Escape to the open sea"
+markers = ["marker:extraction"]
+on_start = [{ line = "r6_storm" }, { game = "storm" }, { game = "spawn_frigate" }, { game = "spawn_waterspouts" }]
+done = { game = "escaped" }
+on_done = [{ line = "r6_done" }, { banner = "TAB COMPLETE" }]
+bot = "sail_to:extraction"
+
+[[optional]]
+id = "r6_air_hiding"
+text = "Assassinate Drye from the air or from hiding"
+track = { flag = "drye_air_or_hiding" }
+
+[[optional]]
+id = "r6_undetected"
+text = "Reach Drye undetected"
+track = { flag = "drye_dead" }
+fail = { flag = "detected_before_drye" }
+
+[[optional]]
+id = "r6_no_damage"
+text = "No hull damage during the escape"
+track = { flag = "escaped_clean" }
+at_end = true

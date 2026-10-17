@@ -1,0 +1,17 @@
+X:10
+T:The Black Tap
+C:Original theme for Assassin's Keg: Black Tap
+M:3/4
+L:1/8
+Q:1/4=80
+K:Dm
+% A: the "tap-tap-taaap" motif (bars 1-16); B: the climb to the relative major and back (17-24);
+% A again with the crew (25-32).
+"Dm"D D A3 G | "Dm"F2 E2 D2 | "Bb"F F d3 c | "F"A6 |
+"Gm"G G B3 A | "Dm"F2 A2 d2 | "A"e2 ^c2 A2 | "Dm"d6 |
+"F"c c f3 e | "C"d2 c2 G2 | "Bb"B B d3 c | "F"A4 F2 |
+"Gm"G2 B2 d2 | "Dm"f2 d2 A2 | "A"G2 E2 ^C2 | "Dm"D6 |
+"Bb"d d f3 e | "F"c2 A2 F2 | "C"e e g3 f | "A"e6 |
+"Dm"f f a3 g | "Bb"f2 d2 B2 | "Gm"G2 B2 "A7"e2 | "Dm"d6 |
+"Dm"D D A3 G | "Dm"F2 E2 D2 | "Bb"F F d3 c | "F"A6 |
+"Gm"G G B3 A | "Dm"F2 A2 d2 | "A7"e3 d ^c2 | "Dm"d6 |]

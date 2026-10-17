@@ -1,0 +1,439 @@
+//! Games built on the engine: the hook a new game implements, and the list of games.
+//!
+//! A game is a struct holding its rules' state (`Clone` and serde, like everything in
+//! `SimState`) that implements [`Game`], plus a `build` function that makes its scene. One
+//! line in [`GAMES`] and `load scene=<key>` starts it in the tools, the window
+//! (`shardfall --scene <key>`) and the browser (`?scene=<key>`). `starter.rs` is the template
+//! to copy; `docs/MAKE_A_GAME.md` is the guide. Shardfall (`crate::arpg`) predates this hook and
+//! keeps its own.
+
+use std::any::Any;
+use std::collections::BTreeMap;
+
+use anyhow::Result;
+use serde::de::{DeserializeOwned, Error as _};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+use crate::entity::EntityId;
+use crate::frame::SimEvent;
+use crate::input::InputFrame;
+use crate::params::ParamVisitor;
+use crate::play::{Atmosphere, AudioState, CameraHint, DrawList, FrameEffects, FrontEndInfo, PlayFrame, UiModel};
+use crate::sim::Sim;
+
+pub mod starter;
+
+/// The games built into the engine crate. `load scene=<key>` (or `<key>/<rest>`) builds it.
+/// Games in their own crates add themselves at run time with [`register`].
+pub static GAMES: &[Entry] =
+    &[entry::<starter::Starter>("Starter: collect every shard while slimes chase you (the template to copy).", starter::build)];
+
+/// Games registered at run time (a game crate's `register()`), after [`GAMES`].
+static REGISTERED: std::sync::Mutex<Vec<&'static Entry>> = std::sync::Mutex::new(Vec::new());
+
+/// Adds a game that lives in its own crate. Call it once at startup, before loading its
+/// scenes (the app's `main`, the `pav` binary, a test); calling it again is harmless.
+pub fn register(e: Entry) {
+    let mut list = REGISTERED.lock().unwrap_or_else(|p| p.into_inner());
+    if GAMES.iter().any(|g| g.key == e.key) || list.iter().any(|g| g.key == e.key) {
+        return;
+    }
+    list.push(Box::leak(Box::new(e)));
+}
+
+/// Every game: the built-in ones, then the registered ones.
+pub fn all() -> Vec<&'static Entry> {
+    let list = REGISTERED.lock().unwrap_or_else(|p| p.into_inner());
+    GAMES.iter().chain(list.iter().copied()).collect()
+}
+
+/// Still playing, won or lost.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Outcome {
+    #[default]
+    Playing,
+    Won,
+    Lost,
+}
+
+/// A game's rules. Every method has a default, so a game implements only what it uses.
+///
+/// The engine calls `pre` and `post` once per tick (60 a second) from `Sim::step`; everything
+/// else is read-only. While `pre` or `post` runs, the game is out of `sim.state.play`, so use
+/// `self` for the game's own state and `sim` for the world.
+pub trait Game: Clone + Serialize + DeserializeOwned + Send + Sync + 'static {
+    /// The scene key that starts the game: `load scene=<KEY>`, `--scene <KEY>`, `?scene=<KEY>`.
+    const KEY: &'static str;
+
+    /// Before characters move: read the player's input and decide what the characters the
+    /// game drives do this tick. A returned input replaces that character's own (its `ai`
+    /// brain, or the player's keys for the player).
+    fn pre(
+        &mut self,
+        _sim: &mut Sim,
+        _input: &InputFrame,
+        _dt: f32,
+        _events: &mut Vec<SimEvent>,
+    ) -> BTreeMap<EntityId, InputFrame> {
+        BTreeMap::new()
+    }
+
+    /// After physics: the rules (pickups, damage, score, win and loss). Push `SimEvent`s for
+    /// sounds and effects (`Coin`, `Pickup`, `Hit`, `Explosion`...).
+    fn post(&mut self, _sim: &mut Sim, _dt: f32, _events: &mut Vec<SimEvent>) {}
+
+    /// HUD lines: drawn at the top left of the window, returned by the `play` tool.
+    fn hud(&self, _sim: &Sim) -> Vec<String> {
+        Vec::new()
+    }
+
+    /// The game's state for tools and tests (`play`), as JSON.
+    fn status(&self, _sim: &Sim) -> serde_json::Value {
+        serde_json::Value::Null
+    }
+
+    fn outcome(&self) -> Outcome {
+        Outcome::Playing
+    }
+
+    /// The input a good player would give this tick. `play bot=true` and the tests drive the
+    /// player with it; teach it every new rule, and keep a test that it wins.
+    fn bot(&self, _sim: &Sim) -> InputFrame {
+        InputFrame::default()
+    }
+
+    // ---- hook v2: presentation (`crate::play`). Read-only, called once per published frame.
+
+    /// Where the camera should be (None: the engine's camera follows the player).
+    fn camera(&self, _sim: &Sim) -> Option<CameraHint> {
+        None
+    }
+
+    /// HUD and overlays, drawn by `pav_ui` in the window and in `capture ui=true`.
+    fn ui(&self, _sim: &Sim) -> UiModel {
+        UiModel::default()
+    }
+
+    /// Things to draw from the game's own state (ships, sails, telegraph rings, highlights).
+    fn draw(&self, _sim: &Sim, _out: &mut DrawList) {}
+
+    /// Sky, light, fog, sea and weather (None: the level's `[view]`).
+    fn atmosphere(&self, _sim: &Sim) -> Option<Atmosphere> {
+        None
+    }
+
+    /// Music and ambience that should be playing.
+    fn audio(&self, _sim: &Sim) -> AudioState {
+        AudioState::default()
+    }
+
+    /// Camera shake, tints, transitions and rumble.
+    fn effects(&self, _sim: &Sim) -> FrameEffects {
+        FrameEffects::default()
+    }
+
+    /// The game's tunables (`pav params prefix=game`, `pav set path=game.<name>`).
+    fn tunables(&mut self, _v: &mut dyn ParamVisitor) {}
+
+    /// Simulation speed for slow motion (1 = normal); applies to the whole world's tick.
+    fn time_scale(&self) -> f32 {
+        1.0
+    }
+
+    /// Progress to save (settings are the app's): None when the game saves nothing.
+    fn progress(&self) -> Option<serde_json::Value> {
+        None
+    }
+
+    /// Restores saved progress (called by the app after building a scene).
+    fn restore(&mut self, _v: &serde_json::Value) {}
+
+    /// A game-specific tool command (`pav ship`, `pav mission`...): None when the game has no
+    /// such command, else its JSON reply or an error message.
+    fn command(&mut self, _sim: &mut Sim, _name: &str, _args: &serde_json::Value) -> Option<Result<serde_json::Value, String>> {
+        None
+    }
+}
+
+/// One line of [`GAMES`]: made with [`entry`].
+pub struct Entry {
+    pub key: &'static str,
+    pub about: &'static str,
+    /// Builds the scene and sets `sim.state.play`. The `&str` is the rest of the scene name
+    /// after `<key>/` (a level number, say), if any.
+    pub build: fn(&mut Sim, Option<&str>) -> Result<()>,
+    load: fn(ciborium::Value) -> Result<GameBox, String>,
+    /// The app's front end for this game (title, menus, attract playlist, banks): a game with
+    /// one starts on its title screen when it is the start scene.
+    pub front_end: Option<fn() -> FrontEndInfo>,
+}
+
+/// A [`GAMES`] line (or a [`register`] argument) for the game type `G`.
+pub const fn entry<G: Game>(about: &'static str, build: fn(&mut Sim, Option<&str>) -> Result<()>) -> Entry {
+    Entry { key: G::KEY, about, build, load: load_as::<G>, front_end: None }
+}
+
+impl Entry {
+    /// Gives the game a front end (title screen, menus, attract mode).
+    pub const fn with_front_end(mut self, f: fn() -> FrontEndInfo) -> Self {
+        self.front_end = Some(f);
+        self
+    }
+}
+
+fn load_as<G: Game>(v: ciborium::Value) -> Result<GameBox, String> {
+    v.deserialized::<G>().map(GameBox::new).map_err(|e| e.to_string())
+}
+
+/// A game's level text: `crates/pav_core/src/games/<key>.toml` read from disk when the program
+/// runs from the repository's root (`pav`, `cargo run`), so an edit shows at the next `load`
+/// with no rebuild; else `built_in`, the copy embedded with `include_str!` (tests, the browser,
+/// a shipped executable).
+pub fn level_text(key: &str, built_in: &'static str) -> std::borrow::Cow<'static, str> {
+    #[cfg(not(target_arch = "wasm32"))]
+    if let Ok(text) = std::fs::read_to_string(format!("crates/pav_core/src/games/{key}.toml")) {
+        return text.into();
+    }
+    #[cfg(target_arch = "wasm32")]
+    let _ = key; // the browser has no files
+    built_in.into()
+}
+
+/// The game registered under `key` (built in or registered at run time).
+pub fn find(key: &str) -> Option<&'static Entry> {
+    GAMES.iter().find(|g| g.key == key).or_else(|| {
+        let list = REGISTERED.lock().unwrap_or_else(|p| p.into_inner());
+        list.iter().copied().find(|g| g.key == key)
+    })
+}
+
+/// A running game in `SimState::play`: clones (rewind, snapshots) and serializes (snapshot
+/// files, the state hash) through the game's own derives.
+pub struct GameBox(Box<dyn DynGame>);
+
+impl GameBox {
+    pub fn new<G: Game>(game: G) -> Self {
+        Self(Box::new(game))
+    }
+
+    pub fn key(&self) -> &'static str {
+        self.0.key()
+    }
+
+    /// The game as its own type (None for another game).
+    pub fn get<G: Game>(&self) -> Option<&G> {
+        self.0.as_any().downcast_ref()
+    }
+
+    pub fn get_mut<G: Game>(&mut self) -> Option<&mut G> {
+        self.0.as_any_mut().downcast_mut()
+    }
+
+    pub fn hud(&self, sim: &Sim) -> Vec<String> {
+        self.0.hud(sim)
+    }
+
+    pub fn status(&self, sim: &Sim) -> serde_json::Value {
+        self.0.status(sim)
+    }
+
+    pub fn outcome(&self) -> Outcome {
+        self.0.outcome()
+    }
+
+    pub fn bot(&self, sim: &Sim) -> InputFrame {
+        self.0.bot(sim)
+    }
+
+    /// The game's presentation for this frame.
+    pub fn present(&self, sim: &Sim) -> PlayFrame {
+        self.0.present(sim)
+    }
+
+    pub fn tunables(&mut self, v: &mut dyn ParamVisitor) {
+        self.0.tunables(v)
+    }
+
+    pub fn time_scale(&self) -> f32 {
+        self.0.time_scale()
+    }
+
+    pub fn progress(&self) -> Option<serde_json::Value> {
+        self.0.progress()
+    }
+
+    pub fn restore(&mut self, v: &serde_json::Value) {
+        self.0.restore(v)
+    }
+}
+
+impl Clone for GameBox {
+    fn clone(&self) -> Self {
+        Self(self.0.clone_box())
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+struct Saved {
+    key: String,
+    state: ciborium::Value,
+}
+
+impl Serialize for GameBox {
+    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        let state = self.0.save().map_err(serde::ser::Error::custom)?;
+        Saved { key: self.key().to_string(), state }.serialize(s)
+    }
+}
+
+impl<'de> Deserialize<'de> for GameBox {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let saved = Saved::deserialize(d)?;
+        let Some(entry) = find(&saved.key) else {
+            let known: Vec<&str> = all().iter().map(|g| g.key).collect();
+            return Err(D::Error::custom(format!("unknown game '{}' (known: {})", saved.key, known.join(", "))));
+        };
+        (entry.load)(saved.state).map_err(D::Error::custom)
+    }
+}
+
+/// [`Game`] as an object (the trait itself isn't one: `Clone` and serde).
+trait DynGame: Send + Sync {
+    fn key(&self) -> &'static str;
+    fn clone_box(&self) -> Box<dyn DynGame>;
+    fn save(&self) -> Result<ciborium::Value, String>;
+    fn pre(&mut self, sim: &mut Sim, input: &InputFrame, dt: f32, events: &mut Vec<SimEvent>) -> BTreeMap<EntityId, InputFrame>;
+    fn post(&mut self, sim: &mut Sim, dt: f32, events: &mut Vec<SimEvent>);
+    fn hud(&self, sim: &Sim) -> Vec<String>;
+    fn status(&self, sim: &Sim) -> serde_json::Value;
+    fn outcome(&self) -> Outcome;
+    fn bot(&self, sim: &Sim) -> InputFrame;
+    fn present(&self, sim: &Sim) -> PlayFrame;
+    fn tunables(&mut self, v: &mut dyn ParamVisitor);
+    fn time_scale(&self) -> f32;
+    fn progress(&self) -> Option<serde_json::Value>;
+    fn restore(&mut self, v: &serde_json::Value);
+    fn command(&mut self, sim: &mut Sim, name: &str, args: &serde_json::Value) -> Option<Result<serde_json::Value, String>>;
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+}
+
+impl<G: Game> DynGame for G {
+    fn key(&self) -> &'static str {
+        G::KEY
+    }
+    fn clone_box(&self) -> Box<dyn DynGame> {
+        Box::new(self.clone())
+    }
+    fn save(&self) -> Result<ciborium::Value, String> {
+        ciborium::Value::serialized(self).map_err(|e| e.to_string())
+    }
+    fn pre(&mut self, sim: &mut Sim, input: &InputFrame, dt: f32, events: &mut Vec<SimEvent>) -> BTreeMap<EntityId, InputFrame> {
+        Game::pre(self, sim, input, dt, events)
+    }
+    fn post(&mut self, sim: &mut Sim, dt: f32, events: &mut Vec<SimEvent>) {
+        Game::post(self, sim, dt, events)
+    }
+    fn hud(&self, sim: &Sim) -> Vec<String> {
+        Game::hud(self, sim)
+    }
+    fn status(&self, sim: &Sim) -> serde_json::Value {
+        Game::status(self, sim)
+    }
+    fn outcome(&self) -> Outcome {
+        Game::outcome(self)
+    }
+    fn bot(&self, sim: &Sim) -> InputFrame {
+        Game::bot(self, sim)
+    }
+    fn present(&self, sim: &Sim) -> PlayFrame {
+        let mut draw = DrawList::default();
+        Game::draw(self, sim, &mut draw);
+        PlayFrame {
+            camera: Game::camera(self, sim),
+            ui: Game::ui(self, sim),
+            draw,
+            atmosphere: Game::atmosphere(self, sim),
+            audio: Game::audio(self, sim),
+            effects: Game::effects(self, sim),
+        }
+    }
+    fn tunables(&mut self, v: &mut dyn ParamVisitor) {
+        Game::tunables(self, v)
+    }
+    fn time_scale(&self) -> f32 {
+        Game::time_scale(self)
+    }
+    fn progress(&self) -> Option<serde_json::Value> {
+        Game::progress(self)
+    }
+    fn restore(&mut self, v: &serde_json::Value) {
+        Game::restore(self, v)
+    }
+    fn command(&mut self, sim: &mut Sim, name: &str, args: &serde_json::Value) -> Option<Result<serde_json::Value, String>> {
+        Game::command(self, sim, name, args)
+    }
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
+
+impl Sim {
+    /// The running game from [`GAMES`], if this scene is one.
+    pub fn play(&self) -> Option<&GameBox> {
+        self.state.play.as_ref()
+    }
+
+    /// The running game's outcome (`Playing` when there is none).
+    pub fn outcome(&self) -> Outcome {
+        self.play().map(|g| g.outcome()).unwrap_or_default()
+    }
+
+    /// The running game's bot input (none without a game).
+    pub fn bot_input(&self) -> InputFrame {
+        self.play().map(|g| g.bot(self)).unwrap_or_default()
+    }
+
+    pub(crate) fn play_pre(&mut self, input: &InputFrame, dt: f32, events: &mut Vec<SimEvent>) -> BTreeMap<EntityId, InputFrame> {
+        let Some(mut g) = self.state.play.take() else { return BTreeMap::new() };
+        let out = g.0.pre(self, input, dt, events);
+        self.state.play = Some(g);
+        out
+    }
+
+    pub(crate) fn play_post(&mut self, dt: f32, events: &mut Vec<SimEvent>) {
+        let Some(mut g) = self.state.play.take() else { return };
+        g.0.post(self, dt, events);
+        self.state.play = Some(g);
+    }
+
+    /// Runs a game-specific tool command (see [`Game::command`]).
+    pub fn game_command(&mut self, name: &str, args: &serde_json::Value) -> Option<Result<serde_json::Value, String>> {
+        let mut g = self.state.play.take()?;
+        let out = g.0.command(self, name, args);
+        self.state.play = Some(g);
+        out
+    }
+
+    pub(crate) fn play_hud(&self) -> Vec<String> {
+        self.play().map(|g| g.hud(self)).unwrap_or_default()
+    }
+
+    /// Plays the running game with its bot until it is won or lost, or `ticks` pass.
+    /// Returns the outcome and the ticks played.
+    pub fn run_bot(&mut self, ticks: u64) -> (Outcome, u64) {
+        for t in 0..ticks {
+            let o = self.outcome();
+            if o != Outcome::Playing {
+                return (o, t);
+            }
+            let input = self.bot_input();
+            self.step(&input);
+        }
+        (self.outcome(), ticks)
+    }
+}

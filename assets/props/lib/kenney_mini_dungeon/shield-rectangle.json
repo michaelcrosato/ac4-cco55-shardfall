@@ -1,0 +1,8 @@
+{"format":2,"name":"shield-rectangle","unit":"cm","color":"#ca714e",
+"tags":["shield","rectangle","dungeon"],
+"category":"armour",
+"source":{"library":"kenney/mini_dungeon","license":"CC0-1.0","title":"shield-rectangle"},
+"fit":{"mean_mm":11.5,"worst_mm":62,"iou":0.9,"de":0.9,"mesh_pct":64},
+"parts":{
+"mesh":{"mesh":"kenney_mini_dungeon/shield-rectangle"},
+"red_box":{"type":"box","size":[54,39,18],"pos":[0,33,1]}}}

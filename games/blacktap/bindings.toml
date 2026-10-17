@@ -1,0 +1,123 @@
+# Assassin's Keg: Black Tap — input bindings (PLAN §10), read by pav_ui::Bindings.
+#
+# Each [[action]] is one button bit of pav_core::input::InputFrame (`bit` 0..31: the numbers
+# are part of the game's replays and the bot, so never renumber them).
+#   pad   = gilrs button names: South East North West LeftTrigger(L1/LB) RightTrigger(R1/RB)
+#           LeftTrigger2(L2/LT) RightTrigger2(R2/RT) LeftThumb(L3) RightThumb(R3)
+#           DPadUp DPadDown DPadLeft DPadRight Start(Options/Menu) Select(Create/View) Touchpad
+#   keys  = winit KeyCode names (Space, KeyE, ShiftLeft, ControlLeft, Digit1, ArrowLeft...)
+#   mouse = Left Right Middle WheelUp WheelDown; "Left:aim" = left button while `aim` is held
+#           (it then counts for this action instead of the plain "Left" bindings).
+#   label = what it does, for the button layout screen.
+#
+# Not actions: movement (left stick / W A S D) and look (right stick / mouse) are axes, and
+# Options / Esc is the system pause, handled by the front end.
+
+# L2 / R2 count as pressed past this.
+trigger_threshold = 0.4
+
+[[action]]
+name = "jump"
+bit = 0
+label = "Jump · Parkour Up · Climb · Board"
+pad = ["South"]
+keys = ["Space"]
+
+[[action]]
+name = "crouch"
+bit = 1
+label = "Crouch and sneak"
+pad = ["LeftThumb"]
+keys = ["ControlLeft"]
+
+[[action]]
+name = "interact"
+bit = 2
+label = "Counter · Interact · Brace"
+pad = ["North"]
+keys = ["KeyE"]
+
+[[action]]
+name = "fire"
+bit = 3
+label = "Fire · Throw · Broadside"
+pad = ["RightTrigger2"]
+keys = ["KeyF"]
+mouse = ["Left:aim"]
+
+[[action]]
+name = "aim"
+bit = 4
+label = "Aim pistol, tool or cannons"
+pad = ["LeftTrigger2"]
+mouse = ["Right"]
+
+[[action]]
+name = "sprint"
+bit = 5
+label = "Free-run · Ramming speed"
+pad = ["RightTrigger"]
+keys = ["ShiftLeft"]
+
+[[action]]
+name = "attack"
+bit = 6
+label = "Attack · Assassinate · Swivel gun"
+pad = ["West"]
+mouse = ["Left"]
+
+[[action]]
+name = "drop"
+bit = 13
+label = "Drop · Parkour Down · Dodge · Dive"
+pad = ["East"]
+keys = ["KeyC"]
+
+[[action]]
+name = "heal"
+bit = 14
+label = "Grog Ration · Repair the hull"
+pad = ["DPadUp"]
+keys = ["KeyR"]
+
+[[action]]
+name = "gull"
+bit = 15
+label = "Gull Sight"
+pad = ["RightThumb"]
+keys = ["KeyQ"]
+
+[[action]]
+name = "tools"
+bit = 16
+label = "Tool wheel · Spyglass"
+pad = ["LeftTrigger"]
+keys = ["Tab", "KeyZ"]
+
+[[action]]
+name = "whistle"
+bit = 17
+label = "Whistle (lure)"
+pad = ["DPadDown"]
+keys = ["KeyG"]
+
+[[action]]
+name = "prev"
+bit = 18
+label = "Previous tool or shanty"
+pad = ["DPadLeft"]
+keys = ["Digit1", "ArrowLeft"]
+
+[[action]]
+name = "next"
+bit = 19
+label = "Next tool or shanty"
+pad = ["DPadRight"]
+keys = ["Digit2", "ArrowRight"]
+
+[[action]]
+name = "map"
+bit = 20
+label = "Map"
+pad = ["Touchpad", "Select"]
+keys = ["KeyM"]

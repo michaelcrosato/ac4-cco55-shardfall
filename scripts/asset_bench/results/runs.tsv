@@ -1,0 +1,113 @@
+gate	arm	task	run	done	accepted	tok_x	tok_cum	tok_run	turns	calls	failed	refused	first_ok	lint_block	lint_other	check	wall_s	engine_ms	parts	tris	size_cm	copied_from	model	effort	problems
+G1	T	E1	1	1	1	5965	17798	72567	4	27	18	0	1	0	0	ok	15.6	1152	17	204	260x78x80	WORKSHOP/trestle_table	sonnet	medium	
+G1	T	E2	1	1	1	8636	22517	74544	3	9	0	0	1	0	0	ok	23.1	1198	42	2772	230x150.1x144.2	WORKSHOP/hand_cart	sonnet	medium	
+G1	T	E3	1	1	1	4315	8831	70914	2	6	0	0	1	0	0	ok	11.5	576	15	180	623.4x360x86	WORKSHOP/castle_wall	sonnet	medium	
+G1	T	E4	1	1	1	4378	16221	70833	4	10	2	0	1	0	0	ok	13.6	600	10	1776	38x110x6.4	WORKSHOP/battle_axe	sonnet	medium	
+G1	T	E5	1	1	1	4427	12813	72705	3	6	0	0	1	0	0	ok	16.5	658	13	1152	60x134.4x60	WORKSHOP/tripod_brazier	sonnet	medium	
+G1	T	E6	1	1	1	15259	81462	76737	9	15	0	0	1	0	0	ok	22.1	1236	90	7088	124x206x44/140x125x80/128x114x112		sonnet	medium	
+G1	T	P01	1	1	1	7907	30064	72638	5	12	3	0	0	0	0	ok	12.6	1556	13	156	200x78x80		sonnet	medium	
+G1	T	P03	1	1	1	6094	17002	72673	3	22	14	0	1	0	0	ok	9.6	1742	11	480	82x63.5x53		sonnet	medium	
+G1	T	P05	1	1	1	4168	8866	70239	2	4	0	0	1	0	0	ok	0.9	810	12	144	400x360x86		sonnet	medium	
+G1	T	P07	1	1	1	4802	15053	72745	3	7	0	0	1	0	0	ok	9.0	674	13	1152	60x110.1x60		sonnet	medium	
+G1	T	P13	1	1	1	4850	21424	72306	5	17	12	0	1	0	0	ok	8.1	1099	9	2724	36x110x6.4		sonnet	medium	
+G1	T	P19	1	1	1	8474	15431	75350	2	7	2	0	1	0	0	ok	4.0	1150	40	2748	226x150.1x131.1		sonnet	medium	
+G1	T	P21	1	1	1	4123	9490	70626	2	4	0	0	1	0	0	ok	2.9	601	21	900	120x260x90		sonnet	medium	
+G1	T	P24	1	1	1	17117	83445	79328	6	20	3	0	1	0	0	ok	16.0	1776	60	3248	124x206x44/140x125x80/128x114x112		sonnet	medium	
+G2	F	E1	1	1	1	4418	9015	66724	2	5	0	0	1	0	12	ok	9.0	756	23	276	260x78x79.6		sonnet	medium	
+G2	F	E2	1	1	1	4466	9306	67438	2	5	0	0	1	0	0	ok	17.9	695	24	2084	224x160.5x143		sonnet	medium	
+G2	F	E3	1	1	1	3785	8289	66238	2	5	0	0	1	0	0	ok	11.4	646	14	168	600x360x80		sonnet	medium	
+G2	F	E4	1	1	1	4087	17930	66702	5	7	1	0	0	0	0	ok	14.8	868	16	1816	36x110x6		sonnet	medium	
+G2	F	E5	1	1	1	4534	9483	66842	2	5	0	0	1	0	0	ok	10.9	806	16	3180	64x132.2x67.4		sonnet	medium	
+G2	F	E6	1	1	1	10899	42751	71313	6	15	0	0	1	0	2	ok	25.4	1845	94	8580	120x200x36/140x116x70/76x88x72		sonnet	medium	
+G2	F	P01	1	1	1	3790	5897	66011	1	4	0	0	1	0	8	ok	0.7	672	17	204	200x78x79.6		sonnet	medium	
+G2	F	P02	1	1	1	5493	11494	67819	2	18	13	0	1	0	0	ok	4.4	1480	38	5168	46.2x100x46		sonnet	medium	
+G2	F	P03	1	1	1	6082	21856	68041	4	12	3	0	0	0	0	ok	13.8	1361	16	360	84x62.9x55.3		sonnet	medium	
+G2	F	P04	1	1	1	5388	14558	67763	3	20	15	0	1	0	0	ok	4.1	1329	11	6608	99x77x67		sonnet	medium	
+G2	F	P05	1	1	1	6573	22116	68440	4	15	4	1	0	0	0	ok	13.0	2502	11	132	400x360x80		sonnet	medium	
+G2	F	P06	1	1	1	8026	32122	69931	5	13	3	2	0	0	6	ok	21.4	2761	13	156	324.4x380x64		sonnet	medium	
+G2	F	P07	1	1	1	4161	6268	66094	1	4	0	0	1	0	0	ok	0.8	840	16	3180	64x110x67.4		sonnet	medium	
+G2	F	P08	1	1	1	5480	14719	67946	3	15	7	0	1	0	0	ok	11.9	1515	18	2432	110x90x110		sonnet	medium	
+G2	F	P09	1	1	1	16141	58295	68753	5	16	1	2	1	0	0	ok	19.8	2322	30	2852	291.8x461.8x271.9		sonnet	medium	
+G2	F	P10	1	1	1	4724	14587	66645	3	9	3	0	0	0	0	ok	12.0	1633	24	1404	63x80.5x63		sonnet	medium	
+G2	F	P11	1	1	1	4739	10168	66608	2	14	9	0	1	0	0	ok	6.1	1384	6	6144	220x120x170		sonnet	medium	
+G2	F	P12	1	1	1	6336	16810	68982	3	12	3	0	0	0	0	ok	14.0	2508	8	2564	119.3x150x102.5		sonnet	medium	
+G2	F	P13	1	1	1	4613	9856	66771	2	8	3	0	0	0	0	ok	6.2	1196	16	1712	36x110x6		sonnet	medium	
+G2	F	P14	1	1	1	3443	5550	65243	1	4	0	0	1	0	0	ok	0.7	739	8	572	70x70x12		sonnet	medium	
+G2	F	P15	1	1	1	4031	9664	66159	2	5	0	0	1	0	0	ok	5.3	1294	15	3528	51x45x35.5		sonnet	medium	
+G2	F	P16	1	1	1	3334	5441	65423	1	4	0	0	1	0	0	ok	0.7	660	6	3204	32x26x34		sonnet	medium	
+G2	F	P17	1	1	1	3565	5672	65936	1	4	0	0	1	0	0	ok	0.7	709	8	672	66x81x45		sonnet	medium	
+G2	F	P18	1	1	1	3741	14646	67084	4	5	1	0	0	0	0	ok	10.9	707	4	2068	50x22x50		sonnet	medium	
+G2	F	P19	1	1	1	6871	30993	70891	5	16	0	2	1	0	0	ok	27.4	2162	23	2072	222x150.5x133		sonnet	medium	
+G2	F	P20	1	1	1	3550	5657	65189	1	4	0	0	1	0	0	ok	0.7	728	10	80	160x220x40		sonnet	medium	
+G2	F	P21	1	1	1	6641	19076	69040	3	25	18	0	1	0	0	ok	11.6	1962	24	3504	120x260x90		sonnet	medium	
+G2	F	P22	1	1	1	6828	26493	68598	5	27	18	0	1	0	1	ok	12.3	1942	14	3992	230x114x100		sonnet	medium	
+G2	F	P23	1	1	1	9921	37585	71751	5	30	20	3	0	0	0	ok	28.0	2740	15	2332	90x80x11.5		sonnet	medium	
+G2	F	P24	1	1	1	15659	31714	73875	3	26	4	0	0	0	1	ok	24.2	2237	70	6276	120x200x36/140x116x70/76x88x72		sonnet	medium	
+G2	F2	E1	1	1	1	3030	7275	69824	2	3	0	0	1	0	0	ok	7.9	641	14	1128	260x78x80		sonnet	medium	
+G2	F2	E2	1	1	1	3830	14761	71774	4	6	2	0	0	0	0	ok	19.0	586	25	2032	228x148x130.5		sonnet	medium	
+G2	F2	E3	1	1	1	2961	7172	69495	2	3	0	0	1	0	2	ok	5.4	566	14	168	600x360x84		sonnet	medium	
+G2	F2	E4	1	1	1	3247	13326	70374	4	8	3	0	0	0	0	ok	15.6	615	14	1556	36x110x6.4		sonnet	medium	
+G2	F2	E5	1	1	1	3622	11123	70907	3	5	0	0	1	0	0	ok	15.6	1212	6	1772	60x136.1x60		sonnet	medium	
+G2	F2	E6	1	1	1	7050	24994	73478	5	12	0	0	1	0	0	ok	21.5	856	85	6628	120x200x36/140x110x70/80x80x80		sonnet	medium	
+G2	F2	P01	1	1	1	2664	4632	69077	1	2	0	0	1	0	0	ok	0.6	603	10	1080	200x78x80		sonnet	medium	
+G2	F2	P02	1	1	1	3427	5395	70041	1	3	0	0	1	0	0	ok	0.7	689	30	6520	46x100x46		sonnet	medium	
+G2	F2	P03	1	1	1	2916	4884	69445	1	2	0	0	1	0	7	ok	0.6	553	17	372	84x64x57		sonnet	medium	
+G2	F2	P04	1	1	1	3500	8031	70888	2	4	2	0	0	0	0	ok	4.5	565	12	6900	96x72x80.2		sonnet	medium	
+G2	F2	P05	1	1	1	3485	8265	70162	2	4	0	0	1	0	1	ok	8.7	1130	11	132	400x360x84		sonnet	medium	
+G2	F2	P06	1	1	1	3387	8175	71030	2	4	0	0	1	0	0	ok	9.1	1213	14	168	326x383x62		sonnet	medium	
+G2	F2	P07	1	1	1	3319	8062	70369	2	4	0	0	1	0	0	ok	4.4	1330	6	1772	60x113.4x60		sonnet	medium	
+G2	F2	P08	1	1	1	4433	15141	72451	4	8	4	0	0	0	0	ok	13.6	1134	19	2432	110x90x110		sonnet	medium	
+G2	F2	P09	1	1	0	6176	25070	71493	4	7	0	0	1	1	0	ok	14.2	1194	56	3584	308x453.1x302		sonnet	medium	dead_tree: not_grounded (0.9 cm); dead_tree: not_grounded: the lowest part is at y=0.9 cm
+G2	F2	P10	1	1	1	3376	8242	70263	2	4	0	0	1	0	0	ok	3.7	1111	15	2428	63x82.5x60.5		sonnet	medium	
+G2	F2	P11	1	1	1	2667	4635	69182	1	2	0	0	1	0	0	ok	0.6	618	6	6144	219.4x118x165.3		sonnet	medium	
+G2	F2	P12	1	1	1	3087	7892	70127	2	4	0	0	1	0	2	ok	7.3	644	7	2564	120x149.5x100		sonnet	medium	
+G2	F2	P13	1	1	1	4027	11679	70407	3	6	2	0	0	0	0	ok	6.5	1079	14	1444	36x110x6		sonnet	medium	
+G2	F2	P14	1	1	1	2650	4618	69050	1	2	0	0	1	0	0	ok	0.5	546	5	2200	70x70x12		sonnet	medium	
+G2	F2	P15	1	1	1	3386	10098	70825	3	7	1	0	1	0	0	ok	10.2	1211	13	1732	50x45x35.5		sonnet	medium	
+G2	F2	P16	1	1	1	2755	4723	69204	1	2	0	0	1	0	0	ok	0.6	577	7	4228	32x26x34		sonnet	medium	
+G2	F2	P17	1	1	1	3167	7524	70534	2	4	2	0	0	0	0	ok	4.6	595	8	556	70x85x44		sonnet	medium	
+G2	F2	P18	1	1	1	2754	4722	70051	1	2	0	0	1	0	1	ok	0.6	570	6	1132	50x22x50		sonnet	medium	
+G2	F2	P19	1	1	1	3152	8046	70865	2	4	0	0	1	0	0	ok	9.2	665	21	1984	226x148x130		sonnet	medium	
+G2	F2	P20	1	1	1	2818	4786	69190	1	2	0	0	1	0	0	ok	0.6	632	12	140	160x220x40		sonnet	medium	
+G2	F2	P21	1	1	1	5243	15794	79169	3	5	2	0	0	0	0	ok	19.2	654	29	1428	120x260x90		sonnet	medium	
+G2	F2	P22	1	1	1	2901	4869	69523	1	2	0	0	1	0	0	ok	0.5	544	14	3044	231.8x111.5x100		sonnet	medium	
+G2	F2	P23	1	1	1	3607	8931	71074	2	4	0	0	1	0	1	ok	9.2	770	12	1104	90x76x12		sonnet	medium	
+G2	F2	P24	1	1	1	5357	12092	74457	2	8	0	0	1	0	0	ok	8.4	1485	58	3280	120x200x36/140x110x70/80x80x80		sonnet	medium	
+GA	A	E1	1	1	1	7897	16855	71192	2	5	0	0	1	0	0	ok	11.2	624	17	16524	260x78x80	WORKSHOP/trestle_table	sonnet	medium	
+GA	A	E2	1	1	1	22628	58263	77579	3	6	0	0	1	0	0	ok	19.1	505	47	1964	224x150x149.5	WORKSHOP/hand_cart	sonnet	medium	
+GA	A	E3	1	1	1	7399	15998	71872	2	5	0	0	1	0	0	ok	12.7	582	16	192	620x360x85	WORKSHOP/castle_wall	sonnet	medium	
+GA	A	E4	1	1	1	7334	16629	71151	2	5	0	0	1	0	0	ok	7.5	479	14	3364	41.4x110x6	WORKSHOP/battle_axe	sonnet	medium	
+GA	A	E5	1	1	1	6133	14454	71083	2	5	0	0	1	0	0	ok	8.7	513	7	384	62x138x63	WORKSHOP/tripod_brazier	sonnet	medium	
+GA	A	E6	1	1	0	29128	179059	87804	7	21	0	0	1	4	8	ok	33.8	1790	107	13400	144x200x44/160x133x80/130x111x110	WORKSHOP/alchemist_bookshelf	sonnet	medium	alchemist_table_frost: floating: book, book2 (2 cm from the rest); alchemist_table_frost: floating: candle, flame (3 cm from the rest); alchemist_cauldron_frost: floating: handle-1 (1 cm from the rest); alchemist_cauldron_frost: floating: handle1 (1 cm from the rest)
+GA	A	P01	1	1	1	5048	8299	72030	1	3	0	0	1	0	0	ok	0.6	627	12	11664	200x78x80		sonnet	medium	
+GA	A	P01	2	1	1	9247	20713	69608	2	7	0	0	1	0	4	ok	4.8	1053	16	3072	200x78x80		sonnet	medium	
+GA	A	P02	1	1	1	6000	9251	68470	1	3	0	0	1	0	0	ok	0.6	601	30	1496	46x100x46		sonnet	medium	
+GA	A	P03	1	1	1	5166	8417	70626	1	3	0	0	1	0	1	ok	0.5	480	18	1524	80x63x55		sonnet	medium	
+GA	A	P03	2	1	1	6473	14707	70728	2	19	15	0	1	0	9	ok	6.3	992	12	1452	80x62.5x54.7		sonnet	medium	
+GA	A	P04	1	1	1	4838	8089	68017	1	3	0	0	1	0	0	ok	0.5	480	12	3684	94x77.5x64		sonnet	medium	
+GA	A	P05	1	1	1	4782	12401	67646	2	3	0	0	1	0	0	ok	0.5	460	12	144	400x360x85		sonnet	medium	
+GA	A	P05	2	1	1	4789	8040	68806	1	3	0	0	1	0	0	ok	0.5	475	12	144	400x360x83		sonnet	medium	
+GA	A	P06	1	1	1	5071	8322	69732	1	3	0	0	1	0	10	ok	0.5	486	13	156	320x380x60		sonnet	medium	
+GA	A	P07	1	1	1	6923	16198	70969	2	7	0	0	1	0	0	ok	8.3	1021	7	384	62x112x62		sonnet	medium	
+GA	A	P07	2	1	1	10723	50178	70647	6	8	2	0	1	0	1	ok	11.0	1143	19	512	60x112x63		sonnet	medium	
+GA	A	P08	1	1	1	6529	9780	70235	1	3	0	0	1	0	4	ok	0.5	509	34	1588	110x92x110		sonnet	medium	
+GA	A	P09	1	1	1	10272	27026	72089	3	7	1	0	1	0	0	ok	16.5	1027	20	512	340.1x500.7x337.6		sonnet	medium	
+GA	A	P10	1	1	1	5400	8651	70558	1	3	0	0	1	0	1	ok	0.6	593	24	512	60x81x60.4		sonnet	medium	
+GA	A	P11	1	1	1	6334	19462	71147	3	16	9	0	1	0	0	ok	11.5	1644	6	0	220x124x165		sonnet	medium	
+GA	A	P12	1	1	1	6213	31573	70209	6	10	2	0	1	0	1	ok	12.7	1787	7	2004	120x150x102		sonnet	medium	
+GA	A	P13	1	1	1	5008	8259	68726	1	3	0	0	1	0	2	ok	0.5	533	15	5180	36x110x6		sonnet	medium	
+GA	A	P13	2	1	1	5024	8275	70014	1	3	0	0	1	0	0	ok	0.5	492	14	3940	36x110x6		sonnet	medium	
+GA	A	P14	1	1	1	6487	15377	70578	2	7	0	0	1	0	1	ok	7.0	990	6	420	70x70x12.7		sonnet	medium	
+GA	A	P15	1	1	1	8470	11721	68508	1	4	0	0	1	0	0	ok	0.6	614	17	2264	51.6x42x36.3		sonnet	medium	
+GA	A	P16	1	1	1	5632	13362	69742	2	13	9	0	1	0	0	ok	5.9	1033	7	3888	32x26x34		sonnet	medium	
+GA	A	P17	1	1	0	6080	14029	70439	2	16	12	0	1	1	0	ok	5.5	988	9	688	70x85x45		sonnet	medium	anvil_stump: floating: anvil_horn (5 cm from the rest)
+GA	A	P18	1	1	1	5498	8749	71640	1	3	0	0	1	0	4	ok	0.5	484	22	3236	50x22x50		sonnet	medium	
+GA	A	P19	1	1	1	6654	9905	68874	1	3	0	0	1	0	0	ok	0.5	496	39	1892	220x150x131		sonnet	medium	
+GA	A	P19	2	1	0	15079	35845	71578	3	9	1	0	1	2	10	ok	13.4	1610	41	3720	220x152.5x135.5		sonnet	medium	hand_cart: below_floor (-1.0 cm); hand_cart: below_floor: rim_l10, rim_l8, rim_r10, rim_r8 reach y=-1 cm; hand_cart: floating: bed, crossbar, load +3 (1 cm from the rest)
+GA	A	P20	1	1	0	7898	11149	69231	1	4	0	0	1	4	1	ok	0.5	513	17	156	160x220x40		sonnet	medium	notice_board: floating: paper_a, pin_a (0.5 cm from the rest); notice_board: floating: paper_b, pin_b (0.5 cm from the rest); notice_board: floating: paper_c, pin_c (0.5 cm from the rest); notice_board: floating: paper_d, pin_d (1 cm from the rest)
+GA	A	P21	1	1	0	9762	19267	69740	2	6	2	0	0	1	3	ok	4.8	977	41	640	120x260x90		sonnet	medium	gibbet_cage: floating: jaw, pelvis, rib0 +4 (2 cm from the rest)
+GA	A	P21	2	1	0	7310	17355	69523	2	3	0	0	1	4	0	ok	3.3	527	41	9036	120x260x90		sonnet	medium	gibbet_cage: floating: chain0 (1.5 cm from the rest); gibbet_cage: floating: chain1 (12 cm from the rest); gibbet_cage: floating: chain2 (7.3 cm from the rest); gibbet_cage: floating: chain3 (2.5 cm from the rest)
+GA	A	P22	1	1	1	4545	7796	67552	1	3	0	0	1	0	1	ok	0.5	487	10	5880	232x110x100.5		sonnet	medium	
+GA	A	P23	1	1	1	5778	13564	69168	2	15	11	0	1	0	2	ok	3.6	964	8	96	90x80x12		sonnet	medium	
+GA	A	P24	1	1	0	12155	77457	73101	7	14	1	0	1	4	10	ok	12.7	2092	67	8280	144x200x44/160x133x80/130x111x110		sonnet	medium	alchemist_table: floating: book, book2 (2 cm from the rest); alchemist_table: floating: candle, flame (3 cm from the rest); alchemist_cauldron: floating: handle-1 (1 cm from the rest); alchemist_cauldron: floating: handle1 (1 cm from the rest)
+GA	A	P24	2	1	1	10504	22988	71700	2	9	0	0	1	0	11	ok	3.6	606	71	5440	120x200x44/160x135x80/116x133x104		sonnet	medium	

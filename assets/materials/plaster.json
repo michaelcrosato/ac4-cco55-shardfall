@@ -1,0 +1,4 @@
+{"format":1,"name":"plaster","unit":"cm","description":"Lime plaster: soft mottling and worn patches; walls keep their own colour as the base.","tags":["wall","plaster","town","stucco"],"source":{"library":"own","license":"CC0-1.0","author":"Shardfall contributors"},"color":"#e8dcc0","roughness":0.9,"layers":[
+  {"type":"noise","size":120,"detail":3,"distort":0.6,"cover":0.4,"soft":0.9,"shade":0.955},
+  {"type":"noise","size":20,"detail":2,"cover":0.25,"soft":0.7,"shade":0.975},
+  {"type":"gradient","axis":"y","from":0,"to":90,"shade":0.86,"strength":0.6}]}

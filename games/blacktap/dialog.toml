@@ -1,0 +1,300 @@
+# Dialog lines, speakers and barks (pav_kit::dialog). Speaker colours are sRGB hex; `voice`
+# picks the voice-blip set in the sound bank. Puns in the words, played straight in delivery.
+
+[speaker.bung]
+name = "Old Bung"
+color = "#e2b04a"
+voice = "bung"
+
+[speaker.pip]
+name = "Pip Carrow"
+color = "#8fc1a9"
+voice = "pip"
+
+[speaker.ballast]
+name = "Ballast"
+color = "#e07a5f"
+voice = "parrot"
+
+[speaker.cask]
+name = "Captain Cask"
+color = "#f1e3c6"
+voice = "cask"
+
+[speaker.drye]
+name = "Commodore Drye"
+color = "#7fb7d6"
+voice = "drye"
+
+[speaker.sobers]
+name = "Captain Sobers"
+color = "#a7b8d8"
+voice = "sobers"
+
+[speaker.molasses]
+name = "Mother Molasses"
+color = "#c9822b"
+voice = "molasses"
+
+[speaker.guard]
+name = "Temperance Guard"
+color = "#d0d4e0"
+voice = "guard"
+
+[speaker.crier]
+name = "Town Crier"
+color = "#d9a35b"
+voice = "crier"
+
+[speaker.crew]
+name = "Crew"
+color = "#b99b6b"
+voice = "crew"
+
+# ---------------------------------------------------------------- First Round — Fair Winds
+[line.r1_intro]
+speaker = "bung"
+text = "Wind's fair and the rum's fresh, Captain. The Saltwind Isles await."
+priority = 2
+
+[line.r1_sails]
+speaker = "bung"
+text = "Let her run! Push forward to let out the canvas — half sail, then full."
+priority = 1
+
+[line.r1_wind]
+speaker = "pip"
+text = "Mind the wind, Captain: straight into it she crawls, wind on the beam she flies."
+
+[line.r1_flotsam]
+speaker = "pip"
+text = "Flotsam off the starboard bow! Sail through it — timber and iron for the hull."
+
+[line.r1_flotsam_got]
+speaker = "crew"
+text = "Hauled aboard!"
+
+[line.r1_spyglass]
+speaker = "pip"
+text = "Sail ho! Hold the spyglass and fire to tag her — that's the Temperance schooner Restraint."
+
+[line.r1_tagged]
+speaker = "bung"
+text = "The Restraint. Sobers' ship. Where she sails, Drye's orders follow."
+
+[line.r1_done]
+speaker = "ballast"
+text = "SAIL HO! SAIL HO!"
+
+# ---------------------------------------------------------------- Second Round — Broadside
+[line.r2_intro]
+speaker = "pip"
+text = "Gunboats breaking from the patrol lane — they mean to cut us off!"
+priority = 2
+
+[line.r2_broadside]
+speaker = "bung"
+text = "Look to a side to run out those guns, then fire! Broadsides on the beam, chain shot dead ahead."
+priority = 1
+
+[line.r2_brace]
+speaker = "bung"
+text = "Their gunports glow before they fire — brace, and we take half the hurt."
+
+[line.r2_gunboats_down]
+speaker = "crew"
+text = "Gunboats sunk! Hurrah for the Black Tap!"
+
+[line.r2_restraint]
+speaker = "pip"
+text = "The Restraint's coming about. Disable her — hull her below a quarter and we board."
+
+[line.r2_board]
+speaker = "bung"
+text = "She's dead in the water! Bring us alongside, slow, and give the word to board!"
+priority = 2
+
+[line.r2_sobers]
+speaker = "sobers"
+text = "Pirate scum! The Commodore will have you dried and salted!"
+
+[line.r2_victory]
+speaker = "bung"
+text = "The Restraint is ours! Take what we need — and pick your upgrade, Captain."
+priority = 2
+
+[line.r2_sobers_out]
+speaker = "sobers"
+text = "Drye's fort will be your last port of call…"
+
+# ---------------------------------------------------------------- Third Round — Batteries Not Included
+[line.r3_intro]
+speaker = "pip"
+text = "Fort Abstinence, Captain. Two gun batteries and a mortar tower guard the approach."
+priority = 2
+
+[line.r3_mortar]
+speaker = "bung"
+text = "Mortar! Red rings mark where the shells will land — steer out of them!"
+priority = 1
+
+[line.r3_battery_down]
+speaker = "crew"
+text = "That battery's gone quiet!"
+
+[line.r3_done]
+speaker = "bung"
+text = "The guns are silent. Take her by land!"
+priority = 2
+
+# ---------------------------------------------------------------- Fourth Round — Ashore
+[line.r4_intro]
+speaker = "bung"
+text = "Dryport's beach is off the bow. Furl the sails, leave the helm to me, and swim for it."
+priority = 2
+
+[line.r4_dive]
+speaker = "pip"
+text = "Off the bow, Captain — the water's deep and warm."
+
+[line.r4_chapel]
+speaker = "pip"
+text = "The chapel tower is the highest point in Dryport. Climb it and survey the town."
+
+[line.r4_climb]
+speaker = "bung"
+text = "Hold free-run and press jump at a wall to climb. Ledges, sills, beams — all handholds."
+
+[line.r4_survey]
+speaker = "cask"
+text = "The fort road, the docks, the warehouse… and the stocks in the plaza."
+
+[line.r4_leap]
+speaker = "pip"
+text = "There's a hay cart below. A Leap of Spirits, Captain — trust the hay."
+
+# ---------------------------------------------------------------- Fifth Round — Under the Influence
+[line.r5_intro]
+speaker = "molasses"
+text = "Psst — up here, in the stocks! Drye's courier carries the cellar key. Get it, then get me out."
+priority = 2
+
+[line.r5_courier]
+speaker = "pip"
+text = "The courier walks from Temperance Hall to the docks with two escorts. From behind, Captain."
+
+[line.r5_gull]
+speaker = "bung"
+text = "Gull Sight shows friend and foe through walls. Stalk grass hides you — crouch in it."
+
+[line.r5_key]
+speaker = "cask"
+text = "The cellar key. Now for Mother Molasses."
+
+[line.r5_stocks]
+speaker = "pip"
+text = "Three guards watch the stocks. A whistle from the grass will draw one in."
+
+[line.r5_freed]
+speaker = "molasses"
+text = "Bless you, Captain. The cellar tunnel starts in the Smugglers' Cave. Drye drinks water on his balcony — the monster."
+priority = 2
+
+# ---------------------------------------------------------------- Last Orders — Tapped Out
+[line.r6_intro]
+speaker = "molasses"
+text = "Three ways into Fort Abstinence: the sea cliff, the cave tunnel, or the front gate if you're feeling sober."
+priority = 2
+
+[line.r6_drye]
+speaker = "pip"
+text = "Gull Sight, Captain — the Commodore will shine like gold."
+
+[line.r6_last_words_1]
+speaker = "drye"
+text = "You fool. Without order, these isles drown in rum and ruin."
+priority = 3
+
+[line.r6_last_words_2]
+speaker = "cask"
+text = "Nothing is watered down, Commodore. Everything is on tap."
+priority = 3
+
+[line.r6_last_words_3]
+speaker = "drye"
+text = "Then… pour one… for the dry."
+priority = 3
+
+[line.r6_flag]
+speaker = "bung"
+text = "Raise the Tap flag over the keep, Captain! Let every isle see it!"
+priority = 2
+
+[line.r6_escape]
+speaker = "bung"
+text = "Bells! Dive from the battlement — we're under the cliffs!"
+priority = 2
+
+[line.r6_storm]
+speaker = "pip"
+text = "Storm's rolling in from the east, and the Abstemious is giving chase! Make for open sea!"
+priority = 2
+
+[line.r6_waterspout]
+speaker = "ballast"
+text = "SPOUT! SPOUT! SPOUT!"
+
+[line.r6_done]
+speaker = "bung"
+text = "Open water! Drinks are on the house — and the house is ours."
+priority = 3
+
+# ---------------------------------------------------------------- free roam
+[line.fr_tavern]
+speaker = "molasses"
+text = "The Last Drop is open again. And I've a contract, if you're thirsty for work."
+
+[line.fr_contract]
+speaker = "molasses"
+text = "The tax collector's back, sniffing at every barrel in Dryport. Tap him, Captain — quietly."
+priority = 2
+
+[line.fr_convoy]
+speaker = "pip"
+text = "Temperance convoy on the horizon — fat with seized rum."
+
+# ---------------------------------------------------------------- barks
+[bark.guard_suspicious]
+speaker = "guard"
+lines = ["Who goes there?", "Must've been the rum…", "Show yourself!", "Something in the grass?"]
+cooldown = 5.0
+
+[bark.guard_alert]
+speaker = "guard"
+lines = ["Pirate! To arms!", "There! Stop, in the name of Temperance!", "Ring the bell!"]
+cooldown = 4.0
+
+[bark.guard_search]
+speaker = "guard"
+lines = ["Spread out!", "Check the haystacks!", "They can't have gone far."]
+cooldown = 7.0
+
+[bark.guard_giveup]
+speaker = "guard"
+lines = ["Probably a cat.", "Back to my post, then.", "I need a stiff glass of water."]
+cooldown = 8.0
+
+[bark.crew_cheer]
+speaker = "crew"
+lines = ["Hurrah!", "Another round for the Captain!", "That's how the Black Tap pours!"]
+cooldown = 6.0
+
+[bark.ballast_brace]
+speaker = "ballast"
+lines = ["BRACE!", "BRACE! BRACE!"]
+cooldown = 3.0
+
+[bark.crier]
+speaker = "crier"
+lines = ["Hear ye! By order of the Commodore, all rum is hereby confiscated!", "Hear ye! Report all pirates to the Temperance Hall!", "Hear ye! Water is the drink of the virtuous!"]
+cooldown = 12.0

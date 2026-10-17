@@ -1,0 +1,16 @@
+{"format":2,"name":"stones","unit":"cm","color":"#707287",
+"tags":["stones","dungeon"],
+"category":"rock",
+"source":{"library":"kenney/mini_dungeon","license":"CC0-1.0","title":"stones"},
+"fit":{"mean_mm":5,"worst_mm":13,"iou":0.96,"de":1,"mesh_pct":0},
+"parts":{
+"grey_cylinder":{"type":"cylinder","radius":47,"radius_end":35,"height":68,"segments":8,"pos":[-34,34,9],"yaw":22},
+"grey_cylinder2":{"type":"cylinder","radius":31,"radius_end":23,"height":100,"segments":8,"pos":[5,50,-19],"yaw":23},
+"grey_cylinder3":{"type":"cylinder","radius":47,"radius_end":35,"height":42,"segments":8,"pos":[36,21,-46],"yaw":22},
+"grey_cylinder4":{"type":"cylinder","radius":47,"radius_end":35,"height":18,"segments":8,"pos":[-45,9,-42],"yaw":22},
+"grey_cylinder5":{"type":"cylinder","radius":47,"radius_end":35,"height":18,"segments":8,"pos":[56,9,-19],"yaw":22,"color":"#777a90"},
+"grey_cylinder6":{"type":"cylinder","radius":21,"radius_end":13,"height":17,"segments":6,"pos":[42,8,55]},
+"grey_cylinder7":{"type":"cylinder","radius":21,"radius_end":13,"height":17,"segments":6,"pos":[-80,8,42]},
+"grey_lathe":{"type":"lathe","profile":[[12,-5],[8,5]],"pos":[39,47,-60]},
+"grey_lathe2":{"type":"lathe","profile":[[12,-5],[8,5]],"pos":[5,5,75]},
+"grey_lathe3":{"type":"lathe","profile":[[12,-5],[8,5]],"pos":[-82,5,-61]}}}

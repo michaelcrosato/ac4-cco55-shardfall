@@ -1,0 +1,65 @@
+# Fourth Round — Ashore (~4 min, sea → land).
+id = "r4"
+title = "Fourth Round — Ashore"
+setup = [{ game = "place_ship:r4_start" }, { game = "player_at_helm" }, { game = "sail:1" }, { atmosphere = "afternoon" }]
+on_start = [{ music = "explore" }, { line = "r4_intro" }, { atmosphere = "afternoon" }, { game = "spawn_town" }]
+
+[[step]]
+id = "landing"
+objective = "Sail to the south-west beach"
+markers = ["marker:r4_anchorage"]
+done = { game = "at_anchorage" }
+bot = "sail_to:r4_anchorage"
+
+[[step]]
+id = "leave_helm"
+objective = "Furl the sails and leave the helm"
+on_start = [{ game = "teach:leave_helm" }]
+done = { flag = "left_helm" }
+checkpoint = true
+bot = "leave_helm"
+
+[[step]]
+id = "dive"
+objective = "Dive off the bow and swim ashore"
+markers = ["marker:r4_beach"]
+on_start = [{ line = "r4_dive" }]
+done = { game = "ashore" }
+checkpoint = true
+bot = "swim_ashore"
+
+[[step]]
+id = "chapel"
+objective = "Climb the chapel tower"
+markers = ["marker:chapel_perch"]
+on_start = [{ line = "r4_chapel" }, { line = "r4_climb" }, { game = "teach:climb" }]
+done = { flag = "on_chapel_perch" }
+bot = "climb_to:chapel"
+
+[[step]]
+id = "survey"
+objective = "Survey Dryport from the Crow's Perch"
+on_start = [{ game = "teach:survey" }]
+done = { flag = "surveyed_chapel" }
+on_done = [{ line = "r4_survey" }]
+checkpoint = true
+bot = "survey"
+
+[[step]]
+id = "leap"
+objective = "Leap of Spirits into the hay cart"
+markers = ["marker:chapel_hay"]
+on_start = [{ line = "r4_leap" }, { game = "teach:leap" }]
+done = { flag = "leaped" }
+bot = "leap"
+
+[[optional]]
+id = "r4_gull_rock"
+text = "Also survey Gull Rock"
+track = { flag = "surveyed_gull_rock" }
+at_end = true
+
+[[optional]]
+id = "r4_fast_climb"
+text = "Reach the top of the chapel within 60 s of landing"
+track = { flag = "fast_climb" }

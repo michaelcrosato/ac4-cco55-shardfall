@@ -1,0 +1,28 @@
+# Third Round — Batteries Not Included (~5 min, sea vs fort).
+id = "r3"
+title = "Third Round — Batteries Not Included"
+setup = [{ game = "place_ship:r3_start" }, { game = "player_at_helm" }, { game = "sail:2" }, { atmosphere = "golden_hour" }]
+on_start = [{ music = "fort_siege" }, { line = "r3_intro" }, { game = "supplies" }, { game = "wind:0" }, { game = "start_fort" }]
+
+[[step]]
+id = "batteries"
+objective = "Destroy the West and North batteries and the Mortar Tower"
+markers = ["battery:west", "battery:north", "battery:mortar"]
+on_start = [{ line = "r3_mortar" }]
+done = { game = "fort_silent" }
+on_done = [{ line = "r3_done" }, { banner = "THE GUNS FALL SILENT" }]
+checkpoint = true
+bot = "bombard"
+
+[[optional]]
+id = "r3_mortar_first"
+text = "Destroy the Mortar Tower first"
+track = { flag = "mortar_first" }
+fail = { flag = "battery_first" }
+
+[[optional]]
+id = "r3_hull"
+text = "Keep the hull above 50%"
+track = { game = "hull_above_half" }
+fail = { not = { game = "hull_above_half" } }
+at_end = true

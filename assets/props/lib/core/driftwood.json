@@ -1,0 +1,10 @@
+{"format":2,"name":"driftwood","unit":"cm",
+"description":"A sun-bleached driftwood log lying on the sand, a broken branch stub and a root knot at one end.",
+"tags":["driftwood","log","beach","wood","vegetation","scatter"],
+"category":"vegetation",
+"materials":{
+"wood":{"color":"#b9ad97","map":"axis","layers":[{"type":"wood","size":10,"axis":"y","cover":0.35,"shade":0.78},{"type":"noise","size":30,"cover":0.35,"shade":0.88}]}},
+"parts":{
+"branch":{"type":"cone","radius":6,"radius_end":3,"from":[40,18,4],"to":[80,24,70],"mat":"wood","jitter":{"rot":[0,35,0]}},
+"knot":{"type":"ellipsoid","size":[40,34,44],"pos":[-128,19,0],"mat":"wood"},
+"log":{"type":"cone","radius":16,"radius_end":11,"from":[-120,19,0],"to":[130,15,6],"mat":"wood","jitter":{"rot":[0,25,0]}}}}

@@ -1,0 +1,16 @@
+{"format":2,"name":"jungle_tree","unit":"cm",
+"description":"A broad tropical jungle tree: a buttressed grey-brown trunk and a branch under four dark green canopy masses.",
+"tags":["tree","jungle","vegetation","tropical","forest","canopy"],
+"category":"vegetation",
+"materials":{
+"bark":{"color":"#6e5a44","map":"axis","layers":[{"type":"wave","size":18,"axis":"y","cover":0.4,"shade":0.78}]},
+"leaves":{"color":"#2f6d3a","layers":[{"type":"voronoi","size":26,"feature":"cells","vary":0.3,"cavity":0.3}]},
+"leaves2":{"color":"#286233","layers":[{"type":"voronoi","size":26,"feature":"cells","vary":0.3,"cavity":0.3}]}},
+"parts":{
+"branch":{"type":"cone","radius":12,"radius_end":6,"from":[0,360,0],"to":[170,500,50],"mat":"bark"},
+"canopy":{"type":"ellipsoid","size":[640,250,600],"pos":[10,570,0],"mat":"leaves","solid":false,"sway":"leaves","jitter":{"rot":[0,40,0],"scale":[0.9,1.1]}},
+"canopy_low":{"type":"ellipsoid","size":[340,170,320],"pos":[-170,440,130],"mat":"leaves2","solid":false,"sway":"leaves","jitter":{"pos":[40,25,40],"scale":[0.8,1.1]}},
+"canopy_side":{"type":"ellipsoid","size":[420,200,380],"pos":[220,480,90],"mat":"leaves2","solid":false,"sway":"leaves","jitter":{"pos":[30,20,60],"scale":[0.85,1.1]}},
+"canopy_top":{"type":"ellipsoid","size":[380,190,360],"pos":[-90,690,-50],"mat":"leaves","solid":false,"sway":"leaves","jitter":{"pos":[40,20,40],"scale":[0.85,1.15]}},
+"root":{"type":"cone","radius":20,"radius_end":4,"from":[0,74,0],"to":[70,18,0],"mat":"bark","radial":{"count":3,"radius":10},"jitter":{"rot":[0,30,0]}},
+"trunk":{"type":"cone","radius":30,"radius_end":18,"from":[0,0,0],"to":[0,480,0],"mat":"bark"}}}

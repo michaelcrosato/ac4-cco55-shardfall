@@ -1,0 +1,145 @@
+# Atmosphere presets (pav_core::play::Atmosphere). Colours are sRGB hex; wind in m/s (x east,
+# z south); the sea is a pav_core::ocean preset name turned to the wind.
+[golden_hour]
+sun_azimuth = 250.0
+sun_elevation = 13.0
+sun_color = "#ffc98a"
+sun_intensity = 1.25
+ambient_sky = "#f0b98c"
+ambient_ground = "#7a5e48"
+ambient = 0.6
+sky_zenith = "#4a77b8"
+sky_horizon = "#ffd4a3"
+fog_color = "#f6caa0"
+fog_start = 220.0
+fog_end = 1500.0
+cloud_cover = 0.35
+cloud_color = "#ffe0c0"
+wind = [5.0, -3.0]
+bloom = 0.45
+saturation = 1.08
+sea = "calm"
+
+[afternoon]
+sun_azimuth = 200.0
+sun_elevation = 48.0
+sun_color = "#fff4e2"
+sun_intensity = 1.15
+ambient_sky = "#a8cff0"
+ambient_ground = "#8a7a62"
+ambient = 0.6
+sky_zenith = "#2f6db5"
+sky_horizon = "#bfe5f5"
+fog_color = "#c4e6f5"
+fog_start = 280.0
+fog_end = 1700.0
+cloud_cover = 0.3
+wind = [5.0, -3.0]
+bloom = 0.3
+saturation = 1.1
+sea = "breezy"
+
+[sunset]
+sun_azimuth = 265.0
+sun_elevation = 5.0
+sun_color = "#ff9a5c"
+sun_intensity = 1.1
+ambient_sky = "#d98a7a"
+ambient_ground = "#5a4048"
+ambient = 0.55
+sky_zenith = "#3b4f8f"
+sky_horizon = "#ff9f6b"
+fog_color = "#e8977a"
+fog_start = 180.0
+fog_end = 1300.0
+cloud_cover = 0.45
+cloud_color = "#ffb38a"
+wind = [6.0, -2.0]
+bloom = 0.5
+saturation = 1.1
+sea = "breezy"
+
+# After the sun has gone: blue dusk, torches lit on the fort and in the town, fireflies over
+# the grass (crates/blacktap/src/vfx.rs lights them whenever the sun is low).
+[dusk]
+sun_azimuth = 272.0
+sun_elevation = 1.5
+sun_color = "#ff8a5a"
+sun_intensity = 0.55
+ambient_sky = "#6a74a8"
+ambient_ground = "#3a3040"
+ambient = 0.5
+sky_zenith = "#1d2a5a"
+sky_horizon = "#c87a6a"
+fog_color = "#6a6488"
+fog_start = 150.0
+fog_end = 1100.0
+cloud_cover = 0.35
+cloud_color = "#c8889a"
+wind = [4.0, -2.0]
+bloom = 0.6
+saturation = 1.0
+exposure = 1.05
+sea = "calm"
+
+[storm]
+sun_azimuth = 120.0
+sun_elevation = 25.0
+sun_color = "#9fb0c0"
+sun_intensity = 0.45
+ambient_sky = "#5d6b7a"
+ambient_ground = "#323838"
+ambient = 0.55
+sky_zenith = "#2b333d"
+sky_horizon = "#5e6b75"
+fog_color = "#56626b"
+fog_start = 60.0
+fog_end = 650.0
+cloud_cover = 0.95
+cloud_color = "#6c747c"
+rain = 0.85
+wetness = 1.0
+wind = [-11.0, -6.0]
+bloom = 0.25
+saturation = 0.85
+contrast = 1.05
+sea = "storm"
+
+[dawn_after_storm]
+sun_azimuth = 95.0
+sun_elevation = 9.0
+sun_color = "#ffd9b0"
+sun_intensity = 1.1
+ambient_sky = "#c9c6e8"
+ambient_ground = "#6a5e58"
+ambient = 0.6
+sky_zenith = "#5a7cc0"
+sky_horizon = "#ffd9c4"
+fog_color = "#f0d4c8"
+fog_start = 150.0
+fog_end = 1400.0
+cloud_cover = 0.5
+cloud_color = "#ffe6da"
+wetness = 0.5
+wind = [3.0, -2.0]
+bloom = 0.45
+sea = "breezy"
+
+[memory_mist]
+sun_azimuth = 200.0
+sun_elevation = 40.0
+sun_color = "#ffffff"
+sun_intensity = 0.8
+ambient_sky = "#ffffff"
+ambient_ground = "#e8e8e8"
+ambient = 0.9
+sky_zenith = "#f4f6f8"
+sky_horizon = "#ffffff"
+fog_color = "#f6f8fa"
+fog_start = 4.0
+fog_end = 30.0
+cloud_cover = 0.0
+wind = [0.5, 0.0]
+bloom = 0.6
+saturation = 0.6
+sea = "flat"

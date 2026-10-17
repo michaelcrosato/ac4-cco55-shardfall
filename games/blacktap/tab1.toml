@@ -1,0 +1,497 @@
+# Tab I, "The Dry Run": the level's markers, routes and island shapes (PLAN.md §5.1).
+# Coordinates: x east, z south, metres; sea level y = 0. The island terrain, town and fort
+# (generators) come from [[island]] and [[structure]] tables once they exist; the shapes below
+# give the rules a seabed and coasts meanwhile.
+
+# Wanted posters in Dryport (tear them down to lower the heat).
+poster = [[164.0, 2.4, 2.7], [206.0, 2.4, 2.7], [196.0, 2.4, 2.7], [172.0, 2.4, 27.3], [216.0, 2.4, 27.3], [162.0, 2.4, 27.3]]
+
+[bounds]
+soft = 560.0
+hard = 600.0
+
+# ---------------------------------------------------------------- islands (rules' shapes)
+[[shape]]
+name = "Isla Templanza"
+center = [220.0, -80.0]
+radii = [160.0, 110.0]
+height = 38.0
+shelf = 40.0
+
+[[shape]]
+name = "Abstinence Head"
+center = [330.0, -215.0]
+radii = [72.0, 52.0]
+height = 18.0
+shelf = 30.0
+
+[[shape]]
+name = "Gull Rock"
+center = [-120.0, -160.0]
+radii = [16.0, 14.0]
+height = 18.0
+shelf = 18.0
+
+[[shape]]
+name = "Hook Key"
+center = [-250.0, 120.0]
+radii = [34.0, 18.0]
+height = 3.0
+shelf = 45.0
+
+# ---------------------------------------------------------------- markers
+[marker]
+# Round starts and sea waypoints.
+r1_start = [-420.0, 0.0, 380.0]
+r2_start = [-260.0, 0.0, 230.0]
+r3_start = [80.0, 0.0, -330.0]
+r4_start = [10.0, 0.0, 95.0]
+r4_anchorage = [74.0, 0.0, 70.0]
+r4_beach = [96.0, 1.0, 20.0]
+r5_start = [120.0, 0.0, 4.0]
+r5_close = [168.0, 2.4, 14.0]
+r6_start = [292.0, 0.0, -100.0]
+extraction = [-450.0, 0.0, -300.0]
+# Flotsam (Round 1 uses the first three; all six count as collectibles).
+flotsam_1 = [-372.0, 0.0, 318.0]
+flotsam_2 = [-335.0, 0.0, 268.0]
+flotsam_3 = [-292.0, 0.0, 236.0]
+flotsam_4 = [-180.0, 0.0, 330.0]
+flotsam_5 = [-60.0, 0.0, 260.0]
+flotsam_6 = [-30.0, 0.0, -300.0]
+# Fort Abstinence.
+# Where a ship can shell each battery from open water (bot hints).
+fire_west = [150.0, 0.0, -330.0]
+fire_north = [340.0, 0.0, -432.0]
+fire_mortar = [545.0, 0.0, -255.0]
+fort_cliff = [330.0, 2.0, -268.0]
+under_cliffs = [326.0, 0.0, -318.0]
+# Dryport.
+# Gull Rock and Hook Key.
+hook_wreck = [-262.0, 0.0, 128.0]
+# Land.
+gull_water = [-92.0, 0.0, -140.0]
+cliff_water = [340.0, 0.0, -296.0]
+
+# Markers taken from the generated structures (games/blacktap/tab1_world.toml).
+[marker_from]
+battery_west = "west_battery.platform"
+battery_north = "north_battery.platform"
+mortar_tower = "mortar_tower.mortar"
+fort_keep = "keep.center"
+flagpole = "keep.flagpole"
+bell_tower = "keep.door"
+fort_gate = "fort_gate.outside"
+cellar = "barracks.center+-6.5,0,0"
+cave = "cave_hut.door"
+chapel_perch = "chapel.perch"
+chapel_hay = "chapel_cart.landing"
+stocks = "stocks.stocks"
+temperance_hall = "temperance_hall.door"
+docks = "pier.end"
+tavern = "tavern.door"
+town_square = "stocks.center"
+dryport = "stocks.center"
+gull_perch = "lighthouse.perch"
+battlement = "keep.flagpole"
+
+# ---------------------------------------------------------------- routes (loops, x/z)
+[route]
+restraint_patrol = [[-150.0, 110.0], [40.0, 130.0], [60.0, 250.0], [-140.0, 240.0]]
+gunboat_lane = [[-200.0, 150.0], [0.0, 110.0], [120.0, 200.0], [-80.0, 280.0]]
+convoy = [[-500.0, 0.0], [-100.0, -40.0], [500.0, 120.0]]
+# Sea paths for the bot and the AI round the islands.
+r4_approach = [[-60.0, 140.0], [20.0, 90.0], [70.0, 52.0]]
+r3_approach = [[-60.0, -60.0], [40.0, -300.0], [180.0, -330.0]]
+escape = [[300.0, -300.0], [150.0, -360.0], [-100.0, -340.0], [-450.0, -300.0]]
+# On land.
+town_patrol_a = [[166.0, 8.0], [202.0, 8.0], [202.0, 28.0], [166.0, 28.0]]
+town_patrol_b = [[150.0, 38.0], [226.0, 38.0]]
+courier_route = [[186.0, 5.0], [200.0, 9.0], [203.0, 28.0], [200.0, 38.0], [196.0, 47.0], [196.0, 70.0]]
+fort_courtyard = [[332.0, -182.0], [362.0, -182.0], [362.0, -220.0], [332.0, -222.0]]
+fort_wall_west = [[310.4, -180.0], [310.4, -224.0]]
+fort_wall_north = [[318.0, -231.6], [362.0, -231.6]]
+drye_walk = [[336.0, -204.0], [358.0, -204.0]]
+
+
+
+# ---------------------------------------------------------------- hiding, heat, areas
+
+
+[[area]]
+name = "fort"
+kind = "restricted"
+center = [340.0, -201.0]
+radii = [31.0, 31.0]
+
+[[area]]
+name = "dryport"
+kind = "town"
+center = [182.0, 22.0]
+radii = [62.0, 42.0]
+
+[[perch]]
+name = "chapel"
+marker = "chapel_perch"
+leap_to = "chapel_hay"
+reveals = 220.0
+
+[[perch]]
+name = "gull_rock"
+marker = "gull_perch"
+leap_to = "gull_water"
+
+[[perch]]
+name = "battlement"
+marker = "battlement"
+leap_to = "cliff_water"
+reveals = 260.0
+
+# ---------------------------------------------------------------- collectibles (PLAN §5.2)
+[[collectible]]
+kind = "sheet"
+name = "sheet_hook_key"
+at = [-246.0, 0.0, 116.0]
+
+[[collectible]]
+kind = "sheet"
+name = "sheet_dryport_roof"
+at = [226.0, 9.8, 30.0]
+
+[[collectible]]
+kind = "sheet"
+name = "sheet_fort_battlement"
+at = [310.4, 23.1, -195.0]
+
+[[collectible]]
+kind = "sheet"
+name = "sheet_gull_rock"
+at = [-96.0, 0.2, -176.0]
+
+[[collectible]]
+kind = "bottle"
+name = "bottle_sw_beach"
+at = [94.0, 0.0, 18.0]
+
+[[collectible]]
+kind = "bottle"
+name = "bottle_south_beach"
+at = [214.0, 0.3, 58.0]
+
+[[collectible]]
+kind = "bottle"
+name = "bottle_hook_key"
+at = [-268.0, 0.0, 110.0]
+
+[[collectible]]
+kind = "bottle"
+name = "bottle_tavern_roof"
+at = [168.0, 9.0, 30.0]
+
+[[collectible]]
+kind = "bottle"
+name = "bottle_west_cove"
+at = [116.0, 0.0, -146.0]
+
+[[collectible]]
+kind = "chest"
+name = "chest_wreck"
+at = [-262.0, 0.0, 132.0]
+
+[[collectible]]
+kind = "chest"
+name = "chest_cay"
+at = [-238.0, 0.0, 124.0]
+
+[[collectible]]
+kind = "chest"
+name = "chest_gull_rock"
+at = [-128.0, 14.0, -150.0]
+
+[[collectible]]
+kind = "chest"
+name = "chest_west_cove"
+at = [112.0, 0.0, -150.0]
+
+[[collectible]]
+kind = "chest"
+name = "chest_warehouse"
+at = [230.0, 2.65, 24.0]
+
+[[collectible]]
+kind = "chest"
+name = "chest_jungle_camp"
+at = [246.0, 0.0, -64.0]
+
+[[collectible]]
+kind = "chest"
+name = "chest_watchtower"
+at = [262.0, 0.0, -98.0]
+
+[[collectible]]
+kind = "chest"
+name = "chest_armory"
+at = [356.0, 15.0, -204.0]
+
+[[collectible]]
+kind = "keg_tap"
+name = "keg_tap_ruins"
+at = [235.0, 0.0, -101.0]
+
+[[collectible]]
+kind = "keg_tap"
+name = "keg_tap_cave"
+at = [304.0, 8.4, -124.0]
+
+[[collectible]]
+kind = "keg_tap"
+name = "keg_tap_crypt"
+at = [136.0, 0.0, 4.0]
+
+# ---------------------------------------------------------------- people (PLAN §9.11)
+# group = the mission action that places them; kind = npcs.toml archetype; facing in degrees
+# from north; route = a [route] loop they walk; tags: courier, escort, gossip, critical...
+[[npc]]
+group = "town"
+kind = "civilian"
+at = [178.0, 2.4, 14.0]
+tags = ["gossip"]
+count = 3
+
+[[npc]]
+group = "town"
+kind = "civilian"
+at = [194.0, 2.4, 20.0]
+tags = ["gossip"]
+count = 3
+
+[[npc]]
+group = "town"
+kind = "civilian"
+at = [204.0, 2.4, 40.0]
+count = 3
+
+# The town crier, on the plaza's south side.
+[[npc]]
+group = "town"
+kind = "civilian"
+at = [186.0, 2.4, 31.0]
+facing = 0.0
+tags = ["crier"]
+
+[[npc]]
+group = "town"
+kind = "civilian"
+at = [148.0, 2.4, 30.0]
+count = 3
+
+[[npc]]
+group = "town"
+kind = "civilian"
+at = [239.0, 2.4, 14.0]
+count = 3
+
+[[npc]]
+group = "town"
+kind = "civilian"
+at = [176.0, 2.4, 40.0]
+tags = ["gossip"]
+count = 3
+
+[[npc]]
+group = "town"
+kind = "guard"
+at = [166.0, 2.4, 8.0]
+route = "town_patrol_a"
+
+[[npc]]
+group = "town"
+kind = "guard"
+at = [150.0, 2.4, 38.0]
+route = "town_patrol_b"
+
+[[npc]]
+group = "town"
+kind = "guard"
+at = [186.0, 2.4, 5.0]
+facing = 180.0
+
+[[npc]]
+group = "town"
+kind = "musketeer"
+at = [230.0, 2.4, 23.0]
+
+[[npc]]
+group = "courier"
+kind = "courier"
+at = [186.0, 2.4, 6.0]
+route = "courier_route"
+once = true
+tags = ["courier", "critical"]
+
+[[npc]]
+group = "courier"
+kind = "guard"
+at = [186.0, 2.4, 4.0]
+tags = ["escort", "critical"]
+count = 2
+
+[[npc]]
+group = "stocks"
+kind = "molasses"
+at = [184.0, 2.4, 18.6]
+facing = 180.0
+tags = ["critical"]
+
+[[npc]]
+group = "stocks"
+kind = "guard"
+at = [180.0, 2.4, 16.0]
+facing = 300.0
+tags = ["critical"]
+
+[[npc]]
+group = "stocks"
+kind = "guard"
+at = [188.0, 2.4, 16.0]
+facing = 60.0
+tags = ["critical"]
+
+[[npc]]
+group = "stocks"
+kind = "brute"
+at = [184.0, 2.4, 22.5]
+facing = 180.0
+tags = ["critical"]
+
+[[npc]]
+group = "fort"
+kind = "guard"
+at = [336.0, 15.0, -162.0]
+facing = 180.0
+
+[[npc]]
+group = "fort"
+kind = "guard"
+at = [344.0, 15.0, -162.0]
+facing = 180.0
+
+[[npc]]
+group = "fort"
+kind = "guard"
+at = [332.0, 15.0, -182.0]
+route = "fort_courtyard"
+
+[[npc]]
+group = "fort"
+kind = "guard"
+at = [310.4, 23.0, -180.0]
+route = "fort_wall_west"
+
+[[npc]]
+group = "fort"
+kind = "musketeer"
+at = [318.0, 23.0, -231.6]
+route = "fort_wall_north"
+
+[[npc]]
+group = "fort"
+kind = "musketeer"
+at = [284.0, 17.5, -205.0]
+facing = 270.0
+
+[[npc]]
+group = "fort"
+kind = "guard"
+at = [342.0, 17.5, -252.0]
+
+[[npc]]
+group = "fort"
+kind = "brute"
+at = [336.0, 15.0, -190.0]
+facing = 90.0
+
+[[npc]]
+group = "fort"
+kind = "guard"
+at = [354.0, 15.0, -210.0]
+facing = 180.0
+tags = ["bell_ringer"]
+
+[[npc]]
+group = "drye"
+kind = "drye"
+at = [347.0, 15.0, -204.0]
+route = "drye_walk"
+tags = ["critical"]
+
+[[npc]]
+group = "drye"
+kind = "brute"
+at = [343.0, 15.0, -194.0]
+facing = 160.0
+tags = ["drye_guard", "escort", "critical"]
+
+[[npc]]
+group = "drye"
+kind = "musketeer"
+at = [353.0, 15.0, -194.0]
+facing = 200.0
+tags = ["drye_guard", "escort", "critical"]
+
+
+# ---------------------------------------------------------------- bot hints (routes with an action per point)
+[[bot_hint]]
+name = "r4_climb_chapel"
+points = [[110.0, 1.0, 14.0], [132.0, 2.4, 13.0], [150.0, 2.4, 14.5], [156.0, 2.4, 15.8], [161.0, 2.4, 15.0], [160.5, 2.4, 8.5], [157.6, 2.4, 7.2], [154.0, 22.4, 7.2], [158.2, 26.65, 7.15]]
+do = ["run", "run", "walk", "walk", "walk", "walk", "climb", "climb", "walk"]
+
+# From Dryport up the jungle road to the smugglers' hut (y 0 = on the ground, any height).
+[[bot_hint]]
+name = "r6_infiltrate"
+# From the plaza along the street, round the east end of the waterfront row, up the road.
+points = [[214.0, 0.0, 7.0], [223.0, 0.0, 5.0], [223.0, 0.0, -8.0], [218.4, 0.0, -16.0], [225.0, 0.0, -25.0], [236.0, 0.0, -40.0], [242.5, 0.0, -48.5], [249.0, 0.0, -57.0], [255.5, 0.0, -65.5], [262.0, 0.0, -74.0], [275.0, 0.0, -89.0], [286.0, 0.0, -101.0], [296.0, 0.0, -110.0], [297.2, 10.4, -116.0]]
+do = ["run", "run", "run", "walk", "walk", "walk", "walk", "walk", "walk", "walk", "walk", "walk", "walk", "interact"]
+
+[[bot_hint]]
+name = "r6_flag"
+points = [[336.0, 15.0, -212.0], [338.6, 15.0, -219.0], [344.0, 26.1, -219.0]]
+do = ["walk", "climb", "walk"]
+
+# Into the courtyard where Drye walks with his escorts (when he can't be seen from the cellar).
+[[bot_hint]]
+name = "r6_drye"
+points = [[320.0, 15.0, -200.0], [330.0, 15.0, -196.0]]
+do = ["walk", "walk"]
+
+# The same climb as r6_flag: the battlement's Leap of Spirits starts at the flagpole.
+[[bot_hint]]
+name = "r6_dive"
+points = [[336.0, 15.0, -212.0], [338.6, 15.0, -219.0], [344.0, 26.1, -219.0]]
+do = ["walk", "climb", "walk"]
+
+[[npc]]
+group = "tavern"
+kind = "molasses"
+at = [190.0, 2.4, 25.5]
+facing = 0.0
+
+# ---------------------------------------------------------------- map place names (x, z)
+[[map_label]]
+at = [190.0, -110.0]
+text = "Isla Templanza"
+[[map_label]]
+at = [345.0, -310.0]
+text = "Fort Abstinence"
+[[map_label]]
+at = [180.0, 75.0]
+text = "Dryport"
+[[map_label]]
+at = [-120.0, -200.0]
+text = "Gull Rock"
+[[map_label]]
+at = [-250.0, 165.0]
+text = "Hook Key"
+[[map_label]]
+at = [-300.0, 290.0]
+text = "Flotsam Field"

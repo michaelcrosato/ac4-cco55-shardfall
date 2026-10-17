@@ -1,0 +1,281 @@
+# ROOM TEMPLATE (files starting with "_" are ignored). Copy to rooms/<key>.toml.
+# A room is placed automatically along its wing's corridor and rotated so its entrance
+# faces the corridor. Coordinates: column = x (east), row = z (south), 1 cell = 1 m.
+
+name = "My Room"
+about = "One sentence: what this room demonstrates."
+try = ["Something to try", "Something else"]
+wing = "misc"                 # movement | physics | animation | vfx | aesthetic | genre | misc
+order = 10                    # position within the wing
+primary_device = "keyboard_mouse"   # or "gamepad"
+# movement_model = "momentum" # instant | momentum | grid | committed (applied while inside)
+# overlays = ["feel"]         # HUD overlays opened while inside: "feel" metrics, "physics" stats
+# height = 8                   # room volume height (m): above it you are outside (raise for flying)
+entrance = { at = [5, 9], facing = "south" }   # a gap cell in the outer wall, and the way out
+
+# Optional: camera defaults while inside (camera parameter names).
+[camera]
+# tilt = 70.0
+# ortho = false
+
+# Station guide (H in the game, the room card's "How it works" button, `pav room`): what you
+# see, how it works, where games use it, how to ask for it. Every room has one; the test
+# crates/pav_view/tests/learn.rs checks the words, settings and code files it names.
+# [learn]
+# what = "What the visitor is looking at, naming the room's exhibits and pads."
+# how = ["Step one: the technique as the engine does it.", "Step two..."]
+# uses = ["Title: where games use it (real games)."]
+# ask = ["phrases to paste into a request for this"]
+# cost = "What it costs and what makes it cost more."
+# knobs = ["view.bloom", "movement.jump_height"]   # live sliders (paths from `pav params`)
+# terms = ["bloom", "hdr"]                          # keys of crates/pav_core/src/field_guide.toml
+# [[learn.code]]                                    # the engine's own code, copied from the file
+# title = "Bright pass"
+# file = "crates/pav_render/src/shaders/bloom.wgsl"
+# lang = "wgsl"
+# src = '''
+# ...5-25 real lines...
+# '''
+
+# Optional: view settings while inside (`pav params prefix=view`, without "view."), e.g. night:
+# "light.sun_intensity" = 0.06, "light.ambient" = 0.25, sky = "#0e1424", bloom = 0.6, gi = 1.0,
+# "light.sun_elevation" = 20, distortion = true, particles = true, exposure = 1.2
+# Filters can aim at a part of the scene: "filter.pixel_target" = "objects" (characters & objects)
+# or "environment", "filter.color_on" / "grade_on" / "scanlines_on" / "grain_on" / "chroma_on",
+# outlines_on = "objects", style_objects = "lit", style_environment = "flat" (see rooms/mix_match.toml)
+# Painterly and print styles: "filter.stylize" = "paint" | "halftone" | "ascii" | "sketch",
+# "filter.stylize_on", "filter.stylize_size" (px), "filter.stylize_color" (rooms/paint_print.toml).
+# Hazy air: haze, haze_height, shafts, shafts_forward, halos (rooms/light_shafts.toml).
+# Wind and water: wind, wind_angle, wind_gusts, grass_push, water_ripples, water_speed,
+# water_fade, water_rain (rooms/wind_water.toml). Transitions: "filter.transition" = "iris",
+# "filter.transition_demo" = true loops it (rooms/transitions.toml).
+# Rooms without roofs can keep tall things whole near the player: "cutaway.height_cut" = false
+[view]
+
+# Optional: simulation parameter overrides while inside (full paths, see `pav params`).
+[params]
+# "movement.jump_height" = 2.0
+# "movement.ledge_grab" = true     # off by default: a jump reaches ledges up to ~3.4 m, so keep
+#                                   # walls you must not climb at 4 m or more in such rooms
+# "movement.lock_axis" = "z"       # side-view rooms (axis in the room's own frame)
+
+# Optional: keyboard remapping while inside (action = [physical key names]).
+[keys]
+# jump = ["KeyW", "Space"]
+# move_up = ["ArrowUp"]
+
+[layout]
+# origin is only used when the room is loaded on its own (`pav load scene=<key>`).
+origin = [-5.0, 0.0, -5.0]
+
+[[layout.layer]]
+y = 0                         # more layers = more floors (add at = [col, row] to offset one)
+map = '''
+###########
+#.........#
+#....B....#
+#.........#
+#.........#
+#.........#
+#.........#
+#.........#
+#.........#
+#####..####
+'''
+
+# Each map character: blocks (y0/y1 relative to the layer), ladder, prop or marker.
+[layout.legend.'.']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#c8c8c8" }]
+
+[layout.legend.'#']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#c8c8c8" }, { y0 = 0, y1 = 2.0, color = "#9aa5b1" }]
+
+[layout.legend.'B']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#c8c8c8" }, { y0 = 0, y1 = 1.0, color = "#c9a27a", rounded = true }]
+# Other options: destructible = true, ghost = true (no collision), inset = 0.3 (thinner),
+# crumble = 0.8 (falls 0.8 s after being stepped on), regrow = 4 (comes back after 4 s),
+# strength = 40 (breaks when hit with more than this contact force, e.g. glass),
+# look = "flat" | "cel" | "lit" | "unlit",
+# ladder = { facing = "north", height = 3.0 },
+# prop = { shape = { type = "box", half = [0.35, 0.35, 0.35] }, color = "#e8704a" },
+# marker = "player"
+# label = { text = "HELLO", size = 0.5, color = "#2b2d35", mode = "floor" }   (text on the tile)
+# grass = { density = 4, height = 0.55, color = "#7cbf5a" }   tufts per cell that sway in the wind
+#                   and part around the player (drawing only)
+# prop = { ..., sway = "leaves" }   props (and [[object]]s) can sway: "leaves" | "grass"
+#
+# zone = { kind = "...", ... } makes the tile a trigger (identical neighbours merge):
+#   kind = "start" | "finish" | "gate" | "checkpoint" | "kill" | "water" | "pad" | "camera" |
+#          "conveyor" (facing = direction, speed = m/s; carries characters and props) |
+#          "bounce" (speed = launch m/s; trampolines for characters and props)
+#   course = "name"   start/finish/gates of one course share it; leaving START starts the timer,
+#                     gates must be passed in `index` order (missed gate = +2 s), FINISH stops it
+#   index = 1         gate order
+#   y0 = 0, y1 = 3    height range relative to the layer (kill zones in pits: e.g. y0 = -3, y1 = -1)
+#   label = "TEXT"    drawn on the floor (label_size = 0.5 to override the auto fit);
+#                     color = "#rrggbb" or "none"; facing = "east" (respawn direction)
+#   Zones are half-open boxes, so touching zones never overlap. A respawn point that lies in a
+#   zone does not trigger it (respawning onto START keeps the timer running).
+#   params = { "movement.model" = "momentum" }       pads: parameter changes until you leave
+#                     ("view.bloom" = 1.5 etc. change view settings the same way)
+#   signal = "drop"   pads: tells spawners listening for "drop" to fire
+#   note = "..."      pads: what it sets and what to look for (on screen while you stand on it;
+#                     required on every pad with params)
+#   camera = { set = { tilt = 90, ortho = true }, sweep = [{ param = "tilt", from = 90,
+#              to = 10, period = 12 }], flip_ortho = 6 }  pads (sticky) / camera zones (inside)
+#   water: swim below y1 (its surface ripples: a CPU wave simulation; neighbouring water tiles
+#   with the same top that form a rectangle ripple as one surface). kill: back to the last checkpoint.
+
+# Free text anywhere (layout space: x = column, y = height, z = row).
+# [[label]]
+# text = "SIGN"
+# pos = [5.0, 0.03, 3.0]
+# size = 0.6
+# mode = "floor"            # floor (turns to the camera) | wall (faces `facing`) | billboard
+# facing = "south"
+
+# Free-placed objects (keep them at the end of the file; edit mode rewrites this part).
+[[object]]
+name = "ball"
+shape = { type = "sphere", radius = 0.4 }
+pos = [3.5, 1.0, 3.5]           # x = column, y = height, z = row
+color = "#5b8def"
+body = "dynamic"                # dynamic | fixed | kinematic | none
+
+# Animated objects use body = "kinematic" and a behavior (vectors are in the object's own frame):
+#   behavior = { type = "move", offset = [0, 0, 4], period = 4, phase = 0, hold = 0.3, smooth = true }
+#     (hold = share of the cycle spent waiting, split between both ends)
+#   behavior = { type = "rotate", axis = [0, 1, 0], speed = 90 }                   (deg/s)
+#   behavior = { type = "rotate", axis = [1, 0, 0], swing = 60, period = 2, pivot = [0, 2, 0] }
+#   behavior = { type = "spin", speed = 1.5 }                                       (rad/s)
+# Projectile emitters (body = "none", or "fixed" with a slim shape; bullets ignore their emitter):
+#   behavior = { type = "emitter", pattern = "aimed", interval = 1.0, count = 1, spread = 0,
+#                speed = 6, radius = 0.15, height = 0, range = 30, delay = 0, burst = 0, pause = 1,
+#                color = "#ff5a3c", knockback = 6, gravity = 0, spin = 12, life = 6 }
+#     pattern: aimed (at the player) | forward (+Z of the object, see yaw) | ring | spiral | random
+# Touching a hazard knocks you back (respawn = true sends you to the last checkpoint):
+#   hazard = { knockback = 7, respawn = false }
+# Spawners drop props on a timer and/or when a pad sends their signal (body = "none"):
+#   behavior = { type = "spawner", shape = { type = "box", half = [0.3, 0.3, 0.3] }, color = "",
+#                count = 20, interval = 0, max = 200, area = [1.5, 0.5, 1.5], signal = "drop",
+#                clear = "clear", density = 1, friction = 0.5, restitution = 0.1, tumble = true }
+#     (pending = 1 drops one batch on the first tick, so the room starts with its props)
+# The store's catalogue (rooms/catalogue.toml; body = "none"): a pad's signal lays out the next
+# page of the store's object rows (embedded, then the committed packs on disk, then the shipped
+# packs the disk lacks), each beside a 1.8 m figure with its row; `back` pages back; toward = -1
+# grows the page toward -z with its first line at the object (put it by the pads):
+#   behavior = { type = "catalogue", signal = "next", back = "back", per_page = 20, columns = 5 }
+# The clip browser (rooms/clip_browser.toml; body = "none"): every [[npc]] whose name starts with
+# `cast` plays the same clip; pads step through the library, jump to a set's first clip or toggle
+# auto-play, and the clip's card lies on the floor at the object:
+#   behavior = { type = "clip_browser", next = "clip_next", back = "clip_back", auto = "clip_auto",
+#                cast = "cast", hold = 5, start = "QUATERNIUS/Idle_Loop",
+#                sets = [["clip_set_cmu", "CMU"], ["clip_set_quaternius", "QUATERNIUS"]] }
+# An imported figure (a shipped pack's, e.g. LIB/kaykit_adventurers/knight) can wear any biped
+# [[npc]]: look = { figure = "LIB/kaykit_adventurers/knight" }.
+# More object fields: pitch = 20, roll = 0 (tilt in degrees, e.g. ramps), density = 1 (kg/m³:
+# 1 is very light; 50-100 = pushable crates; 400 = wood; 2000 = stone), friction = 0.5,
+# restitution = 0.0 (bounciness 0..1; rapier averages it with the surface underneath),
+# damping = 0 (air drag). Pushing shares momentum: a 70 kg character barely moves 300 kg.
+# Reusable props made in the Object Studio replace shape and colour:
+#   asset = "BUILTIN/bench", scale = 1, body = "fixed" (or "none": no collision),
+#   seed = 3 (a variant: chance, jitter and pick; 0 as authored),
+#   roles = { "$wall" = "#5a6b7c" } (colours for the theme roles its parts name),
+#   patch = [{ op = "scale", by = 0.5 }] (asset_edit patch ops on this copy only: a one-off
+#   variant, such as a defect on show in rooms/limits.toml; publish variants rooms reuse).
+#   `room_check` names any asset the library does not have, or a patch that does not apply.
+# Visual-only effects on any object (never affect the simulation; body = "none" for invisible
+# emitters with a tiny sphere shape):
+#   light = { color = "#ffb060", radius = 7, intensity = 2.5, flicker = 0.8, pulse = 0,
+#             shadows = true, offset = [0, 0.7, 0] }   (the 4 shadow-casting lights nearest you)
+#   particles = { preset = "fire", rate = 0, color = "", size = 1, speed = 1, life = 1,
+#                 area = [0, 0, 0], offset = [0, 0.5, 0] }
+#     presets: fire smoke sparks embers fountain snow rain fireflies magic steam dust bubbles
+#     confetti (rate 0 = the preset's; area = spawn box half-size; snow/rain: put it up high and
+#     set ground = -height so drops land on the floor)
+#   distortion = { kind = "haze", radius = 1.5, strength = 0.4, period = 1.5, offset = [0, 1, 0] }
+#     (strength 0.3-0.6 reads at the default camera; 1+ melts the picture)
+#     kinds: haze (heat shimmer) | lens (magnify; negative strength shrinks) | ripple | ring
+#     (a shockwave every `period` s). Bombs make shockwaves, sparks and smoke by themselves.
+#   emissive = 2..8 makes an object glow (bloom) and light its surroundings.
+#   sway = "leaves" moves it in the wind (canopies, banners; drawing only), "grass" draws a tuft.
+# Drivable vehicles (E to get in / out; jump = handbrake / climb, crouch = brake / descend):
+#   vehicle = { kind = "car" }   or   vehicle = { kind = "helicopter" }
+#   optional: color, accent, size = [half x, y, z], mass, power, max_speed, grip, drift_grip
+#   (rear grip with the handbrake: low = big drifts), steer (deg), climb (helicopter m/s),
+#   ceiling (helicopter: highest flying height above its pad, m; default 14).
+#   `pos` is where it stands; shape/body come from the vehicle. Courses and checkpoints work
+#   while driving (you respawn in the vehicle).
+# Shootable things (bullet hell, targets): the player shoots with the blaster
+# ([params] "bombs.weapon" = "blaster", "bombs.fire_interval" = 0.1, "bombs.shoot_angle" = 180
+# for always-north in this file's map (it turns with the room), -1 = at the cursor;
+# "bombs.shot_range" = 35 m; "movement.hitbox" = 0.12 for a tiny hitbox). Shots fly about
+# 1.1 m above the floor and hit what they touch in 3D, so put targets near that height:
+#   health = { hp = 40, score = 100, signal = "boss_dead", finish = true, bar = true,
+#              sway = [3, 5], phases = [{ below = 0.5, behavior = { type = "emitter", ... } }] }
+#   (finish: destroying it finishes the running course; bar: boss health bar; sway: drift
+#   amplitude (m) / period (s) along the object's X; phases: new behaviour below a health
+#   fraction). Score adds to the running course and shows in the HUD. A `finish` boss can
+#   stand in for the course's FINISH tile.
+# Soft (deformable) objects ignore `shape`:
+#   soft = { shape = { type = "cuboid", half = [0.6, 0.6, 0.6], res = [4, 4, 4] }, stiffness = 6 }
+#   soft = { shape = { type = "sphere", radius = 0.6, subdivisions = 2 }, stiffness = 10 }
+#   soft = { shape = { type = "cloth", size = [2, 1.5], res = [10, 8], vertical = true },
+#            pin = "top", stiffness = 20 }          (vertical = hangs down from pos, else flat +Z)
+#   soft = { shape = { type = "rope", to = [0, -3, 0], segments = 16, radius = 0.05 },
+#            pin = "start", attach = "ball" }        (rope end tied to the object named "ball")
+#   also: damping = 0.3, mass = 4 (kg), tear = 0.6 (breaks when stretched 60%),
+#         pin = "" | "top" | "start" | "end" | "ends" | "corners" | "top_corners" | "edge"
+
+# Joints between named objects (b = "" fixes `a` to the world); `at` = anchor, layout space:
+# [[joint]]
+# a = "door"
+# b = ""
+# at = [3.0, 1.0, 2.0]
+# joint = { type = "hinge", axis = [0, 1, 0], limits = [-90, 90] }
+#   joint types: fixed | ball | hinge (axis, limits deg, motor_speed deg/s, motor_force, or
+#   spring + damping to swing back: self-closing doors) | slider (axis, limits m, spring, damping)
+#   | rope (length) | spring (length, stiffness, damping)
+#   Joints to the world measure the object: a vertical slider's limits = [-1, 0.25] travel 1 m
+#   down and 0.25 m up. at_b = [x, y, z] puts b's (or the world's) anchor elsewhere, e.g. a
+#   spring that starts stretched. Keep chain/joint parts a few cm clear of fixed colliders.
+
+# Generated chains and rope bridges (layout space; density defaults to 400):
+# [[chain]]
+# from = [3.0, 4.0, 2.0]
+# to = [3.0, 1.0, 2.0]
+# links = 8
+# radius = 0.07
+# attach_to = "ball"          # tie the end to an object (fix_to = true pins it to the world)
+# [[chain]]
+# style = "bridge"            # planks hinged edge to edge, both ends fixed
+# from = [2.0, 0.0, 8.5]
+# to = [14.0, 0.0, 8.5]
+# links = 12
+# width = 1.4
+# sag = 0.04                  # hangs 4% of the span lower in the middle
+# damping = 0.3               # air drag on the links (default 0.3); fewer, longer planks are calmer
+
+# Characters and creatures (layout space). kind = biped | spider | lizard | beetle | blob;
+# ai = idle | wander (radius, pause = [min, max]) | patrol (points = [[x, z], ...], pause) |
+#      circle (radius, clockwise) | follow (distance: follows the player) |
+#      guard (points, pause, range = 7, angle = 70): a stealth guard with a vision cone; it spots
+#      you in plain sight within range/angle (crouching: 60% range); a full alert meter sends you
+#      back to the last checkpoint ("SPOTTED!"). It looks around while paused. A single point
+#      on its own spot makes a stationary sentry that keeps its `yaw`.
+# speed = 0.5 (fraction of full speed; in grid rooms, how fast it steps), hop = 0 (seconds
+# between jumps), yaw = facing degrees.
+# look = any puppet setting over the kind's preset: colours (skin, shirt, pants, shoes, eyes,
+# accent), proportions (scale, leg_length, torso_radius, head_radius, body_length, legs,
+# tail_length, antenna_length), animation (stride, step_height, step_time, squash, lean, wobble,
+# anim_fps = 12 for "on twos") and look = "cel" | "flat" | "lit" | "cutout". A biped can hold a
+# library object by its grip socket: look = { weapon = { kind = "staff", asset = "LIB/core/mage_staff" } }.
+# Performers: clips = ["SET/Clip", ...] (the clips tool lists them), moves = [...], hold = 5 (s).
+# seat = "chair" sits it on the room object named chair through that prop's sit socket (its
+# pos and yaw are ignored; give it a sitting clip first, and the seat body = "none").
+# [[npc]]
+# name = "spidey"
+# kind = "spider"
+# pos = [6.5, 0, 4.5]
+# ai = { type = "wander", radius = 3 }
+# look = { accent = "#3bb273", leg_length = 1.0 }

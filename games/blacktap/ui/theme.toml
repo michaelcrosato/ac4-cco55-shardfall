@@ -1,0 +1,38 @@
+# Assassin's Keg: Black Tap — UI theme (PLAN §11.2), read by pav_ui::Theme::from_toml.
+# Colours are sRGB "#rrggbb"; sizes are points at 1080p (the UI scales with screen height).
+# Unknown names are errors, so typos show up at load.
+
+[colors]
+parchment = "#f1e3c6"        # panels and light text
+parchment_dark = "#d8c196"   # aged edges, inactive tabs
+parchment_light = "#fbf3e1"  # highlights
+ink = "#2b1d12"              # text on parchment, dark panels
+ink_soft = "#5a4330"         # secondary text on parchment
+amber = "#c9822b"            # rum amber: the focus accent
+amber_bright = "#f0a845"     # focus glow
+teal = "#1f6f78"             # sea teal
+gold = "#e2b04a"             # objectives, rewards, the logo's second line
+red = "#a8322d"              # danger
+rope = "#a07a48"
+rope_dark = "#5c4024"
+rope_light = "#d0aa70"
+green = "#5f8f3e"            # ticks, success
+blue = "#4f8fd6"             # allies
+brass = "#c89b3c"            # the keg tap
+wood = "#6b4526"             # the keg
+
+[sizes]
+logo = 150      # "Assassin's Keg" on the title
+title = 72      # screen titles (≥ 56)
+heading = 56
+item = 56       # menu items
+body = 30       # body text (≥ 28)
+label = 26      # labels (≥ 24)
+hint = 28       # the bottom hint bar
+glyph = 42      # button glyph height next to body text
+banner = 120    # "FORT CAPTURED"
+
+[layout]
+safe_area = 0.05     # TV overscan margin, fraction of each side
+focus_scale = 1.08   # the focused element grows by this
+pulse_seconds = 1.6  # "Press ✕ to start"

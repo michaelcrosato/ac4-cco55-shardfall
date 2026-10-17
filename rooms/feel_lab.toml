@@ -1,0 +1,358 @@
+# Feel Lab: compare movement models and measure how they feel. Every number here is live in
+# the tuning panel (F1 → movement) and the feel overlay (bottom right).
+name = "Feel Lab"
+about = "Switch movement models on the pads and feel the difference: a timed sprint lane with distance marks, jump-height poles, gaps, a ledge wall and a pool. The feel overlay measures input delay, acceleration, stopping, turning and jumps live."
+try = [
+  "Step on a pad (INSTANT / MOMENTUM / GRID / COMMITTED) to switch the movement model",
+  "Run the sprint lane (green START to the checkered FINISH) with each model and compare times",
+  "Watch the feel overlay: input delay, time to top speed, stopping distance, turnaround",
+  "Jump onto the poles: 0.5–1.5 m are jumps, 2 m and 2.5 m need a ledge grab",
+  "Jump at the 2.4 m wall and hold toward it: grab the ledge, then pull up (or crouch to drop)",
+  "Swim in the pool (Space up, C down); jump out at the edge",
+  "Committed model: crouch while running to dodge-roll",
+]
+wing = "movement"
+order = 1
+primary_device = "keyboard_mouse"
+movement_model = "instant"
+overlays = ["feel"]
+entrance = { at = [15, 25], facing = "south" }
+
+[camera]
+tilt = 58.0
+distance = 20.0
+
+[params]
+"movement.ledge_grab" = true
+
+# Station guide (H in the game): what you see, how it works, where games use it, how to ask.
+[learn]
+what = "Four pads, INSTANT, MOMENTUM, GRID and COMMITTED, swap the movement model: the rule that turns your keys into motion. The feel overlay (bottom right) measures each one live: response, time to top speed, stopping, turnaround and the last jump. The SPRINT 26 m lane, the jump poles (0.5 m to 2.5 m), the 1 m, 2 m and 3 m gaps, the LEDGE 2.4 m wall and the POOL are the same tests for every model."
+how = [
+  "Every tick (60 a second) each model turns the stick into a velocity its own way: INSTANT sets it outright, MOMENTUM steers toward it at a limited acceleration, GRID walks to the centre of the next 1 m tile, and COMMITTED turns at a limited rate and only runs the way it faces.",
+  "Rapier's kinematic character controller then moves your capsule (0.64 m wide, 1.7 m tall): it slides along walls, climbs anything up to 0.32 m by itself and keeps you glued to the ground over small drops instead of letting you take off.",
+  "A jump launches at the square root of 2 x gravity x jump_height, so jump_height (1.35 m) sets the apex; the 60 Hz steps overshoot it a little. Coyote time still lets you jump 0.1 s after running off an edge, the jump buffer keeps a press made up to 0.12 s before landing, and letting go of Space early keeps only 45% of the upward speed for a short hop.",
+  "Ledge grab is on in this room. Falling against a wall while pressing toward it casts rays at chest and waist height to find the wall, then one straight down behind its face to find the top: a top less than 1.32 m above your feet is mantled at once, one up to 2.1 m leaves you hanging (Space or toward the wall pulls up, C drops).",
+  "Water over 1.25 m deep at your feet makes you swim: you float with your feet 1.3 m under the surface, C sinks and Space at the surface jumps you out. The pool also ripples where you move: a CPU wave simulation pushes dents into a grid of heights, and they spread as rings, bounce off the edges and fade.",
+  "The feel meter watches the player every tick: a run-up counts as steady once the speed has stopped growing for 10 ticks, and time to top speed is the first tick that reached 90% of it. Stops and turnarounds are timed from the tick you change the input, jumps from take-off to landing.",
+]
+uses = [
+  "Precision platformers: coyote time and jump buffering quietly forgive presses a few frames late or early (Celeste).",
+  "Momentum and skids: running builds up speed and reversing skids before you turn (Super Mario Bros.).",
+  "Instant, fixed speed: one run speed with almost no slide, so every jump is exact (Mega Man).",
+  "Tile steps: grid movement for puzzle games and classic RPG towns (Pokemon, Crypt of the NecroDancer).",
+  "Committed actions: fixed jump arcs and rolls you cannot cancel make every press a decision (Castlevania, Dark Souls).",
+]
+ask = [
+  "coyote time and jump buffering",
+  "variable jump height with a jump cut",
+  "momentum movement with acceleration, friction and skid braking",
+  "grid-based tile movement",
+  "ledge grab with mantle and shimmy",
+  "live game-feel metrics overlay",
+]
+cost = "All CPU, per character per tick: one character-controller move (a few shape casts against nearby colliders) plus a handful of ray casts for ledges and feet, a tiny share of the tick. The pool's ripple grid (cells of about 0.14 m) is stepped 60 times a second on the CPU and rebuilt as a mesh every frame, so a bigger pool costs more."
+knobs = ["movement.model", "movement.accel", "movement.jump_height", "movement.coyote_time", "movement.jump_buffer", "view.water_ripples"]
+terms = ["game feel", "coyote time", "jump buffer", "fixed timestep", "raycast", "wave equation", "heightfield"]
+
+[[learn.code]]
+title = "Coyote time, jump buffer and the jump cut"
+file = "crates/pav_core/src/character.rs"
+lang = "rust"
+src = """
+let can_jump = (ch.grounded || ch.air_time < mp.coyote_time)
+    && (ch.posture != Posture::Crawl || creature)
+    && mp.allow_jump
+    && !rolling;
+if ch.since_jump_press <= mp.jump_buffer && can_jump && !ch.jumping {
+    ch.vel.y = (2.0 * mp.gravity * mp.jump_height).sqrt();
+    ch.jumping = true;
+    ch.grounded = false;
+    ch.air_time = mp.coyote_time + 1.0;
+    ch.since_jump_press = 10.0;
+    jumped = true;
+}
+let variable = mp.model != MovementModel::Committed;
+if variable && ch.jumping && !held(buttons::JUMP) && ch.vel.y > 0.0 {
+    ch.vel.y *= mp.jump_cut;
+    ch.jumping = false;
+}
+"""
+
+[[learn.code]]
+title = "When a fall turns into a ledge hang"
+file = "crates/pav_core/src/character.rs"
+lang = "rust"
+src = """
+// --- ledges: grab while falling against a wall top, then hang / shimmy / pull up / drop
+if !climbing
+    && ch.hang.is_none()
+    && mp.ledge_grab
+    && !ch.grounded
+    && !ch.swimming
+    && ch.posture == Posture::Stand
+    && ch.vel.y < 1.0
+    && ch.hang_cooldown <= 0.0
+    && wish.length() > 0.3
+{
+    let dir = wish.normalize();
+    if let Some((wall, n, top)) = find_ledge(st, filter, feet, dir) {
+        if top - feet.y <= 2.1 && (ch.air_jumped || top > ch.air_from + 0.3) {
+            // Close to the top: mantle straight up instead of hanging.
+            let climb = if top - feet.y < HANG_DROP - 0.3 { 0.0 } else { -1.0 };
+            ch.hang = Some(Hang { normal: n, wall, top, climb });
+            ch.vel = Vec3::ZERO;
+            ch.jumping = false;
+            ch.facing = yaw_of(-n);
+            events.push(SimEvent::Grab { pos: Vec3::new(wall.x, top, wall.z) });
+        }
+    }
+}
+"""
+
+[[learn.code]]
+title = "The feel meter decides when you reached top speed"
+file = "crates/pav_core/src/feel.rs"
+lang = "rust"
+src = """
+if n > 12 {
+    let recent = self.run[n - 10..].iter().map(|s| s.1).fold(0.0, f32::max);
+    let before = self.run[n - 11].1;
+    if recent <= before * 1.005 + 0.01 && before > 0.3 {
+        let steady = before;
+        r.top_speed = steady;
+        if let Some(first) = self.run.iter().find(|s| s.1 >= steady * 0.9) {
+            r.accel_ms = ms(first.0 as u64 + 1);
+        }
+        self.accel_done = true;
+    }
+}
+"""
+
+[layout]
+origin = [-16.0, 0.0, -13.0]
+
+[[layout.layer]]
+y = 0
+map = '''
+################################
+#..............................#
+#S|-|-|-|-|-|-|-|-|-|-|-|-|FF..#
+#S|-|-|-|-|-|-|-|-|-|-|-|-|FF..#
+#S|-|-|-|-|-|-|-|-|-|-|-|-|FF..#
+#..............................#
+#..............................#
+#.aa.bb.cc.dd.ee.PP_PP__PP___PP#
+#.aa.bb.cc.dd.ee.PP_PP__PP___PP#
+#................PP_PP__PP___PP#
+#..............................#
+#..............................#
+#............HHHHHKKK..........#
+#.wwwwwwww...HHHHHKKK..........#
+#.wwwwwwww...HHHHH.............#
+#.wwwww123.....................#
+#.wwwww123.....................#
+#.wwwwwwww.....................#
+#.wwwwwwww.....................#
+#..............................#
+#.IIII.MMMM.........GGGG..CCCC.#
+#.IIII.MMMM.........GGGG..CCCC.#
+#.IIII.MMMM.........GGGG..CCCC.#
+#..............................#
+#..............................#
+###############..###############
+'''
+
+[layout.legend.'.']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cfd6c4" }]
+
+[layout.legend.'#']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cfd6c4" }, { y0 = 0, y1 = 4.0, color = "#b9c3cf" }]
+
+# Sprint lane: start, distance marks every 2 m, finish.
+[layout.legend.'S']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cfd6c4" }]
+zone = { kind = "start", course = "sprint", facing = "east" }
+
+[layout.legend.'-']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#b8c4b0" }]
+
+[layout.legend.'|']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#f4f4ee", look = "flat" }]
+
+[layout.legend.'F']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cfd6c4" }]
+zone = { kind = "finish", course = "sprint" }
+
+# Jump poles (top heights 0.5 .. 2.5 m).
+[layout.legend.'a']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cfd6c4" }, { y0 = 0, y1 = 0.5, color = "#e8a87c", rounded = true }]
+[layout.legend.'b']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cfd6c4" }, { y0 = 0, y1 = 1.0, color = "#e8a87c", rounded = true }]
+[layout.legend.'c']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cfd6c4" }, { y0 = 0, y1 = 1.5, color = "#e8a87c", rounded = true }]
+[layout.legend.'d']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cfd6c4" }, { y0 = 0, y1 = 2.0, color = "#d9895b", rounded = true }]
+[layout.legend.'e']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cfd6c4" }, { y0 = 0, y1 = 2.5, color = "#d9895b", rounded = true }]
+
+# Gap course: 1 m high plateaus with 1, 2 and 3 m pits between them.
+[layout.legend.'P']
+blocks = [{ y0 = -0.5, y1 = 1.0, color = "#9fb39a" }]
+[layout.legend.'_']
+blocks = [{ y0 = -3.0, y1 = -2.5, color = "#6d7a6a" }]
+zone = { kind = "kill", y0 = -2.4, y1 = -1.2 }
+
+# Pool: 1.8 m of water with steps on the east side.
+[layout.legend.'w']
+blocks = [{ y0 = -2.5, y1 = -2.0, color = "#7fa7b8" }]
+zone = { kind = "water", y0 = -2.0, y1 = -0.2 }
+[layout.legend.'1']
+blocks = [{ y0 = -2.5, y1 = -1.5, color = "#9bb7c2" }]
+zone = { kind = "water", y0 = -2.0, y1 = -0.2 }
+[layout.legend.'2']
+blocks = [{ y0 = -2.5, y1 = -1.0, color = "#9bb7c2" }]
+zone = { kind = "water", y0 = -2.0, y1 = -0.2 }
+[layout.legend.'3']
+blocks = [{ y0 = -2.5, y1 = -0.5, color = "#9bb7c2" }]
+zone = { kind = "water", y0 = -2.0, y1 = -0.2 }
+
+# Ledge wall (2.4 m) with a higher step (4.2 m) behind it.
+[layout.legend.'H']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cfd6c4" }, { y0 = 0, y1 = 2.4, color = "#c7b7a3" }]
+[layout.legend.'K']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cfd6c4" }, { y0 = 0, y1 = 4.2, color = "#b5a28c" }]
+
+# Movement model pads.
+[layout.legend.'I']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cfd6c4" }]
+zone = { kind = "pad", label = "INSTANT", color = "#5b8def", params = { "movement.model" = "instant" }, note = "Velocity is set to 6 m/s on the very tick you press and to zero when you let go: no run-up, no slide. Precise but weightless." }
+[layout.legend.'M']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cfd6c4" }]
+zone = { kind = "pad", label = "MOMENTUM", color = "#e07a5f", params = { "movement.model" = "momentum" }, note = "Speeds up at 45 m/s² to 7.5 m/s, coasts down at 32 and brakes at 90 when you reverse. The overlay shows about 0.15 s to top speed and a stop that slides 0.7 m." }
+[layout.legend.'G']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cfd6c4" }]
+zone = { kind = "pad", label = "GRID", color = "#3bb273", params = { "movement.model" = "grid" }, note = "One 1 m tile every 0.16 s (6.25 m/s). A step always finishes, so you stop on tile centres, and you only move in four directions." }
+[layout.legend.'C']
+blocks = [{ y0 = -0.5, y1 = 0, color = "#cfd6c4" }]
+zone = { kind = "pad", label = "COMMITTED", color = "#9b5de5", params = { "movement.model" = "committed" }, note = "Turns at 540°/s and only runs the way it faces; jumps keep their take-off speed (no steering, no short hop), and C while running is a dodge roll." }
+
+# Signs.
+[[label]]
+text = "SPRINT 26 m"
+pos = [14.0, 0.03, 1.2]
+size = 0.6
+
+[[label]]
+text = "0.5 m"
+pos = [3.0, 0.03, 9.7]
+size = 0.4
+
+[[label]]
+text = "1 m"
+pos = [6.0, 0.03, 9.7]
+size = 0.4
+
+[[label]]
+text = "1.5 m"
+pos = [9.0, 0.03, 9.7]
+size = 0.4
+
+[[label]]
+text = "2 m"
+pos = [12.0, 0.03, 9.7]
+size = 0.4
+
+[[label]]
+text = "2.5 m"
+pos = [15.0, 0.03, 9.7]
+size = 0.4
+
+[[label]]
+text = "1 m   2 m   3 m gaps"
+pos = [23.5, 0.03, 10.6]
+size = 0.45
+
+[[label]]
+text = "LEDGE 2.4 m"
+pos = [15.5, 0.03, 15.6]
+size = 0.5
+
+[[label]]
+text = "POOL"
+pos = [5.0, 0.03, 12.4]
+size = 0.5
+
+[[label]]
+text = "0"
+pos = [2.5, 0.03, 5.6]
+size = 0.4
+
+[[label]]
+text = "2"
+pos = [4.5, 0.03, 5.6]
+size = 0.4
+
+[[label]]
+text = "4"
+pos = [6.5, 0.03, 5.6]
+size = 0.4
+
+[[label]]
+text = "6"
+pos = [8.5, 0.03, 5.6]
+size = 0.4
+
+[[label]]
+text = "8"
+pos = [10.5, 0.03, 5.6]
+size = 0.4
+
+[[label]]
+text = "10"
+pos = [12.5, 0.03, 5.6]
+size = 0.4
+
+[[label]]
+text = "12"
+pos = [14.5, 0.03, 5.6]
+size = 0.4
+
+[[label]]
+text = "14"
+pos = [16.5, 0.03, 5.6]
+size = 0.4
+
+[[label]]
+text = "16"
+pos = [18.5, 0.03, 5.6]
+size = 0.4
+
+[[label]]
+text = "18"
+pos = [20.5, 0.03, 5.6]
+size = 0.4
+
+[[label]]
+text = "20"
+pos = [22.5, 0.03, 5.6]
+size = 0.4
+
+[[label]]
+text = "22"
+pos = [24.5, 0.03, 5.6]
+size = 0.4
+
+[[label]]
+text = "24"
+pos = [26.5, 0.03, 5.6]
+size = 0.4
+
+[[label]]
+text = """
+ENTRIES · movement models
+instant · momentum · grid · committed
+(engine code, not store entries)"""
+pos = [7.0, 0.03, 23.8]
+size = 0.18
+color = "#f1f4fa"

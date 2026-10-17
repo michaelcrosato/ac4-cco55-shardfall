@@ -1,0 +1,43 @@
+[package]
+name = "pav_app"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "shardfall"
+path = "src/main.rs"
+
+[dependencies]
+pav_core.workspace = true
+pav_render.workspace = true
+pav_view.workspace = true
+pav_tools.workspace = true
+pav_audio.workspace = true
+blacktap.workspace = true
+pav_ui.workspace = true
+glam.workspace = true
+winit.workspace = true
+egui.workspace = true
+egui-wgpu = { workspace = true, features = ["winit"] }
+gilrs.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+log.workspace = true
+web-time.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+notify.workspace = true
+egui-winit = { workspace = true, features = ["clipboard"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen.workspace = true
+wasm-bindgen-futures.workspace = true
+web-sys = { workspace = true, features = ["Window", "Document", "Element", "HtmlElement", "Location", "UrlSearchParams", "console", "Storage", "MediaQueryList", "Navigator"] }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_UI_WindowsAndMessaging", "Win32_System_Console", "Win32_Foundation"] }
+
+[lints]
+workspace = true

@@ -1,0 +1,53 @@
+use serde::{Deserialize, Serialize};
+
+/// Linear RGB color. Build from sRGB with `Color::hex("#rrggbb")` or `Color::srgb8`.
+#[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub struct Color(pub [f32; 3]);
+
+fn s2l(c: f32) -> f32 {
+    if c <= 0.04045 { c / 12.92 } else { ((c + 0.055) / 1.055).powf(2.4) }
+}
+
+impl Color {
+    pub const WHITE: Color = Color([1.0, 1.0, 1.0]);
+    pub fn srgb8(r: u8, g: u8, b: u8) -> Self {
+        Color([s2l(r as f32 / 255.0), s2l(g as f32 / 255.0), s2l(b as f32 / 255.0)])
+    }
+    /// Parses "#rrggbb"; falls back to magenta so mistakes are visible.
+    pub fn hex(s: &str) -> Self {
+        Self::try_hex(s).unwrap_or(Color::srgb8(255, 0, 255))
+    }
+    pub fn try_hex(s: &str) -> Option<Self> {
+        let s = s.trim().trim_start_matches('#');
+        if s.len() != 6 {
+            return None;
+        }
+        let v = u32::from_str_radix(s, 16).ok()?;
+        Some(Self::srgb8((v >> 16) as u8, (v >> 8) as u8, v as u8))
+    }
+    pub fn scale(self, k: f32) -> Self {
+        Color([self.0[0] * k, self.0[1] * k, self.0[2] * k])
+    }
+    pub fn lerp(self, o: Color, t: f32) -> Self {
+        Color([0, 1, 2].map(|i| self.0[i] + (o.0[i] - self.0[i]) * t))
+    }
+    /// Turns the colour around the colour wheel (degrees), keeping its brightness roughly.
+    pub fn hue_shift(self, deg: f32) -> Self {
+        let (s, c) = deg.to_radians().sin_cos();
+        let k = (1.0 - c) / 3.0;
+        let r = (1.0f32 / 3.0).sqrt() * s;
+        let m = [[c + k, k - r, k + r], [k + r, c + k, k - r], [k - r, k + r, c + k]];
+        let v = self.0;
+        Color([0, 1, 2].map(|i| (m[i][0] * v[0] + m[i][1] * v[1] + m[i][2] * v[2]).max(0.0)))
+    }
+}
+
+fn l2s(c: f32) -> f32 {
+    if c <= 0.0031308 { c * 12.92 } else { 1.055 * c.powf(1.0 / 2.4) - 0.055 }
+}
+
+/// Linear colour back to "#rrggbb".
+pub fn to_hex(c: Color) -> String {
+    let b = |x: f32| (l2s(x.clamp(0.0, 1.0)) * 255.0).round() as u8;
+    format!("#{:02x}{:02x}{:02x}", b(c.0[0]), b(c.0[1]), b(c.0[2]))
+}

@@ -1,0 +1,100 @@
+# Camera contexts (pav_kit::camera::CameraContext). Distances in metres, angles in degrees.
+[foot]
+distance = 5.5
+pitch = 12.0
+fov = 60.0
+shoulder = 0.45
+height = 1.6
+lag = 0.06
+
+[freerun]
+distance = 6.2
+pitch = 14.0
+fov = 66.0
+shoulder = 0.35
+height = 1.5
+lag = 0.06
+
+[climb]
+distance = 7.0
+pitch = 6.0
+fov = 62.0
+shoulder = 0.6
+height = 1.4
+lag = 0.1
+
+[crouch]
+distance = 4.5
+pitch = 10.0
+fov = 58.0
+shoulder = 0.5
+height = 1.1
+lag = 0.06
+
+[combat]
+distance = 7.5
+pitch = 18.0
+fov = 62.0
+shoulder = 0.2
+height = 1.5
+lag = 0.08
+
+[aim]
+distance = 2.2
+pitch = 4.0
+fov = 45.0
+shoulder = 0.7
+height = 1.65
+lag = 0.03
+recenter = 0.0
+
+[swim]
+distance = 6.0
+pitch = 8.0
+min_pitch = -5.0
+fov = 60.0
+shoulder = 0.3
+height = 0.4
+lag = 0.1
+
+[helm]
+distance = 30.0
+pitch = 14.0
+min_pitch = 2.0
+max_pitch = 60.0
+fov = 62.0
+shoulder = 0.0
+height = 6.0
+lag = 0.12
+recenter = 4.0
+
+[broadside]
+distance = 26.0
+pitch = 18.0
+min_pitch = 4.0
+max_pitch = 50.0
+fov = 60.0
+shoulder = 0.0
+height = 6.0
+lag = 0.12
+recenter = 0.0
+
+[spyglass]
+distance = 0.6
+pitch = 2.0
+min_pitch = -10.0
+max_pitch = 30.0
+fov = 18.0
+shoulder = 0.0
+height = 4.5
+lag = 0.0
+recenter = 0.0
+
+[title]
+distance = 34.0
+pitch = 10.0
+fov = 55.0
+shoulder = 0.0
+height = 6.0
+lag = 0.5
+recenter = 0.0

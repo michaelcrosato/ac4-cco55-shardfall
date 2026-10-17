@@ -1,0 +1,4 @@
+{"format":1,"name":"limestone","unit":"cm","description":"Cut coral limestone in courses: fort walls, quays, plinths.","tags":["stone","wall","fort","limestone"],"source":{"library":"own","license":"CC0-1.0","author":"Shardfall contributors"},"color":"#cbbd9b","roughness":0.85,"layers":[
+  {"type":"brick","size":[70,34],"offset":0.5,"gap":2.5,"vary":0.16,"cavity":0.35,"bevel":2},
+  {"type":"noise","size":26,"detail":2,"cover":0.35,"shade":0.88},
+  {"type":"voronoi","size":30,"feature":"spots","cover":0.12,"shade":0.82}]}

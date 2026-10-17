@@ -1,0 +1,36 @@
+# The attract-mode playlist (PLAN.md §12.2): the AI plays the real game with its showcase
+# personality. Each segment builds its scene fresh (no memory growth over a loop).
+[[segment]]
+name = "Rule the Waves"
+scene = "blacktap/demo/1"
+caption = "Rule the Waves — broadsides, chain shot and a boarding melee"
+seeds = [11, 12, 13, 14, 15]
+seconds = 75
+
+[[segment]]
+name = "Storm the Fort"
+scene = "blacktap/demo/2"
+caption = "Storm the Fort — dodge the mortars, silence the batteries"
+seeds = [21, 22, 23, 24, 25]
+seconds = 50
+
+[[segment]]
+name = "Ashore"
+scene = "blacktap/demo/3"
+caption = "Ashore — dive, swim, climb the chapel, take the Leap of Spirits"
+seeds = [31, 32, 33, 34, 35]
+seconds = 60
+
+[[segment]]
+name = "Shadow of the Keg"
+scene = "blacktap/demo/4"
+caption = "Shadow of the Keg — Gull Sight, stalk grass and the Tap Blade"
+seeds = [41, 42, 43, 44, 45]
+seconds = 70
+
+[[segment]]
+name = "Last Call"
+scene = "blacktap/demo/5"
+caption = "Last Call — escape the storm under the frigate's guns"
+seeds = [51, 52, 53, 54, 55]
+seconds = 60
