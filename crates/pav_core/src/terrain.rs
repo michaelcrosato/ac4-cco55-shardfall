@@ -339,6 +339,48 @@ impl TerrainGen<'_> {
     }
 }
 
+/// A regular grid of ground heights a patch collides as: one rapier `HeightField`, far cheaper
+/// to build, step and snapshot than a triangle mesh. Each cell is split along the diagonal
+/// from (x0, z1) to (x1, z0), as rapier splits it (`island::Heightfield::height` matches).
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct HeightGrid {
+    /// World x, z of sample (0, 0).
+    pub origin: Vec2,
+    /// Sample spacing (m).
+    pub cell: f32,
+    /// Samples along x and along z (at least 2 each).
+    pub nx: usize,
+    pub nz: usize,
+    /// Heights, row-major (one row of `nx` per z).
+    pub heights: Vec<f32>,
+}
+
+impl HeightGrid {
+    fn shape(&self) -> Option<SharedShape> {
+        if self.nx < 2 || self.nz < 2 || self.heights.len() != self.nx * self.nz {
+            return None;
+        }
+        // rapier wants rows along z and columns along x, stored column-major.
+        let mut data = Vec::with_capacity(self.heights.len());
+        for j in 0..self.nx {
+            for i in 0..self.nz {
+                data.push(self.heights[i * self.nx + j] as Real);
+            }
+        }
+        let heights = rapier::parry::utils::Array2::new(self.nz, self.nx, data);
+        let scale =
+            Vector::new((self.cell * (self.nx - 1) as f32) as Real, 1.0 as Real, (self.cell * (self.nz - 1) as f32) as Real);
+        Some(SharedShape::heightfield_with_flags(heights, scale, rapier::parry::shape::HeightFieldFlags::FIX_INTERNAL_EDGES))
+    }
+
+    /// The grid's centre on the ground plane (where its collider sits).
+    fn centre(&self) -> Vec3 {
+        let size = Vec2::new((self.nx - 1) as f32, (self.nz - 1) as f32) * self.cell;
+        let c = self.origin + size * 0.5;
+        Vec3::new(c.x, 0.0, c.y)
+    }
+}
+
 /// One chunk of terrain surface: render mesh data and the collision shape.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct TerrainPatch {
@@ -350,6 +392,10 @@ pub struct TerrainPatch {
     pub indices: Vec<u32>,
     pub min: Vec3,
     pub max: Vec3,
+    /// Collide as this height grid instead of the render mesh (islands); the mesh may then
+    /// carry skirts and other drawing-only geometry.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub heightfield: Option<HeightGrid>,
     #[serde(skip)]
     shape: Option<SharedShape>,
 }
@@ -365,11 +411,15 @@ impl TerrainPatch {
         self.indices.extend_from_slice(&[i0, i0 + 1, i0 + 2, i0, i0 + 2, i0 + 3]);
     }
 
-    fn build_shape(&mut self) {
+    /// Builds the collision shape now (it is otherwise built when the collider is first made).
+    pub fn build_shape(&mut self) {
         self.shape = self.make_shape();
     }
 
     fn make_shape(&self) -> Option<SharedShape> {
+        if let Some(grid) = &self.heightfield {
+            return grid.shape();
+        }
         if self.indices.is_empty() {
             return None;
         }
@@ -382,6 +432,7 @@ impl TerrainPatch {
     /// Collider for this patch (the shape is shared, so re-activating a chunk is cheap).
     pub fn collider(&self) -> ColliderBuilder {
         let shape = self.shape.clone().or_else(|| self.make_shape()).unwrap_or_else(|| SharedShape::ball(0.01));
-        ColliderBuilder::new(shape).friction(0.8)
+        let at = self.heightfield.as_ref().map_or(Vec3::ZERO, HeightGrid::centre);
+        ColliderBuilder::new(shape).translation(at).friction(0.8)
     }
 }

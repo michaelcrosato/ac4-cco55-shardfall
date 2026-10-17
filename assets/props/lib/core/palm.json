@@ -1,0 +1,23 @@
+{"format":2,"name":"palm","unit":"cm",
+"description":"A coconut palm: a curved ringed trunk leaning to +x, drooping serrated fronds, coconuts.",
+"tags":["palm","tree","beach","tropical","jungle"],
+"category":"vegetation",
+"materials":{
+"bark":{"color":"#8b6b4a","map":"axis","layers":[{"type":"stripes","size":14,"axis":"y","cover":0.22,"shade":0.64}]},
+"leaf":{"color":"#3f8f3a"}},
+"parts":{
+"tree":{"roll":0,"parts":{
+  "head":{"pos":[224,700,0],"parts":{
+    "coconuts":{"type":"sphere","radius":11,"pos":[3,-10,0],"color":"#5e4320","radial":{"count":3,"radius":21}},
+    "crown":{"type":"ellipsoid","size":[54,46,54],"pos":[3,8,0],"color":"#6d6a36"},
+    "fronds":{"pos":[3,20,0],"radial":{"count":8,"radius":8},"jitter":{"rot":[30,16,8],"scale":[0.82,1.1]},"parts":{
+      "leaf":{"type":"extrude","points":[[0,0],[6,6],[13,12],[9,50],[34,62],[18,100],[45,112],[23,150],[45,162],[23,200],[35,212],[19,250],[14,262],[9,300],[0,330],[-9,300],[-14,262],[-19,250],[-35,212],[-23,200],[-45,162],[-23,150],[-45,112],[-18,100],[-34,62],[-9,50],[-13,12],[-6,6]],"depth":2.4,"pitch":114,"mat":"leaf","solid":false,"sway":"leaves"}}}}},
+  "trunk0":{"type":"cone","radius":20,"radius_end":16,"from":[0,1,0],"to":[9,154,0],"mat":"bark"},
+  "trunk1":{"type":"cone","radius":16,"radius_end":15,"from":[9,154,0],"to":[38,329,0],"mat":"bark"},
+  "trunk2":{"type":"cone","radius":15,"radius_end":13,"from":[38,329,0],"to":[103,511,0],"mat":"bark"},
+  "trunk3":{"type":"cone","radius":13,"radius_end":12,"from":[103,511,0],"to":[224,700,0],"mat":"bark"}}}},
+"params":{
+"lean":{"range":[-20,20],"set":{"tree.roll":1}}},
+"presets":{
+"leaning":{"lean":-14},
+"straight":{"lean":12}}}

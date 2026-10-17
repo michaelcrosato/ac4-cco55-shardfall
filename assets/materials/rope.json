@@ -1,0 +1,2 @@
+{"format":1,"name":"rope","unit":"cm","description":"Twisted hemp rope: diagonal strands; rigging, lines, hoists.","tags":["rope","hemp","line"],"source":{"library":"own","license":"CC0-1.0","author":"Shardfall contributors"},"color":"#b99b6b","roughness":0.95,"map":"axis","layers":[
+  {"type":"stripes","size":5,"axis":[1,1,0],"cover":0.45,"soft":0.5,"shade":0.7}]}

@@ -1,0 +1,3 @@
+{"format":1,"name":"terracotta","unit":"cm","description":"Terracotta tiles: round-ended clay tiles in mottled reds; flat roofs and pitched ones.","tags":["roof","tile","clay","terracotta"],"source":{"library":"own","license":"CC0-1.0","author":"Shardfall contributors"},"color":"#b5543a","roughness":0.8,"layers":[
+  {"type":"shingles","size":[30,22],"shape":"round","gap":1.5,"vary":0.22,"cavity":0.4},
+  {"type":"noise","size":60,"cover":0.35,"color":"#8f3f2b","strength":0.4}]}
