@@ -5,6 +5,8 @@ use std::borrow::Cow;
 
 pub mod content;
 pub mod game;
+pub mod sea;
+pub mod world;
 
 mod embedded {
     include!(concat!(env!("OUT_DIR"), "/blacktap_data.rs"));

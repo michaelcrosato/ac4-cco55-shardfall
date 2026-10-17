@@ -1,0 +1,81 @@
+# Tab I, "The Dry Run": the level's markers, routes and island shapes (PLAN.md §5.1).
+# Coordinates: x east, z south, metres; sea level y = 0. The island terrain, town and fort
+# (generators) come from [[island]] and [[structure]] tables once they exist; the shapes below
+# give the rules a seabed and coasts meanwhile.
+
+[bounds]
+soft = 560.0
+hard = 600.0
+
+# ---------------------------------------------------------------- islands (rules' shapes)
+[[shape]]
+name = "Isla Templanza"
+center = [220.0, -80.0]
+radii = [160.0, 110.0]
+height = 38.0
+shelf = 40.0
+
+[[shape]]
+name = "Gull Rock"
+center = [-120.0, -160.0]
+radii = [16.0, 14.0]
+height = 18.0
+shelf = 18.0
+
+[[shape]]
+name = "Hook Key"
+center = [-250.0, 120.0]
+radii = [34.0, 18.0]
+height = 3.0
+shelf = 45.0
+
+# ---------------------------------------------------------------- markers
+[marker]
+# Round starts and sea waypoints.
+r1_start = [-420.0, 0.0, 380.0]
+r2_start = [-260.0, 0.0, 230.0]
+r3_start = [80.0, 0.0, -330.0]
+r4_start = [10.0, 0.0, 95.0]
+r4_anchorage = [70.0, 0.0, 52.0]
+r4_beach = [86.0, 0.0, 22.0]
+r5_start = [120.0, 0.0, 4.0]
+r6_start = [292.0, 0.0, -98.0]
+extraction = [-450.0, 0.0, -300.0]
+# Flotsam (Round 1 uses the first three; all six count as collectibles).
+flotsam_1 = [-372.0, 0.0, 318.0]
+flotsam_2 = [-335.0, 0.0, 268.0]
+flotsam_3 = [-292.0, 0.0, 236.0]
+flotsam_4 = [-180.0, 0.0, 330.0]
+flotsam_5 = [-60.0, 0.0, 260.0]
+flotsam_6 = [-30.0, 0.0, -300.0]
+# Fort Abstinence.
+battery_west = [270.0, 14.0, -200.0]
+battery_north = [340.0, 16.0, -250.0]
+mortar_tower = [380.0, 22.0, -160.0]
+fort_keep = [345.0, 18.0, -190.0]
+flagpole = [352.0, 30.0, -196.0]
+fort_gate = [318.0, 14.0, -146.0]
+fort_cliff = [330.0, 2.0, -268.0]
+cave = [300.0, 1.0, -120.0]
+under_cliffs = [300.0, 0.0, -290.0]
+# Dryport.
+dryport = [180.0, 2.0, 20.0]
+chapel_perch = [150.0, 26.0, 2.0]
+chapel_hay = [156.0, 1.0, 8.0]
+stocks = [182.0, 2.0, 18.0]
+temperance_hall = [204.0, 2.0, 2.0]
+docks = [190.0, 1.0, 44.0]
+tavern = [168.0, 2.0, 30.0]
+# Gull Rock and Hook Key.
+gull_perch = [-120.0, 28.0, -160.0]
+hook_wreck = [-262.0, 0.0, 128.0]
+
+# ---------------------------------------------------------------- routes (loops, x/z)
+[route]
+restraint_patrol = [[-150.0, 60.0], [140.0, 70.0], [150.0, 240.0], [-140.0, 230.0]]
+gunboat_lane = [[-200.0, 150.0], [0.0, 110.0], [120.0, 200.0], [-80.0, 280.0]]
+convoy = [[-500.0, 0.0], [-100.0, -40.0], [500.0, 120.0]]
+# Sea paths for the bot and the AI round the islands.
+r4_approach = [[-60.0, 140.0], [20.0, 90.0], [70.0, 52.0]]
+r3_approach = [[-60.0, -60.0], [40.0, -300.0], [180.0, -330.0]]
+escape = [[300.0, -300.0], [150.0, -360.0], [-100.0, -340.0], [-450.0, -300.0]]

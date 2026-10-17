@@ -1,0 +1,36 @@
+# First Round — Fair Winds (~3 min, sea). PLAN.md §5.3. Game names (`game = "..."`) are the
+# vocabulary in crates/blacktap/src/rounds.rs; `pav level_check scene=blacktap` checks them.
+id = "r1"
+title = "First Round — Fair Winds"
+setup = [{ game = "place_ship:r1_start" }, { game = "player_at_helm" }, { atmosphere = "golden_hour" }]
+on_start = [{ music = "sailing" }, { game = "spawn_flotsam" }, { game = "spawn_restraint_patrol" }, { line = "r1_intro" }]
+
+[[step]]
+id = "sails"
+objective = "Raise the sails"
+on_start = [{ line = "r1_sails" }, { game = "teach:sails" }]
+done = { game = "sails_raised" }
+checkpoint = true
+bot = "raise_sails"
+
+[[step]]
+id = "flotsam"
+objective = "Sail through the flotsam (3)"
+markers = ["flotsam"]
+on_start = [{ line = "r1_wind" }, { line = "r1_flotsam" }, { game = "teach:steer" }]
+done = { counter = { name = "flotsam", at_least = 3 } }
+bot = "collect_flotsam"
+
+[[step]]
+id = "spyglass"
+objective = "Spyglass: tag the TS Restraint"
+markers = ["ship:restraint"]
+on_start = [{ line = "r1_spyglass" }, { game = "teach:spyglass" }]
+done = { flag = "restraint_tagged" }
+on_done = [{ line = "r1_tagged" }]
+bot = "tag_restraint"
+
+[[optional]]
+id = "r1_fast_flotsam"
+text = "Collect all three flotsam within 2:00"
+track = { all = [{ counter = { name = "flotsam", at_least = 3 } }, { before = 120.0 }] }

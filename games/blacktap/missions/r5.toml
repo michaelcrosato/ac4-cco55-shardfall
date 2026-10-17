@@ -1,0 +1,43 @@
+# Fifth Round — Under the Influence (~6 min, land stealth).
+id = "r5"
+title = "Fifth Round — Under the Influence"
+setup = [{ game = "player_at:r5_start" }, { atmosphere = "afternoon" }, { game = "spawn_town" }]
+on_start = [{ music = "stealth" }, { line = "r5_intro" }, { game = "spawn_courier" }, { game = "spawn_stocks_guards" }]
+
+[[step]]
+id = "key"
+objective = "Take the cellar key from the courier"
+markers = ["npc:courier"]
+on_start = [{ line = "r5_courier" }, { line = "r5_gull" }, { game = "teach:gull" }, { game = "teach:assassinate" }]
+done = { flag = "has_key" }
+on_done = [{ line = "r5_key" }]
+checkpoint = true
+bot = "get_key"
+
+[[step]]
+id = "stocks"
+objective = "Free Mother Molasses from the stocks"
+markers = ["marker:stocks"]
+on_start = [{ line = "r5_stocks" }, { game = "teach:whistle" }]
+done = { flag = "molasses_freed" }
+on_done = [{ line = "r5_freed" }]
+bot = "free_molasses"
+
+[[optional]]
+id = "r5_undetected"
+text = "Never detected"
+track = "always"
+fail = { flag = "detected" }
+at_end = true
+
+[[optional]]
+id = "r5_air"
+text = "Air-assassinate the courier"
+track = { flag = "courier_air" }
+
+[[optional]]
+id = "r5_no_kill"
+text = "Free Mother Molasses without a kill"
+track = { not = { flag = "killed_at_stocks" } }
+fail = { flag = "killed_at_stocks" }
+at_end = true

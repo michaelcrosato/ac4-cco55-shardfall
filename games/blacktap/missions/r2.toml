@@ -1,0 +1,58 @@
+# Second Round — Broadside (~5 min, sea → boarding).
+id = "r2"
+title = "Second Round — Broadside"
+setup = [{ game = "place_ship:r2_start" }, { game = "player_at_helm" }, { game = "sail:2" }, { game = "spawn_restraint_patrol" }, { atmosphere = "golden_hour" }]
+on_start = [{ music = "sea_combat" }, { line = "r2_intro" }, { game = "spawn_gunboats" }]
+
+[[step]]
+id = "gunboats"
+objective = "Sink the gunboats"
+markers = ["tag:gunboat"]
+on_start = [{ line = "r2_broadside" }, { game = "teach:broadside" }]
+done = { game = "gunboats_sunk" }
+on_done = [{ line = "r2_gunboats_down" }]
+checkpoint = true
+bot = "fight_ships"
+
+[[step]]
+id = "disable"
+objective = "Disable the TS Restraint"
+markers = ["ship:restraint"]
+on_start = [{ line = "r2_restraint" }, { game = "restraint_engage" }, { game = "teach:brace" }]
+done = { game = "restraint_disabled" }
+bot = "fight_ships"
+
+[[step]]
+id = "board"
+objective = "Board the Restraint"
+markers = ["ship:restraint"]
+on_start = [{ line = "r2_board" }, { game = "teach:board" }]
+done = { flag = "boarded" }
+checkpoint = true
+bot = "board"
+
+[[step]]
+id = "melee"
+objective = "Defeat Captain Sobers and his crew"
+markers = ["tag:boarder"]
+on_start = [{ line = "r2_sobers" }, { music = "combat" }, { game = "teach:counter" }]
+done = { flag = "boarding_won" }
+on_done = [{ line = "r2_victory" }, { game = "plunder" }]
+bot = "melee"
+
+[[step]]
+id = "plunder"
+objective = "Choose your plunder"
+done = { flag = "plunder_done" }
+on_done = [{ line = "r2_sobers_out" }, { game = "end_boarding" }, { music = "sailing" }]
+bot = "choose"
+
+[[optional]]
+id = "r2_chain"
+text = "Disable the schooner with chain shot"
+track = { game = "restraint_disabled_by_chain" }
+
+[[optional]]
+id = "r2_counters"
+text = "Three counter-kills while boarding"
+track = { counter = { name = "board_counters", at_least = 3 } }
