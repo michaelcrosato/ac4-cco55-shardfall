@@ -1,20 +1,40 @@
-//! Synthesized sound: every sound is built from oscillators, noise, envelopes, pitch sweeps
-//! and a filter. The mixer runs in the audio callback (cpal) or offline (to .wav). The game
+//! Synthesized sound, music and ambience. Every sound is built from oscillators, noise,
+//! envelopes, filters and formants (no audio files): a data-driven sound bank
+//! (`sounds.toml`, [`Bank`]), a music sequencer that plays ABC-notation songs with a band and a
+//! singing crew (`music.toml` + `*.abc`, [`MusicBank`]), ambience layers (`ambience.toml`,
+//! [`AmbienceBank`]), dialog voice blips and UI sounds, mixed on buses with reverb, echo and a
+//! limiter. The same [`Mixer`] runs in the audio callback ([`AudioOut`], native and browser)
+//! and offline ([`render_song`], [`render_cues`], [`Renderer`]) for tests and tools. The game
 //! runs fine without a sound device.
+//!
+//! The original API stays: [`sounds_for`] patches for the engine's built-in events,
+//! [`AudioOut::play_event`], [`render_events`] and [`write_wav`].
 
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::mpsc::{Receiver, Sender, channel};
+use std::sync::{Arc, Mutex};
 
 use glam::Vec3;
 use pav_core::SimEvent;
+use pav_core::play::AudioState;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Wave {
-    Sine,
-    Square,
-    Saw,
-    Triangle,
-    Noise,
-}
+pub mod abc;
+pub mod ambience;
+pub mod analysis;
+pub mod bank;
+pub mod dsp;
+pub mod instruments;
+pub mod mixer;
+pub mod music;
+pub mod render;
+pub mod voice;
+
+pub use ambience::AmbienceBank;
+pub use analysis::{png_rgba, spectrogram, stats_of};
+pub use bank::{Bank, Bus, Cue, Layer, Rumble, Speaker, Wave};
+pub use mixer::{Cmd, Mixer, Stats};
+pub use music::MusicBank;
+pub use render::{Renderer, SAMPLE_RATE, render_ambience, render_cues, render_song};
 
 /// One synthesized sound.
 #[derive(Clone, Copy, Debug)]
@@ -59,140 +79,6 @@ impl Patch {
         self.attack + self.decay + self.hold + self.release
     }
 }
-
-struct Voice {
-    p: Patch,
-    t: f32,
-    delay: f32,
-    phase: f32,
-    lp: f32,
-    noise: u32,
-    gain_l: f32,
-    gain_r: f32,
-}
-
-impl Voice {
-    fn env(&self) -> f32 {
-        let p = &self.p;
-        let t = self.t;
-        if t < p.attack {
-            return t / p.attack.max(1e-5);
-        }
-        let t = t - p.attack;
-        if t < p.decay {
-            return 1.0 + (p.sustain - 1.0) * (t / p.decay.max(1e-5));
-        }
-        let t = t - p.decay;
-        if t < p.hold {
-            return p.sustain;
-        }
-        let t = t - p.hold;
-        let start = if p.decay > 0.0 || p.hold > 0.0 { p.sustain } else { 1.0 };
-        (start * (1.0 - t / p.release.max(1e-5))).max(0.0)
-    }
-
-    fn done(&self) -> bool {
-        self.t > self.p.length() + 0.01
-    }
-
-    fn next(&mut self, dt: f32) -> f32 {
-        if self.delay > 0.0 {
-            self.delay -= dt;
-            return 0.0;
-        }
-        let p = self.p;
-        let k = (self.t / p.glide.max(1e-4)).min(1.0);
-        let freq = p.freq * (p.freq_end / p.freq.max(1.0)).powf(k);
-        self.phase = (self.phase + freq * dt).fract();
-        let ph = self.phase;
-        let raw = match p.wave {
-            Wave::Sine => (ph * std::f32::consts::TAU).sin(),
-            Wave::Square => {
-                if ph < p.duty {
-                    1.0
-                } else {
-                    -1.0
-                }
-            }
-            Wave::Saw => ph * 2.0 - 1.0,
-            Wave::Triangle => 1.0 - 4.0 * (ph - 0.5).abs(),
-            Wave::Noise => {
-                self.noise ^= self.noise << 13;
-                self.noise ^= self.noise >> 17;
-                self.noise ^= self.noise << 5;
-                (self.noise as f32 / u32::MAX as f32) * 2.0 - 1.0
-            }
-        };
-        let cutoff = p.cutoff * (p.cutoff_end / p.cutoff.max(1.0)).powf((self.t / p.length().max(1e-3)).min(1.0));
-        let a = 1.0 - (-std::f32::consts::TAU * cutoff * dt).exp();
-        self.lp += (raw - self.lp) * a;
-        let s = self.lp * self.env() * p.volume;
-        self.t += dt;
-        s
-    }
-}
-
-/// Mixes voices into interleaved stereo.
-pub struct Mixer {
-    voices: Vec<Voice>,
-    pub sample_rate: f32,
-    pub master: f32,
-    seed: u32,
-}
-
-const MAX_VOICES: usize = 64;
-
-impl Mixer {
-    pub fn new(sample_rate: f32) -> Self {
-        Self { voices: Vec::new(), sample_rate, master: 0.8, seed: 0x9e37_79b9 }
-    }
-
-    /// pan -1 (left) .. 1 (right); delay in seconds.
-    pub fn play(&mut self, p: Patch, pan: f32, gain: f32, delay: f32) {
-        if self.voices.len() >= MAX_VOICES {
-            // Drop the oldest.
-            self.voices.remove(0);
-        }
-        self.seed = self.seed.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
-        let pan = pan.clamp(-1.0, 1.0);
-        let a = (pan + 1.0) * std::f32::consts::FRAC_PI_4;
-        self.voices.push(Voice {
-            p,
-            t: 0.0,
-            delay,
-            phase: 0.0,
-            lp: 0.0,
-            noise: self.seed | 1,
-            gain_l: a.cos() * gain,
-            gain_r: a.sin() * gain,
-        });
-    }
-
-    /// Renders into an interleaved stereo buffer (overwrites).
-    pub fn render(&mut self, out: &mut [f32]) {
-        let dt = 1.0 / self.sample_rate;
-        for frame in out.chunks_mut(2) {
-            let (mut l, mut r) = (0.0, 0.0);
-            for v in &mut self.voices {
-                let s = v.next(dt);
-                l += s * v.gain_l;
-                r += s * v.gain_r;
-            }
-            // Soft clip.
-            let m = self.master;
-            frame[0] = (l * m).tanh();
-            if frame.len() > 1 {
-                frame[1] = (r * m).tanh();
-            }
-        }
-        self.voices.retain(|v| !v.done());
-    }
-
-    pub fn active(&self) -> usize {
-        self.voices.len()
-    }
-}
-
 /// Where the ears are: position and the camera's right vector (for panning).
 #[derive(Clone, Copy, Debug)]
 pub struct Listener {
@@ -515,17 +401,7 @@ pub fn event_pos(ev: &SimEvent) -> Option<Vec3> {
 
 /// Plays an event's sounds with distance attenuation and panning.
 pub fn play_event(mixer: &mut Mixer, ev: &SimEvent, l: &Listener, sfx: f32) {
-    let (pan, gain) = match event_pos(ev) {
-        Some(p) => {
-            let d = p - l.pos;
-            let dist = d.length();
-            ((d.dot(l.right) / 12.0).clamp(-0.85, 0.85), 1.0 / (1.0 + dist / 14.0))
-        }
-        None => (0.0, 1.0),
-    };
-    for (patch, delay) in sounds_for(ev) {
-        mixer.play(patch, pan, gain * sfx, delay);
-    }
+    mixer.play_event(ev, l, sfx);
 }
 
 /// Renders timed events offline: (time in seconds, event). Returns interleaved stereo.
@@ -542,7 +418,7 @@ pub fn render_events(events: &[(f32, SimEvent)], duration: f32, sample_rate: f32
             if *et > t {
                 break;
             }
-            play_event(&mut mixer, e, l, 1.0);
+            mixer.play_event(e, l, 1.0);
             ev.next();
         }
         let n = block.min(total - i);
@@ -552,8 +428,8 @@ pub fn render_events(events: &[(f32, SimEvent)], duration: f32, sample_rate: f32
     out
 }
 
-/// Writes interleaved stereo f32 samples as a 16-bit PCM WAV file.
-pub fn write_wav(path: &std::path::Path, samples: &[f32], sample_rate: u32) -> std::io::Result<()> {
+/// Interleaved stereo f32 samples as a 16-bit PCM WAV file's bytes.
+pub fn wav_bytes(samples: &[f32], sample_rate: u32) -> Vec<u8> {
     let data_len = (samples.len() * 2) as u32;
     let mut b = Vec::with_capacity(44 + data_len as usize);
     b.extend_from_slice(b"RIFF");
@@ -571,23 +447,38 @@ pub fn write_wav(path: &std::path::Path, samples: &[f32], sample_rate: u32) -> s
     for s in samples {
         b.extend_from_slice(&((s.clamp(-1.0, 1.0) * 32767.0) as i16).to_le_bytes());
     }
+    b
+}
+
+/// Writes interleaved stereo f32 samples as a 16-bit PCM WAV file.
+pub fn write_wav(path: &std::path::Path, samples: &[f32], sample_rate: u32) -> std::io::Result<()> {
     if let Some(d) = path.parent().filter(|d| !d.as_os_str().is_empty()) {
         std::fs::create_dir_all(d)?;
     }
-    std::fs::write(path, b)
+    std::fs::write(path, wav_bytes(samples, sample_rate))
 }
 
-enum Cmd {
-    Play(Patch, f32, f32, f32),
-    Master(f32),
+/// A held cue started with [`AudioOut::start_loop`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct LoopHandle(pub u32);
+
+#[derive(Clone, Debug, Default)]
+struct Shared {
+    stats: Stats,
+    now_playing: Option<(String, String)>,
 }
 
-/// Live output through the default sound device.
+/// Live output through the default sound device (cpal: WASAPI/ALSA/..., Web Audio in the
+/// browser). Every method only queues a message for the audio callback, so they are cheap and
+/// never block.
 pub struct AudioOut {
     _stream: cpal::Stream,
     tx: Sender<Cmd>,
     pub sample_rate: u32,
     pub device: String,
+    shared: Arc<Mutex<Shared>>,
+    bank: Mutex<Arc<Bank>>,
+    next_handle: AtomicU32,
 }
 
 impl AudioOut {
@@ -602,31 +493,51 @@ impl AudioOut {
         let rate = config.sample_rate as u32;
         let channels = config.channels as usize;
         let (tx, rx) = channel::<Cmd>();
+        let shared = Arc::new(Mutex::new(Shared::default()));
         let stream = match format {
-            cpal::SampleFormat::F32 => build::<f32>(&device, config, rx, channels)?,
-            cpal::SampleFormat::I16 => build::<i16>(&device, config, rx, channels)?,
-            cpal::SampleFormat::U16 => build::<u16>(&device, config, rx, channels)?,
+            cpal::SampleFormat::F32 => build::<f32>(&device, config, rx, channels, shared.clone())?,
+            cpal::SampleFormat::I16 => build::<i16>(&device, config, rx, channels, shared.clone())?,
+            cpal::SampleFormat::U16 => build::<u16>(&device, config, rx, channels, shared.clone())?,
             other => anyhow::bail!("unsupported sample format {other:?}"),
         };
         stream.play()?;
-        Ok(Self { _stream: stream, tx, sample_rate: rate, device: name })
+        Ok(Self {
+            _stream: stream,
+            tx,
+            sample_rate: rate,
+            device: name,
+            shared,
+            bank: Mutex::new(Arc::new(Bank::default())),
+            next_handle: AtomicU32::new(1),
+        })
     }
 
+    fn send(&self, c: Cmd) {
+        let _ = self.tx.send(c);
+    }
+
+    /// Plays a simulation event: `SimEvent::Cue` through the sound bank, the engine's built-in
+    /// events through [`sounds_for`]. `sfx` scales the gain.
     pub fn play_event(&self, ev: &SimEvent, l: &Listener, sfx: f32) {
-        let (pan, gain) = match event_pos(ev) {
-            Some(p) => {
-                let d = p - l.pos;
-                ((d.dot(l.right) / 12.0).clamp(-0.85, 0.85), 1.0 / (1.0 + d.length() / 14.0))
+        match ev {
+            SimEvent::Cue { .. } => self.send(Cmd::Event(Box::new(ev.clone()), *l, sfx)),
+            _ => {
+                let (pan, gain) = match event_pos(ev) {
+                    Some(p) => {
+                        let d = p - l.pos;
+                        ((d.dot(l.right) / 12.0).clamp(-0.85, 0.85), 1.0 / (1.0 + d.length() / 14.0))
+                    }
+                    None => (0.0, 1.0),
+                };
+                for (patch, delay) in sounds_for(ev) {
+                    self.send(Cmd::Legacy(patch, pan, gain * sfx, delay));
+                }
             }
-            None => (0.0, 1.0),
-        };
-        for (patch, delay) in sounds_for(ev) {
-            let _ = self.tx.send(Cmd::Play(patch, pan, gain * sfx, delay));
         }
     }
 
     pub fn set_master(&self, v: f32) {
-        let _ = self.tx.send(Cmd::Master(v));
+        self.set_bus(Bus::Master, v);
     }
 
     /// Starts output again. Browsers keep sound off until the page gets a click or key press,
@@ -635,23 +546,113 @@ impl AudioOut {
         use cpal::traits::StreamTrait;
         let _ = self._stream.play();
     }
+
+    /// Loads (replaces) the sound bank (`sounds.toml` text).
+    pub fn load_bank(&self, text: &str) -> anyhow::Result<()> {
+        let b = Arc::new(Bank::parse(text)?);
+        if let Ok(mut m) = self.bank.lock() {
+            *m = b.clone();
+        }
+        self.send(Cmd::Bank(b));
+        Ok(())
+    }
+
+    /// Loads the music: `music.toml` text and the songs as (name, ABC text).
+    pub fn load_music(&self, music_toml: &str, songs: &[(String, String)]) -> anyhow::Result<()> {
+        self.send(Cmd::Music(Arc::new(MusicBank::parse(music_toml, songs)?)));
+        Ok(())
+    }
+
+    /// Loads the ambience layers (`ambience.toml` text).
+    pub fn load_ambience(&self, text: &str) -> anyhow::Result<()> {
+        self.send(Cmd::Ambience(Arc::new(AmbienceBank::parse(text)?)));
+        Ok(())
+    }
+
+    /// The game's audio state for this frame: music state or song + intensity (crossfades on
+    /// change), ambience levels, and the listener (the state's, else `listener`).
+    pub fn apply(&self, state: &AudioState, listener: &Listener) {
+        self.send(Cmd::Apply(Box::new(state.clone()), *listener));
+    }
+
+    /// Plays a bank cue at `pos` (gain and pitch multiply). Unknown names are logged once.
+    pub fn play_cue(&self, name: &str, pos: Vec3, gain: f32, pitch: f32, listener: &Listener) {
+        self.send(Cmd::Cue { name: name.to_string(), pos, gain, pitch, listener: *listener });
+    }
+
+    /// One syllable of a dialog voice (bung, pip, cask, drye, sobers, molasses, guard, crew,
+    /// crier, ballast).
+    pub fn voice_blip(&self, speaker: &str) {
+        self.send(Cmd::Blip(speaker.to_string()));
+    }
+
+    /// A UI sound: ui_move, ui_confirm, ui_back, ui_toggle, ui_slider, ui_error, ui_start.
+    pub fn ui(&self, name: &str) {
+        self.send(Cmd::Ui(name.to_string()));
+    }
+
+    pub fn set_bus(&self, bus: Bus, vol: f32) {
+        self.send(Cmd::Bus(bus, vol));
+    }
+
+    /// Starts a cue held until [`AudioOut::stop_loop`] (a burning deck, a creaking hull).
+    pub fn start_loop(&self, cue: &str, pos: Option<Vec3>, gain: f32) -> LoopHandle {
+        let h = self.next_handle.fetch_add(1, Ordering::Relaxed);
+        self.send(Cmd::StartLoop { handle: h, cue: cue.to_string(), pos, gain });
+        LoopHandle(h)
+    }
+    pub fn stop_loop(&self, h: LoopHandle) {
+        self.send(Cmd::StopLoop(h.0));
+    }
+    pub fn set_loop_gain(&self, h: LoopHandle, gain: f32) {
+        self.send(Cmd::LoopGain(h.0, gain));
+    }
+    pub fn set_loop_pos(&self, h: LoopHandle, pos: Vec3) {
+        self.send(Cmd::LoopPos(h.0, pos));
+    }
+
+    /// A music stinger on top of the music (`music.toml` [stinger.*] or any song, once).
+    pub fn stinger(&self, name: &str) {
+        self.send(Cmd::Stinger(name.to_string()));
+    }
+    /// Next (+1) / previous (-1) song of the current music state's playlist.
+    pub fn music_skip(&self, delta: i32) {
+        self.send(Cmd::Skip(delta));
+    }
+
+    /// Bus loudness over the last half second or so.
+    pub fn stats(&self) -> Stats {
+        self.shared.lock().map(|s| s.stats).unwrap_or_default()
+    }
+    /// (song name, title) playing now.
+    pub fn now_playing(&self) -> Option<(String, String)> {
+        self.shared.lock().ok().and_then(|s| s.now_playing.clone())
+    }
+    /// The rumble a cue asks for (from the loaded bank).
+    pub fn rumble(&self, cue: &str) -> Option<Rumble> {
+        self.bank.lock().ok().and_then(|b| b.rumble(cue))
+    }
 }
 
-fn build<T>(device: &cpal::Device, config: cpal::StreamConfig, rx: Receiver<Cmd>, channels: usize) -> anyhow::Result<cpal::Stream>
+fn build<T>(
+    device: &cpal::Device,
+    config: cpal::StreamConfig,
+    rx: Receiver<Cmd>,
+    channels: usize,
+    shared: Arc<Mutex<Shared>>,
+) -> anyhow::Result<cpal::Stream>
 where
     T: cpal::SizedSample + cpal::FromSample<f32>,
 {
     use cpal::traits::DeviceTrait;
     let mut mixer = Mixer::new(config.sample_rate as f32);
     let mut buf: Vec<f32> = Vec::new();
+    let mut playing: Option<String> = None;
     let stream = device.build_output_stream::<T, _, _>(
         config,
         move |data: &mut [T], _| {
             while let Ok(c) = rx.try_recv() {
-                match c {
-                    Cmd::Play(p, pan, gain, delay) => mixer.play(p, pan, gain, delay),
-                    Cmd::Master(v) => mixer.master = v,
-                }
+                mixer.handle(c);
             }
             let frames = data.len() / channels.max(1);
             buf.resize(frames * 2, 0.0);
@@ -660,6 +661,18 @@ where
                 for (c, s) in frame.iter_mut().enumerate() {
                     *s = T::from_sample(buf[i * 2 + c.min(1)]);
                 }
+            }
+            let st = mixer.stats();
+            if st.seconds >= 0.5 {
+                let np = mixer.now_playing();
+                if let Ok(mut sh) = shared.try_lock() {
+                    sh.stats = st;
+                    if np.as_ref().map(|n| &n.0) != playing.as_ref() {
+                        playing = np.as_ref().map(|n| n.0.clone());
+                        sh.now_playing = np;
+                    }
+                }
+                mixer.reset_stats();
             }
         },
         |e| log::warn!("audio stream error: {e}"),

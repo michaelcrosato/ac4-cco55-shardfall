@@ -10,6 +10,8 @@ glam.workspace = true
 cpal.workspace = true
 anyhow.workspace = true
 log.workspace = true
+serde.workspace = true
+toml.workspace = true
 
 # Web Audio in the browser build.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
