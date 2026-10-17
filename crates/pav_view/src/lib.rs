@@ -6,6 +6,7 @@ pub mod atmos;
 pub mod build;
 pub mod camera;
 pub mod creatures;
+pub mod cue_fx;
 pub mod fx;
 pub mod look;
 pub mod materials;

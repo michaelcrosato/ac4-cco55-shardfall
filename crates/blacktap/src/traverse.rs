@@ -71,7 +71,7 @@ pub fn pre(
             g.stealth.revealed.insert(name.clone());
             let n = g.world().collectibles.iter().filter(|c| near_perch(g, &name, Vec3::from(c.at))).count();
             g.toast(&format!("Survey complete: {n} places revealed"));
-            events.push(SimEvent::cue("survey_done", BlackTap::player_feet(sim).unwrap_or_default()));
+            events.push(SimEvent::cue("objective_new", BlackTap::player_feet(sim).unwrap_or_default()));
             g.show("survey");
             g.learned("survey");
         } else {
@@ -90,7 +90,7 @@ pub fn pre(
     let surveyed = g.mission.flag(&format!("surveyed_{}", perch.name)) || g.stealth.revealed.contains(&perch.name);
     if !surveyed && input.down(b::INTERACT) {
         g.stealth.survey = Some((perch.name.clone(), 0.0));
-        events.push(SimEvent::cue("survey_start", Vec3::from(perch.at)));
+        events.push(SimEvent::cue("survey_swirl", Vec3::from(perch.at)));
         return Some(InputFrame::default());
     }
     if !perch.leap_to.is_empty() && input.just(b::JUMP) {

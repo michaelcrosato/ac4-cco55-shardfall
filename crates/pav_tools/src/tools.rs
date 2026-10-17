@@ -1200,6 +1200,10 @@ fn t_load(s: &mut Session, a: &Args) -> Result<Output> {
     let seed = get_u64(a, "seed", 1)?;
     let mut next = Session::new(scene, seed)?;
     next.gpu = s.gpu.take();
+    let bank = next.fx_bank();
+    if let Some(g) = next.gpu.as_mut() {
+        g.builder.fx_bank = bank;
+    }
     next.feedback = s.feedback.clone();
     next.creature_owner = s.creature_owner;
     next.sim.live_edit_ticket = s.sim.live_edit_ticket;

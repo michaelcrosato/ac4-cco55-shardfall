@@ -609,6 +609,12 @@ enum EffectKind {
         color: [f32; 3],
         up: f32,
     },
+    /// A flash of light (cues from the FX bank): colour × intensity, reach, seconds.
+    Flash {
+        color: [f32; 3],
+        radius: f32,
+        seconds: f32,
+    },
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -666,6 +672,8 @@ pub struct ViewBuilder {
     materials: Arc<Mutex<MaterialTable>>,
     /// A hook game's draw list (meshes it made, decals).
     play: crate::play_view::PlayView,
+    /// What `SimEvent::Cue`s look like (the game's `fx.toml`).
+    pub fx_bank: Option<Arc<crate::cue_fx::FxBank>>,
 }
 
 /// Shortest-arc interpolation of object poses between two frames (both sorted by id).
@@ -734,6 +742,30 @@ impl ViewBuilder {
     pub fn add_events(&mut self, events: &[SimEvent]) {
         for e in events {
             crate::fx::event_bursts(e, &mut self.pending_particles);
+            if let (SimEvent::Cue { cue, pos, gain, .. }, Some(bank)) = (e, &self.fx_bank) {
+                self.pending_particles.extend(bank.bursts(cue, *pos, *gain));
+                if let Some(fx) = bank.cue.get(cue) {
+                    if fx.shock > 0.0 {
+                        self.shocks.push((*pos, fx.shock, self.last_time.unwrap_or(0.0)));
+                    }
+                    if fx.water > 0.0 {
+                        self.water_dents.push((*pos, fx.water, 0.18));
+                    }
+                    if let Some(f) = &fx.flash {
+                        let c = pav_core::Color::hex(&f.color).0;
+                        let k = f.intensity * gain;
+                        self.effects.push(Effect {
+                            kind: EffectKind::Flash {
+                                color: [c[0] * k, c[1] * k, c[2] * k],
+                                radius: f.radius,
+                                seconds: f.seconds.max(0.02),
+                            },
+                            pos: *pos,
+                            start: self.now,
+                        });
+                    }
+                }
+            }
             if let SimEvent::Explosion { pos, radius } = e {
                 self.shocks.push((*pos, radius * 3.5, self.last_time.unwrap_or(0.0)));
                 self.water_dents.push((*pos, radius * 1.2, 0.22));
@@ -792,6 +824,17 @@ impl ViewBuilder {
         for e in &self.effects {
             let t = (now - e.start) as f32;
             match e.kind {
+                EffectKind::Flash { color, radius, seconds } => {
+                    if t < seconds {
+                        let k = 1.0 - t / seconds;
+                        scene.point_lights.push(rs::PointLight {
+                            position: e.pos,
+                            color: Vec3::from(color) * k,
+                            radius,
+                            shadows: false,
+                        });
+                    }
+                }
                 EffectKind::Explosion { radius } => {
                     if t < 0.35 {
                         let grow = (t / 0.08).min(1.0);

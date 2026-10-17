@@ -308,7 +308,7 @@ fn ring_alarm(g: &mut BlackTap, sim: &mut Sim) {
     if g.stealth.alarm <= 0.0 {
         g.stealth.alarms += 1;
         let at = g.world().marker("bell_tower").unwrap_or_default();
-        g.pending_events.push(SimEvent::cue("bell_alarm", at));
+        g.pending_events.push(SimEvent::cue("alarm_bell", at));
         g.toast("The bells! The fort is roused.");
     }
     g.stealth.alarm = 30.0;
@@ -497,12 +497,12 @@ fn perceive(g: &mut BlackTap, sim: &Sim, dt: f32, events: &mut Vec<SimEvent>) {
                 n.mind.alert(pfeet);
             }
             match ev {
-                Some(MindEvent::Suspicious) => events.push(SimEvent::cue("guard_huh", feet + Vec3::Y * 1.8)),
+                Some(MindEvent::Suspicious) => events.push(SimEvent::cue("guard_suspicious", feet + Vec3::Y * 1.8)),
                 Some(MindEvent::Alerted) => {
                     events.push(SimEvent::cue("guard_alert", feet + Vec3::Y * 1.8));
                     alerts.push((feet, pfeet));
                 }
-                Some(MindEvent::Investigating) => events.push(SimEvent::cue("guard_huh", feet + Vec3::Y * 1.8)),
+                Some(MindEvent::Investigating) => events.push(SimEvent::cue("guard_suspicious", feet + Vec3::Y * 1.8)),
                 _ => {}
             }
             if before != n.mind.state && n.mind.aware() && !matches!(before, Awareness::Alerted | Awareness::Combat) {
@@ -535,7 +535,7 @@ fn perceive(g: &mut BlackTap, sim: &Sim, dt: f32, events: &mut Vec<SimEvent>) {
             if !c.found {
                 c.found = true;
                 g.stealth.heat.crime(0.5);
-                events.push(SimEvent::cue("guard_body", at + Vec3::Y));
+                events.push(SimEvent::cue("guard_alert", at + Vec3::Y));
                 if let Some(n) = g.stealth.npcs.get_mut(&finder) {
                     n.mind.noise = Some(at);
                     n.mind.state = Awareness::Investigating;
@@ -654,7 +654,7 @@ fn brains(g: &mut BlackTap, sim: &mut Sim, dt: f32, events: &mut Vec<SimEvent>) 
                 face = Some(yaw_to(feet, pfeet));
                 if d < 30.0 && d > 3.5 && n.shot_cd <= 0.0 && sees_point(sim, id, pfeet + Vec3::Y, 30.0) {
                     n.shot_cd = 3.2;
-                    events.push(SimEvent::cue("musket_shot", feet + Vec3::Y * 1.5));
+                    events.push(SimEvent::cue("pistol_fire", feet + Vec3::Y * 1.5));
                     g.stealth.noises.push(Noise { at: feet, radius: noise::PISTOL });
                     if g.land.hero.vitals.iframes <= 0.0 && hash01(id.0 as u64, sim.state.tick) < 0.55 {
                         let dmg = 14.0 * g.options.difficulty;
@@ -840,7 +840,7 @@ fn do_interaction(g: &mut BlackTap, sim: &mut Sim, what: &str, events: &mut Vec<
             g.mission.set_flag("flag_raised");
             g.stealth.flag_raised = true;
             g.flags.insert("fort_captured".into());
-            events.push(SimEvent::cue("flag_raise", p));
+            events.push(SimEvent::cue("fort_captured", p));
             g.show("raise_flag");
         }
         "stocks" => {
@@ -859,12 +859,12 @@ fn do_interaction(g: &mut BlackTap, sim: &mut Sim, what: &str, events: &mut Vec<
                 }
             }
             g.mission.set_flag("molasses_freed");
-            events.push(SimEvent::cue("stocks_open", p));
+            events.push(SimEvent::cue("pickup_chest", p));
             g.show("free_molasses");
         }
         "key" | "pickpocket" => {
             g.mission.set_flag("has_key");
-            events.push(SimEvent::cue("pickup_key", p));
+            events.push(SimEvent::cue("pickpocket", p));
             g.show(if what == "pickpocket" { "pickpocket" } else { "key" });
             if what == "pickpocket" {
                 g.mission.set_flag("pickpocketed");
@@ -1036,7 +1036,7 @@ fn use_tool(g: &mut BlackTap, sim: &mut Sim, aiming: bool, events: &mut Vec<SimE
                     n.drunk = 12.0;
                 }
             }
-            events.push(SimEvent::cue("dart_hit", at + Vec3::Y * 1.4));
+            events.push(SimEvent::cue("dart_throw", at + Vec3::Y * 1.4));
             g.show(if tool == Tool::Nightcap { "nightcap_dart" } else { "grog_dart" });
         }
         Tool::Smoke => {
@@ -1066,7 +1066,7 @@ fn use_tool(g: &mut BlackTap, sim: &mut Sim, aiming: bool, events: &mut Vec<SimE
             if let Some(n) = g.stealth.npcs.get_mut(&id) {
                 n.stun = 2.0;
             }
-            events.push(SimEvent::cue("rope_pull", at));
+            events.push(SimEvent::cue("grapple", at));
             g.show("bung_line");
         }
     }
@@ -1102,7 +1102,7 @@ fn pistol(g: &mut BlackTap, sim: &mut Sim, aimed: bool, events: &mut Vec<SimEven
     let range = if aimed { 30.0 } else { 15.0 };
     let target = aim_target(g, sim, eye, Vec3::new(f.x, 0.0, f.y), range);
     g.land.hero.pistols[slot] = 3.0;
-    events.push(SimEvent::cue("pistol_shot", eye));
+    events.push(SimEvent::cue("pistol_fire", eye));
     g.noise(feet, noise::PISTOL);
     g.show("pistol");
     if let Some(id) = target {
@@ -1160,7 +1160,7 @@ pub fn post(g: &mut BlackTap, sim: &mut Sim, dt: f32, events: &mut Vec<SimEvent>
         if let Some((cid, _)) = g.stealth.npcs.iter().find(|(_, n)| n.has("courier")) {
             if sim.feet(*cid).is_some_and(|c| flat(c - feet).length() < 1.6) {
                 g.mission.set_flag("has_key");
-                events.push(SimEvent::cue("pickup_key", feet));
+                events.push(SimEvent::cue("pickpocket", feet));
             }
         }
     }
@@ -1174,7 +1174,7 @@ pub fn post(g: &mut BlackTap, sim: &mut Sim, dt: f32, events: &mut Vec<SimEvent>
                 "sheet" => ("pickup_sheet", "Shanty Sheet: a new song for the crew", 0),
                 "bottle" => ("pickup_bottle", "Message in a Bottle", 0),
                 "chest" => ("pickup_chest", "Treasure Chest: 250 reales", 250),
-                "keg_tap" => ("pickup_keg_tap", "Keg Tap: a Tap Blade token", 0),
+                "keg_tap" => ("pickup_tap", "Keg Tap: a Tap Blade token", 0),
                 _ => ("pickup_bottle", "Found something", 0),
             };
             g.stats.reales += reales;

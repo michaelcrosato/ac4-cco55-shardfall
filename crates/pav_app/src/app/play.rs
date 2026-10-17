@@ -78,6 +78,8 @@ pub(crate) struct PlayApp {
     /// Wall-clock seconds since the last frame, uncapped (idle timers count real time even
     /// when frames are slow, as on SwiftShader).
     wall_dt: f32,
+    /// What the game's cues look like (`fx.toml`).
+    fx_bank: Option<std::sync::Arc<pav_view::cue_fx::FxBank>>,
 }
 
 /// `MobileMenu` → `mobile_menu`.
@@ -237,6 +239,13 @@ impl PlayApp {
         let mobile = crate::platform::touch_screen();
         let platform = Platform { mobile, kiosk, can_quit: cfg!(not(target_arch = "wasm32")) };
         let fe = FrontEnd::new(info.clone(), settings, platform, progress.is_some());
+        let fx_bank = info.banks.iter().find(|(n, _)| n == "fx").and_then(|(_, t)| match pav_view::cue_fx::FxBank::parse(t) {
+            Ok(b) => Some(std::sync::Arc::new(b)),
+            Err(e) => {
+                log::warn!("fx bank: {e}");
+                None
+            }
+        });
         Some(Self {
             fe,
             info,
@@ -272,6 +281,7 @@ impl PlayApp {
             theme_installed: false,
             published: String::new(),
             wall_dt: 0.0,
+            fx_bank,
         })
     }
 
@@ -415,6 +425,7 @@ impl App {
         });
         *host.shared.input.lock().unwrap() = InputFrame::default();
         self.builder = pav_view::ViewBuilder::new();
+        self.builder.fx_bank = p.fx_bank.clone();
         if let Some(g) = &mut self.gfx {
             g.renderer.clear_particles();
         }
@@ -496,7 +507,6 @@ impl App {
             p.family = pad.name.as_deref().map(pav_ui::glyph::family_from_pad_name).unwrap_or(GlyphFamily::Xbox);
         }
         let mut ui = UiIn { stick: pad.left, ..Default::default() };
-        let in_play = matches!(p.fe.mode(), Mode::Play);
         for &code in &p.key_taps {
             if code == KeyCode::Escape {
                 // The front end acts on the first that changes the screen (pause or back).
@@ -728,7 +738,12 @@ impl App {
                 a.apply(&g.audio, &l);
             }
             for e in &events {
-                a.play_event(e, &l, 1.0);
+                match e {
+                    pav_core::frame::SimEvent::Cue { cue, .. } if cue.starts_with("voice_") => {
+                        a.voice_blip(&cue["voice_".len()..])
+                    }
+                    _ => a.play_event(e, &l, 1.0),
+                }
             }
         }
 

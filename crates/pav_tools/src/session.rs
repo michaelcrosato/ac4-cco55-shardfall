@@ -162,14 +162,19 @@ impl Session {
         if self.gpu.is_none() {
             let headless = Headless::new()?;
             let renderer = Renderer::new(&headless.device, &headless.queue);
-            self.gpu = Some(Gpu {
-                headless,
-                renderer,
-                builder: ViewBuilder::new(),
-                studio_mode: pav_core::prop_preview::StudioMode::World,
-            });
+            let mut builder = ViewBuilder::new();
+            builder.fx_bank = self.fx_bank();
+            self.gpu = Some(Gpu { headless, renderer, builder, studio_mode: pav_core::prop_preview::StudioMode::World });
         }
         Ok(self.gpu.as_mut().unwrap())
+    }
+
+    /// The running game's FX bank (`fx.toml` from its front end), for cues in captures.
+    pub fn fx_bank(&self) -> Option<std::sync::Arc<pav_view::cue_fx::FxBank>> {
+        let key = self.sim.play()?.key();
+        let info = (pav_core::games::find(key)?.front_end?)();
+        let text = info.banks.iter().find(|(n, _)| n == "fx")?.1.clone();
+        pav_view::cue_fx::FxBank::parse(&text).ok().map(std::sync::Arc::new)
     }
 
     pub fn step(&mut self, ticks: u64) {
