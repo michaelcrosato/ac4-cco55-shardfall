@@ -329,6 +329,13 @@ pub fn load(text: &str) -> anyhow::Result<Arc<World>> {
         }
         markers.insert(alias.clone(), p);
     }
+    // Collectibles written at height 0 lie on the ground.
+    let mut collectibles = f.collectible;
+    for c in &mut collectibles {
+        if c.at[1] == 0.0 && !level.fields.is_empty() {
+            c.at[1] = level.ground(Vec2::new(c.at[0], c.at[2])).max(0.15);
+        }
+    }
     let mut perches = f.perch;
     for p in &mut perches {
         if let Some(m) = markers.get(&p.marker).filter(|_| !p.marker.is_empty()) {
@@ -353,7 +360,7 @@ pub fn load(text: &str) -> anyhow::Result<Arc<World>> {
         posters: f.poster.iter().map(|p| Vec3::from(*p)).collect(),
         areas: f.area,
         perches,
-        collectibles: f.collectible,
+        collectibles,
         bot_hints: f.bot_hint.into_iter().map(|h| (h.name.clone(), h)).collect(),
         zones: level.areas.clone(),
         geometry: f.geometry.clone(),

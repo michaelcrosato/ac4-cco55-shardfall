@@ -832,7 +832,16 @@ impl App {
                 }
             }
             Command::SettingsChanged => {
-                // Applied each frame from the front end's settings (volumes, quality, look).
+                // Volumes, quality and look apply each frame from the front end's settings;
+                // the game's own options (difficulty, assists, colour-blind palette) now.
+                if let (Some(h), Some(p)) = (&self.host, self.play.as_ref()) {
+                    let payload = serde_json::json!({ "settings": p.fe.settings() });
+                    h.exec(move |sim| {
+                        if let Some(g) = sim.state.play.as_mut() {
+                            g.restore(&payload);
+                        }
+                    });
+                }
             }
             Command::Sound(name) => {
                 if let Some(a) = &self.audio {

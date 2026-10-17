@@ -79,11 +79,14 @@ pub struct Options {
     pub aim_assist: bool,
     pub colorblind: String,
     pub subtitles: bool,
+    /// Gull Sight toggles on a press (else it shows while held).
+    #[serde(default)]
+    pub gull_toggle: bool,
 }
 
 impl Default for Options {
     fn default() -> Self {
-        Self { difficulty: 1.0, aim_assist: true, colorblind: "off".into(), subtitles: true }
+        Self { difficulty: 1.0, aim_assist: true, colorblind: "off".into(), subtitles: true, gull_toggle: true }
     }
 }
 
@@ -553,9 +556,10 @@ impl Game for BlackTap {
         let ocean = self.ocean();
         sim.state.ocean = Some(ocean);
         let playing = self.outcome == Outcome::Playing && self.spilled.is_none() && self.mode != Mode::Title;
-        // Gull Sight (R3) toggles.
-        if playing && input.just(b::GULL) {
-            self.gull = !self.gull;
+        // Gull Sight: held, or toggled (the controls setting).
+        let gull_now = if self.options.gull_toggle { self.gull ^ input.just(b::GULL) } else { input.down(b::GULL) };
+        if playing && gull_now != self.gull {
+            self.gull = gull_now;
             let at = Self::player_feet(sim).unwrap_or_default();
             events.push(SimEvent::cue(if self.gull { "gull_sight_on" } else { "gull_sight_off" }, at));
             self.learned("gull");
@@ -821,6 +825,7 @@ impl Game for BlackTap {
             self.options.colorblind =
                 s.pointer("/accessibility/colorblind").and_then(|a| a.as_str()).unwrap_or("Off").to_lowercase();
             self.options.subtitles = s.pointer("/accessibility/subtitles").and_then(|a| a.as_bool()).unwrap_or(true);
+            self.options.gull_toggle = s.pointer("/controls/gull_toggle").and_then(|a| a.as_bool()).unwrap_or(true);
         }
         if let Some(p) = v.get("progress").filter(|p| !p.is_null()) {
             crate::rounds::restore_progress(self, p);

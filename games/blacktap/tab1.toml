@@ -152,37 +152,37 @@ reveals = 260.0
 [[collectible]]
 kind = "sheet"
 name = "sheet_hook_key"
-at = [-246.0, 1.5, 116.0]
+at = [-246.0, 0.0, 116.0]
 
 [[collectible]]
 kind = "sheet"
 name = "sheet_dryport_roof"
-at = [198.0, 9.0, 22.0]
+at = [226.0, 9.8, 30.0]
 
 [[collectible]]
 kind = "sheet"
 name = "sheet_fort_battlement"
-at = [296.0, 22.0, -190.0]
+at = [310.4, 23.1, -195.0]
 
 [[collectible]]
 kind = "sheet"
 name = "sheet_gull_rock"
-at = [-96.0, 0.0, -176.0]
+at = [-96.0, 0.2, -176.0]
 
 [[collectible]]
 kind = "bottle"
 name = "bottle_sw_beach"
-at = [94.0, 0.8, 18.0]
+at = [94.0, 0.0, 18.0]
 
 [[collectible]]
 kind = "bottle"
 name = "bottle_south_beach"
-at = [214.0, 0.8, 58.0]
+at = [214.0, 0.3, 58.0]
 
 [[collectible]]
 kind = "bottle"
 name = "bottle_hook_key"
-at = [-268.0, 0.8, 110.0]
+at = [-268.0, 0.0, 110.0]
 
 [[collectible]]
 kind = "bottle"
@@ -192,7 +192,7 @@ at = [168.0, 9.0, 30.0]
 [[collectible]]
 kind = "bottle"
 name = "bottle_west_cove"
-at = [116.0, 0.8, -146.0]
+at = [116.0, 0.0, -146.0]
 
 [[collectible]]
 kind = "chest"
@@ -202,52 +202,52 @@ at = [-262.0, 0.0, 132.0]
 [[collectible]]
 kind = "chest"
 name = "chest_cay"
-at = [-238.0, 1.5, 124.0]
+at = [-238.0, 0.0, 124.0]
 
 [[collectible]]
 kind = "chest"
 name = "chest_gull_rock"
-at = [-128.0, 2.0, -150.0]
+at = [-128.0, 14.0, -150.0]
 
 [[collectible]]
 kind = "chest"
 name = "chest_west_cove"
-at = [112.0, 1.0, -150.0]
+at = [112.0, 0.0, -150.0]
 
 [[collectible]]
 kind = "chest"
 name = "chest_warehouse"
-at = [226.0, 2.0, 30.0]
+at = [230.0, 2.65, 24.0]
 
 [[collectible]]
 kind = "chest"
 name = "chest_jungle_camp"
-at = [240.0, 10.0, -60.0]
+at = [246.0, 0.0, -64.0]
 
 [[collectible]]
 kind = "chest"
 name = "chest_watchtower"
-at = [270.0, 22.0, -90.0]
+at = [270.0, 22.8, -90.0]
 
 [[collectible]]
 kind = "chest"
 name = "chest_armory"
-at = [356.0, 14.0, -204.0]
+at = [356.0, 15.0, -204.0]
 
 [[collectible]]
 kind = "keg_tap"
 name = "keg_tap_ruins"
-at = [230.0, 16.0, -96.0]
+at = [235.0, 0.0, -101.0]
 
 [[collectible]]
 kind = "keg_tap"
 name = "keg_tap_cave"
-at = [304.0, 1.0, -124.0]
+at = [304.0, 8.4, -124.0]
 
 [[collectible]]
 kind = "keg_tap"
 name = "keg_tap_crypt"
-at = [150.0, 0.5, 6.0]
+at = [136.0, 0.0, 4.0]
 
 # ---------------------------------------------------------------- people (PLAN §9.11)
 # group = the mission action that places them; kind = npcs.toml archetype; facing in degrees
