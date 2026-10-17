@@ -82,8 +82,10 @@ pub struct Sea {
     pub timber: u32,
     pub iron: u32,
     pub repair_cd: f32,
-    /// Upgrades bought: heavy shot multiplies ball damage.
+    /// Upgrades bought: heavy shot multiplies ball damage; swift rigging (+12% sail speed).
     pub heavy_shot: f32,
+    #[serde(default)]
+    pub swift_rigging: bool,
     /// Ships sunk by the player (results).
     pub sunk_by_player: u32,
     /// Damage taken by the player's ship since this was reset (optional objectives).
@@ -236,7 +238,11 @@ impl Sea {
 
         // ---- the player's helm
         if let (Some(h), Some(i)) = (helm, self.ships.iter().position(|s| s.id == me)) {
-            let c = classes.get(&self.ships[i].class).cloned().unwrap_or_default();
+            let mut c = classes.get(&self.ships[i].class).cloned().unwrap_or_default();
+            if self.swift_rigging {
+                c.speed_half *= 1.12;
+                c.speed_full *= 1.12;
+            }
             let rel = turn_to(self.ships[i].heading, h.look_yaw);
             let weapon = weapon_for_bearing(rel);
             self.weapon = Some(weapon);

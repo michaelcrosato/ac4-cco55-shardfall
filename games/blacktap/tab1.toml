@@ -67,7 +67,6 @@ fire_mortar = [545.0, 0.0, -255.0]
 fort_cliff = [330.0, 2.0, -268.0]
 under_cliffs = [326.0, 0.0, -318.0]
 # Dryport.
-dryport = [180.0, 2.0, 20.0]
 # Gull Rock and Hook Key.
 hook_wreck = [-262.0, 0.0, 128.0]
 # Land.
@@ -272,6 +271,14 @@ kind = "civilian"
 at = [204.0, 2.4, 40.0]
 count = 3
 
+# The town crier, on the plaza's south side.
+[[npc]]
+group = "town"
+kind = "civilian"
+at = [186.0, 2.4, 31.0]
+facing = 0.0
+tags = ["crier"]
+
 [[npc]]
 group = "town"
 kind = "civilian"
@@ -451,6 +458,13 @@ name = "r6_flag"
 points = [[336.0, 15.0, -212.0], [338.6, 15.0, -219.0], [344.0, 26.1, -219.0]]
 do = ["walk", "climb", "walk"]
 
+# Into the courtyard where Drye walks with his escorts (when he can't be seen from the cellar).
+[[bot_hint]]
+name = "r6_drye"
+points = [[320.0, 15.0, -200.0], [330.0, 15.0, -196.0]]
+do = ["walk", "walk"]
+
+# The same climb as r6_flag: the battlement's Leap of Spirits starts at the flagpole.
 [[bot_hint]]
 name = "r6_dive"
 points = [[336.0, 15.0, -212.0], [338.6, 15.0, -219.0], [344.0, 26.1, -219.0]]

@@ -417,6 +417,10 @@ pub fn t_ray(s: &mut Session, a: &Args) -> Result<Output> {
     let d = glam::Vec3::new(dir[0], dir[1], dir[2]);
     let r = |x: f32| (x * 1000.0).round() / 1000.0;
     Ok(Output::Json(match s.sim.raycast_block(o, d, max) {
+        // Rapier's broad phase is filled by the first step: before it, nothing can be hit.
+        None if s.sim.state.tick == 0 => {
+            json!({ "hit": false, "searched": max, "note": "the scene hasn't stepped yet: run `step ticks=1` first" })
+        }
         None => json!({ "hit": false, "searched": max, "note": "nothing within max= metres (raise max= to look further)" }),
         Some((h, b)) => json!({
             "hit": true,

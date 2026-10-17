@@ -291,7 +291,7 @@ fn results(g: &BlackTap, focus: usize) -> Results {
         stats: vec![
             ("Time".into(), format!("{mins}:{secs:02}")),
             ("Reales".into(), s.reales.to_string()),
-            ("Collectibles".into(), format!("{} / 26", s.collectibles)),
+            ("Collectibles".into(), format!("{} / {}", s.collectibles, crate::rounds::collectibles_total(g))),
             ("Assassinations".into(), s.assassinations.to_string()),
             ("Ships sunk".into(), s.ships_sunk.to_string()),
             ("Times detected".into(), s.detected.to_string()),

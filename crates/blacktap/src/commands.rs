@@ -242,8 +242,14 @@ pub fn level_check(g: &BlackTap) -> Value {
             problems.push(format!("demo '{}': scene '{}' does not build", d.name, d.scene));
         }
     }
-    // Nothing built across a road (a fence or a hut that blocks the way).
+    // The geometry file built (a parse error is only logged at load, and the level would have
+    // no islands or buildings at all).
     let pre = crate::island::prebuilt_file(&w.geometry);
+    checked += 1;
+    if pre.fields.is_empty() && pre.structures.blocks.is_empty() {
+        problems.push(format!("geometry '{}' built nothing (a parse error? see the log)", w.geometry));
+    }
+    // Nothing built across a road (a fence or a hut that blocks the way).
     for f in &pre.fields {
         for r in &f.def.roads {
             let pts: Vec<glam::Vec2> = r.points.iter().map(|p| glam::Vec2::from(*p)).collect();

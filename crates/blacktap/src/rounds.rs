@@ -637,6 +637,12 @@ pub fn pour(g: &BlackTap) -> f32 {
     (main + opt).clamp(0.0, 100.0)
 }
 
+/// Every collectible in the level: the islands' and the flotsam at sea.
+pub fn collectibles_total(g: &BlackTap) -> usize {
+    let w = g.world();
+    w.collectibles.len() + w.markers.keys().filter(|k| k.starts_with("flotsam_")).count()
+}
+
 pub fn apply_upgrade(g: &mut BlackTap, up: &str) {
     let me = g.sea.mine;
     match up {
@@ -647,9 +653,7 @@ pub fn apply_upgrade(g: &mut BlackTap, up: &str) {
             }
         }
         "heavy_shot" => g.sea.heavy_shot += 0.35,
-        "swift_rigging" => {
-            g.flags.insert("swift_rigging".into());
-        }
+        "swift_rigging" => g.sea.swift_rigging = true,
         "more_kegs" => {
             if let Some(s) = g.sea.ship_mut(me) {
                 s.guns.kegs_left += 3;

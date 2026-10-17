@@ -126,14 +126,16 @@ impl Dialog {
         if b.lines.is_empty() {
             return false;
         }
+        // Barks never stack behind queued lines: skipped (cooldown unspent) while others wait.
+        if self.current.is_some() && !self.queue.is_empty() {
+            return false;
+        }
         self.picks = self.picks.wrapping_add(1);
         let i = ((seed ^ self.picks.wrapping_mul(0x9E37_79B9_7F4A_7C15)) >> 33) as usize % b.lines.len();
         self.cooldowns.insert(id.to_string(), b.cooldown.max(1.0));
-        if self.current.is_none() || self.queue.is_empty() {
-            let text = b.lines[i].clone();
-            let secs = (text.chars().count() as f32 / 14.0).clamp(1.6, 4.0);
-            self.say_text(&b.speaker, &text, secs);
-        }
+        let text = b.lines[i].clone();
+        let secs = (text.chars().count() as f32 / 14.0).clamp(1.6, 4.0);
+        self.say_text(&b.speaker, &text, secs);
         true
     }
 

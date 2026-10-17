@@ -521,14 +521,25 @@ fn perceive(g: &mut BlackTap, sim: &Sim, dt: f32, events: &mut Vec<SimEvent>) {
             {
                 n.mind.alert(pfeet);
             }
-            match ev {
-                Some(MindEvent::Suspicious) => events.push(SimEvent::cue("guard_suspicious", feet + Vec3::Y * 1.8)),
+            // A sound and a spoken bark (subtitled) for each change of mind.
+            let bark = match ev {
+                Some(MindEvent::Suspicious) | Some(MindEvent::Investigating) => Some("guard_suspicious"),
                 Some(MindEvent::Alerted) => {
-                    events.push(SimEvent::cue("guard_alert", feet + Vec3::Y * 1.8));
                     alerts.push((feet, pfeet));
+                    Some("guard_alert")
                 }
-                Some(MindEvent::Investigating) => events.push(SimEvent::cue("guard_suspicious", feet + Vec3::Y * 1.8)),
-                _ => {}
+                Some(MindEvent::LostTarget) => Some("guard_search"),
+                Some(MindEvent::GaveUp) => Some("guard_giveup"),
+                _ => None,
+            };
+            if let Some(b) = bark {
+                if matches!(b, "guard_suspicious" | "guard_alert") {
+                    events.push(SimEvent::cue(b, feet + Vec3::Y * 1.8));
+                }
+                if flat(pfeet - feet).length() < 30.0 {
+                    let c = g.content();
+                    g.dialog.bark(&c.dialog, b, id.0 as u64);
+                }
             }
             if before != n.mind.state && n.mind.aware() && !matches!(before, Awareness::Alerted | Awareness::Combat) {
                 alerts.push((feet, pfeet));
@@ -625,6 +636,11 @@ fn brains(g: &mut BlackTap, sim: &mut Sim, dt: f32, events: &mut Vec<SimEvent>) 
         n.stun = (n.stun - dt).max(0.0);
         n.flee = (n.flee - dt).max(0.0);
         n.shot_cd = (n.shot_cd - dt).max(0.0);
+        // The town crier cries the Commodore's decrees to whoever is near.
+        if n.has("crier") && !n.out() && n.flee <= 0.0 && flat(pfeet - feet).length() < 24.0 {
+            let c = g.content();
+            g.dialog.bark(&c.dialog, "crier", id.0 as u64);
+        }
         if let Some(f) = g.land.fighters.get(&id) {
             if f.vitals.dead {
                 n.dead = true;

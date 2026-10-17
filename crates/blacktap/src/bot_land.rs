@@ -44,6 +44,16 @@ fn go(g: &BlackTap, sim: &Sim, to: Vec3, run: bool) -> InputFrame {
     if run && l > 3.0 {
         i.held |= b::SPRINT;
     }
+    // A low wall right ahead (a sea wall, a cart): free-running vaults or climbs it.
+    let ahead = Vec3::new(d.x, 0.0, d.y).normalize_or_zero();
+    if l > 2.0
+        && [0.25f32, 0.5].iter().any(|y| {
+            sim.raycast(p + Vec3::Y * *y, ahead, 1.2, None).is_some_and(|h| h.normal.y.abs() < 0.5 && h.entity.is_none())
+        })
+        && sim.raycast(p + Vec3::Y * 2.2, ahead, 1.6, None).is_none()
+    {
+        i.held |= b::SPRINT;
+    }
     // Stuck: hop.
     let speed = sim
         .state
@@ -192,6 +202,13 @@ fn nearest(g: &BlackTap, sim: &Sim, pick: impl Fn(&crate::stealth::Npc) -> bool)
 }
 
 /// Aim a dart at someone: turn to them, hold aim, fire when lined up.
+/// A clear line from the eyes to someone's chest (darts need one).
+fn in_sight(sim: &Sim, p: Vec3, at: Vec3) -> bool {
+    let (from, to) = (p + Vec3::Y * 1.6, at + Vec3::Y * 1.2);
+    let d = to - from;
+    sim.raycast(from, d, d.length() - 0.5, None).is_none_or(|h| h.entity.is_some())
+}
+
 fn dart(g: &BlackTap, sim: &Sim, at: Vec3) -> InputFrame {
     let mut i = InputFrame::default();
     let Some(p) = BlackTap::player_feet(sim) else { return i };
@@ -292,7 +309,10 @@ pub fn land(g: &BlackTap, sim: &Sim, skill: &str) -> InputFrame {
             // Escorts first (darts), then the courier from behind.
             if let Some((_, at)) = nearest(g, sim, |n| n.has("escort") && !n.out()) {
                 let p = BlackTap::player_feet(sim).unwrap_or_default();
-                if flat(at - p).length() < 22.0 && g.land.hero.tools.count(pav_kit::combat::Tool::Nightcap) > 0 {
+                if flat(at - p).length() < 22.0
+                    && g.land.hero.tools.count(pav_kit::combat::Tool::Nightcap) > 0
+                    && in_sight(sim, p, at)
+                {
                     return dart(g, sim, at);
                 }
                 let mut i = go(g, sim, at, false);
@@ -309,7 +329,10 @@ pub fn land(g: &BlackTap, sim: &Sim, skill: &str) -> InputFrame {
             let stocks = g.world().marker("stocks").unwrap_or_default();
             // Put each stocks guard to sleep, then open the stocks.
             if let Some((_, at)) = nearest(g, sim, |n| n.group == "stocks" && n.fighter && !n.out()) {
-                if flat(at - p).length() < 22.0 && g.land.hero.tools.count(pav_kit::combat::Tool::Nightcap) > 0 {
+                if flat(at - p).length() < 22.0
+                    && g.land.hero.tools.count(pav_kit::combat::Tool::Nightcap) > 0
+                    && in_sight(sim, p, at)
+                {
                     return dart(g, sim, at);
                 }
                 if let Some((id, at)) = nearest(g, sim, |n| n.group == "stocks" && n.fighter && !n.out()) {
@@ -328,7 +351,10 @@ pub fn land(g: &BlackTap, sim: &Sim, skill: &str) -> InputFrame {
             let p = BlackTap::player_feet(sim).unwrap_or_default();
             // The bodyguards sleep first.
             if let Some((_, at)) = nearest(g, sim, |n| n.group == "drye" && n.kind != "drye" && !n.out()) {
-                if flat(at - p).length() < 24.0 && g.land.hero.tools.count(pav_kit::combat::Tool::Nightcap) > 0 {
+                if flat(at - p).length() < 24.0
+                    && g.land.hero.tools.count(pav_kit::combat::Tool::Nightcap) > 0
+                    && in_sight(sim, p, at)
+                {
                     return dart(g, sim, at);
                 }
             }

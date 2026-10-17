@@ -115,7 +115,7 @@ pub fn icon_name(icon: &str) -> &str {
         "chest" => "Chest",
         "sheet" => "Shanty sheet",
         "bottle" => "Message in a bottle",
-        "tap" => "Black Tap",
+        "tap" => "Keg Tap",
         "flotsam" => "Flotsam",
         "ship" => "Ship",
         "enemy_ship" => "Enemy ship",
