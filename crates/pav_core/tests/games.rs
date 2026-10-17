@@ -152,3 +152,29 @@ fn hook_games_can_turn_the_bombs_off() {
     assert!(fired(Weapon::Bombs) > 0, "the default weapon should throw bombs");
     assert_eq!(fired(Weapon::None), 0, "weapon = none still fired");
 }
+
+#[test]
+fn checkpoints_live_outside_the_state() {
+    let mut sim = Sim::new("starter", 1).expect("starter builds");
+    let pid = sim.state.player.expect("a player");
+    for _ in 0..10 {
+        sim.step(&InputFrame::default());
+    }
+    let saved_at = sim.feet(pid).unwrap();
+    sim.checkpoint_save();
+    let snapshot_after_save = sim.snapshot();
+    let mut walk = InputFrame::default();
+    walk.move_dir = pav_core::glam::Vec2::new(1.0, 0.0);
+    for _ in 0..90 {
+        sim.step(&walk);
+    }
+    let moved_to = sim.feet(pid).unwrap();
+    assert!(moved_to.distance(saved_at) > 1.0, "the player should have walked away");
+    let tick = sim.state.tick;
+    assert!(sim.checkpoint_load(), "a checkpoint was saved");
+    assert!(sim.feet(pid).unwrap().distance(saved_at) < 0.05, "back where the checkpoint was taken");
+    assert_eq!(sim.state.tick, tick, "the tick counter keeps running forward");
+    // The checkpoint is the sim's, not the state's: restoring an older snapshot keeps it.
+    sim.restore(snapshot_after_save);
+    assert!(sim.checkpoint_load(), "restoring a snapshot doesn't drop the checkpoint");
+}
