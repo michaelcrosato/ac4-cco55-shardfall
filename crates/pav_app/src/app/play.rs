@@ -432,6 +432,7 @@ impl App {
                 if t.phase == winit::event::TouchPhase::Started {
                     p.mouse_taps.push(0);
                     p.touch_tapped = true;
+                    log::debug!("touch at {:.0},{:.0}", at.x, at.y);
                 }
                 #[cfg(target_arch = "wasm32")]
                 {

@@ -55,7 +55,7 @@ function watchConsole(page, label) {
   page.on('console', (m) => {
     const text = m.text();
     if (m.type() === 'error') errors.push(text);
-    if (/frontend:|demo_stall|panic|error/i.test(text)) console.log(`  [${label} console.${m.type()}] ${text.slice(0, 200)}`);
+    if (/frontend:|demo_stall|panic|error|touch/i.test(text)) console.log(`  [${label} console.${m.type()}] ${text.slice(0, 200)}`);
   });
   page.on('pageerror', (e) => errors.push(String(e)));
   return errors;
@@ -102,7 +102,7 @@ async function waitMode(page, want, timeoutMs) {
 }
 
 // ---- desktop
-{
+if (!process.argv.includes('--phone-only')) {
   const page = await browser.newPage({ viewport: { width: 960, height: 540 } });
   const errors = watchConsole(page, 'desktop');
   await page.goto(url);

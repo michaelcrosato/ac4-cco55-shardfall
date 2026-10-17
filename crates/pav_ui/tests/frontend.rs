@@ -792,3 +792,17 @@ fn hud_draws_through_the_front_end_in_play() {
     frame.ui.markers[0].pos = Vec3::new(0.0, 0.0, -50.0);
     draw_once(&mut fe, Some(&frame), egui::vec2(1920.0, 1080.0));
 }
+
+#[test]
+fn a_phone_tap_on_the_button_opens_the_menu_as_the_app_sends_it() {
+    // The app doesn't count a phone's tap as "any input" (that would leave attract mode).
+    let mut fe = mobile();
+    let size = egui::vec2(2337.0, 1080.0);
+    draw_once(&mut fe, None, size);
+    let c = fe.menu_button().expect("☰ shown");
+    let mut tap = UiInput::tap(c);
+    tap.any = false;
+    tap.touch = true;
+    fe.update(DT, &tap, None);
+    assert_eq!(fe.mode(), Mode::MobileMenu);
+}

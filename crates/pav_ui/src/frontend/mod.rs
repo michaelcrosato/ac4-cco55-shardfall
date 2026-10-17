@@ -628,8 +628,10 @@ impl FrontEnd {
                     }
                     return out;
                 }
-                self.mobile_tap(input, &mut out);
             }
+            // A phone's taps aren't "any input" (they don't leave attract): the ☰ button and its
+            // overlay take them here.
+            self.mobile_tap(input, &mut out);
             self.advance_attract(dt, frame, &mut out);
             return out;
         }
