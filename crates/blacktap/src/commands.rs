@@ -150,7 +150,16 @@ pub fn level_check(g: &BlackTap) -> Value {
         for s in &m.step {
             for mk in &s.markers {
                 checked += 1;
-                if w.marker(mk).is_none() {
+                let (kind, name) = mk.split_once(':').unwrap_or((mk.as_str(), ""));
+                let ok = match kind {
+                    "marker" => w.marker(name).is_some(),
+                    "ship" | "tag" => !name.is_empty(),
+                    "npc" => w.npcs.iter().any(|n| n.kind == name || n.tags.iter().any(|t| t == name)),
+                    "battery" => ["west", "north", "mortar"].contains(&name),
+                    "flotsam" => true,
+                    _ => false,
+                };
+                if !ok {
                     problems.push(format!("{}: step {} shows unknown marker '{mk}'", m.id, s.id));
                 }
             }
@@ -196,6 +205,22 @@ pub fn level_check(g: &BlackTap) -> Value {
         checked += 1;
         if pav_core::Sim::new(&d.scene, d.seeds.first().copied().unwrap_or(1)).is_err() {
             problems.push(format!("demo '{}': scene '{}' does not build", d.name, d.scene));
+        }
+    }
+    let kinds = crate::looks::names();
+    for n in &w.npcs {
+        checked += 1;
+        if !kinds.contains(&n.kind) {
+            problems.push(format!("npc in group '{}' has unknown archetype '{}'", n.group, n.kind));
+        }
+        if !n.route.is_empty() && w.route(&n.route).is_empty() {
+            problems.push(format!("npc '{}' walks unknown route '{}'", n.kind, n.route));
+        }
+    }
+    for p in &w.perches {
+        checked += 1;
+        if !p.leap_to.is_empty() && w.marker(&p.leap_to).is_none() {
+            problems.push(format!("perch '{}' leaps to unknown marker '{}'", p.name, p.leap_to));
         }
     }
     for (name, route) in &w.routes {

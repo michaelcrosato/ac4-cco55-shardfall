@@ -292,7 +292,7 @@ pub fn act(g: &mut BlackTap, sim: &mut Sim, name: &str, _arg: Option<&str>) {
             g.stealth.last_words = Some(0.0);
             g.music = "last_words".into();
             g.set_atmosphere("memory_mist", 1.5);
-            g.dialog.say(&g.content().dialog, "lw_1");
+            g.dialog.say(&g.content().dialog, "r6_last_words_1");
         }
         other => log::warn!("blacktap: unknown mission action '{other}'"),
     }
@@ -1141,12 +1141,12 @@ pub fn post(g: &mut BlackTap, sim: &mut Sim, dt: f32, events: &mut Vec<SimEvent>
         g.land.slow = 0.2;
         g.land.slow_scale = 0.5;
         let c = g.content();
-        for (at, line) in [(3.0, "lw_2"), (6.5, "lw_3"), (10.0, "lw_4")] {
+        for (at, line) in [(3.5, "r6_last_words_2"), (7.5, "r6_last_words_3")] {
             if t >= at && t - dt < at {
                 g.dialog.say(&c.dialog, line);
             }
         }
-        if t >= 13.0 {
+        if t >= 11.5 {
             g.stealth.last_words = None;
             g.mission.set_flag("last_words_done");
             g.set_atmosphere("sunset", 2.0);
@@ -1287,7 +1287,7 @@ pub fn letterbox(g: &BlackTap) -> f32 {
 
 /// The white sea-mist of Last Words.
 pub fn white(g: &BlackTap) -> f32 {
-    g.stealth.last_words.map(|t| (t.min(1.0) * (13.0 - t).clamp(0.0, 1.0)) * 0.55).unwrap_or(0.0)
+    g.stealth.last_words.map(|t| (t.min(1.0) * (11.5 - t).clamp(0.0, 1.0)) * 0.55).unwrap_or(0.0)
 }
 
 pub fn markers_for_tag(g: &BlackTap, sim: &Sim, tag: &str, ui: &mut UiModel) {
