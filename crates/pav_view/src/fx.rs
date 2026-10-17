@@ -474,7 +474,7 @@ pub fn event_bursts(e: &pav_core::frame::SimEvent, out: &mut Vec<ParticleBurst>)
                 b.life = (0.25, 0.6);
             }));
         }
-        E::Land { pos, speed } if *speed > 8.0 => out.push(with("dust", *pos, 12, &|b| b.spread = 2.0)),
+        E::Land { pos, speed, .. } if *speed > 8.0 => out.push(with("dust", *pos, 12, &|b| b.spread = 2.0)),
         _ => {}
     }
 }

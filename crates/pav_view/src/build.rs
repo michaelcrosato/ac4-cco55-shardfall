@@ -753,7 +753,7 @@ impl ViewBuilder {
                 SimEvent::Explosion { pos, radius } => {
                     self.effects.push(Effect { kind: EffectKind::Explosion { radius: *radius }, pos: *pos, start: self.now })
                 }
-                SimEvent::Land { pos, speed } if *speed > 6.0 => {
+                SimEvent::Land { pos, speed, .. } if *speed > 6.0 => {
                     self.effects.push(Effect { kind: EffectKind::Dust, pos: *pos, start: self.now })
                 }
                 SimEvent::Hit { pos, .. } => self.effects.push(Effect {

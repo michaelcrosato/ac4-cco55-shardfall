@@ -73,9 +73,13 @@ pub enum SimEvent {
     Jump {
         pos: Vec3,
     },
+    /// Touching down: `speed` is the vertical speed at impact (m/s; games take fall damage
+    /// from it) and `roll` whether it was a free-run roll landing (parkour, SPRINT held).
     Land {
         pos: Vec3,
         speed: f32,
+        #[serde(default)]
+        roll: bool,
     },
     Explosion {
         pos: Vec3,
