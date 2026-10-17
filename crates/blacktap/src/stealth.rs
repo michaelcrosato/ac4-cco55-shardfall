@@ -199,9 +199,9 @@ fn spawn(g: &mut BlackTap, sim: &mut Sim, s: &crate::world::NpcSpawn, offset: Ve
     // The courier can be cut down (he has a fighter's body) but he runs rather than fights.
     let fighter = !matches!(s.kind.as_str(), "civilian" | "molasses");
     let id = if fighter {
-        g.land.spawn_fighter(sim, &s.kind, Team::Enemy, feet, facing, crate::looks::look(&s.kind))
+        g.land.spawn_fighter(sim, &s.kind, Team::Enemy, feet, facing, crate::looks::look_variant(&s.kind, idx))
     } else {
-        sim.spawn_npc(&s.kind, feet, facing, crate::looks::look(&s.kind), None, None)
+        sim.spawn_npc(&s.kind, feet, facing, crate::looks::look_variant(&s.kind, idx), None, None)
     };
     if let Some(f) = g.land.fighters.get_mut(&id) {
         f.idle = true;

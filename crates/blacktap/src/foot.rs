@@ -294,14 +294,14 @@ fn begin_fight(g: &mut BlackTap, sim: &mut Sim) {
         ("sobers", -0.8, 0.0),
     ];
     let player_at = at(0.0, 0.0);
-    for (kind, along, across) in enemies {
+    for (k, (kind, along, across)) in enemies.into_iter().enumerate() {
         let p = at(along, across);
-        let look = crate::looks::look(kind);
+        let look = crate::looks::look_variant(kind, k as u32);
         g.land.spawn_fighter(sim, kind, crate::foot::Team::Enemy, p, facing_to(p, player_at), look);
     }
-    for (along, across) in [(0.2, -0.3), (-0.2, 0.3), (0.45, 0.0), (-0.45, 0.0)] {
+    for (k, (along, across)) in [(0.2, -0.3), (-0.2, 0.3), (0.45, 0.0), (-0.45, 0.0)].into_iter().enumerate() {
         let p = at(along, across);
-        let look = crate::looks::look("ally");
+        let look = crate::looks::look_variant("ally", k as u32);
         g.land.spawn_fighter(sim, "ally", crate::foot::Team::Ally, p, facing_to(p, player_at), look);
     }
     if let Some(b) = &mut g.land.boarding {
