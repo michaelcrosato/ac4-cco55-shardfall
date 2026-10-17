@@ -7,7 +7,10 @@
 
 pub mod ballistics;
 pub mod camera;
+pub mod cinematic;
+pub mod combat;
 pub mod demo;
 pub mod dialog;
 pub mod mission;
 pub mod naval;
+pub mod perception;
