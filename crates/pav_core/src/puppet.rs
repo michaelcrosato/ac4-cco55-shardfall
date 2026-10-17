@@ -27,6 +27,12 @@ choice_enum! {
         Maul => "maul",
         Wand => "wand",
         Claw => "claw",
+        /// A flintlock pistol: a short barrel over a curved wooden butt.
+        Pistol => "pistol",
+        /// A long flintlock musket, carried upright at the side when not swinging.
+        Musket => "musket",
+        /// A short curved sword with a brass knuckle guard.
+        Cutlass => "cutlass",
     }
 }
 
@@ -90,6 +96,16 @@ choice_enum! {
         Halo => "halo",
         /// A cloth hood with a drape down the back (townsfolk).
         Hood => "hood",
+        /// A cocked hat with the brim turned up on three sides into a triangle, point forward.
+        Tricorne => "tricorne",
+        /// A cocked hat worn side to side: a tall crescent from ear to ear, with a cockade.
+        Bicorne => "bicorne",
+        /// A cloth tied over the head, the knot and its two tails at the back.
+        Bandana => "bandana",
+        /// A round crown on a wide flat brim, with a band (`trim`, or a darker straw).
+        StrawHat => "straw_hat",
+        /// A hood whose front comes to a beak-like peak over the brow, the face edged in `trim`.
+        BeakedHood => "beaked_hood",
     }
 }
 
@@ -110,6 +126,42 @@ pub struct GearLook {
     pub belt: String,
     /// Enchanted shine on the helmet.
     pub glow: f32,
+    /// Edging colour ("" = none): the brims of tricornes and bicornes (and a bicorne's
+    /// cockade), a straw hat's band, a beaked hood's face, the front edges and cuffs of a coat.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub trim: String,
+    /// Coat skirts from the waist (0 = none, 1 = to the knees), tails that part over the legs
+    /// and swing as they stride, and their colour ("" = the shirt's).
+    #[serde(skip_serializing_if = "is_zero")]
+    pub coat: f32,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub coat_color: String,
+    /// Hair (or a powdered wig) round a hat: curls over the ears and a queue tied down the back
+    /// ("" = none).
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub hair: String,
+    /// Shirt stripes: three bands round the torso in this colour ("" = none).
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub stripes: String,
+    /// A strap round the waist in this colour ("" = none; `belt` is the buckle on it).
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub belt_strap: String,
+    /// A bracer on the left forearm: leather in this colour with two brass bands and a brass
+    /// tap on the back of the wrist ("" = none).
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub bracer: String,
+    /// Flintlock pistols worn holstered at the front of the belt (0 = none, up to 4: then two
+    /// more on the chest).
+    #[serde(skip_serializing_if = "is_zero_i")]
+    pub holsters: i32,
+}
+
+fn is_zero(v: &f32) -> bool {
+    *v == 0.0
+}
+
+fn is_zero_i(v: &i32) -> bool {
+    *v == 0
 }
 
 impl Default for GearLook {
@@ -124,6 +176,14 @@ impl Default for GearLook {
             gloves: String::new(),
             belt: String::new(),
             glow: 0.0,
+            trim: String::new(),
+            coat: 0.0,
+            coat_color: String::new(),
+            hair: String::new(),
+            stripes: String::new(),
+            belt_strap: String::new(),
+            bracer: String::new(),
+            holsters: 0,
         }
     }
 }
@@ -1159,7 +1219,12 @@ pub fn procedural(def: &PuppetDef, st: &PuppetState, table: &crate::moves::MoveT
         knee: [Vec3::ZERO; 2],
         ankle: [Vec3::ZERO; 2],
         toe: [Vec3::Z; 2],
-        weapon: Vec3::new(0.12, -0.35, 1.0).normalize(),
+        // A musket is carried upright at the side; everything else points forward and down.
+        weapon: if def.weapon.kind == WeaponKind::Musket {
+            Vec3::new(0.06, 1.0, 0.1).normalize()
+        } else {
+            Vec3::new(0.12, -0.35, 1.0).normalize()
+        },
         blink,
     };
 
@@ -1216,7 +1281,9 @@ pub fn procedural(def: &PuppetDef, st: &PuppetState, table: &crate::moves::MoveT
     for (i, s) in [(0usize, -1.0f32), (1, 1.0)] {
         let shoulder = shoulders[i];
         let ph = cyc + if s > 0.0 { PI } else { 0.0 };
-        let swing = ph.sin() * def.arm_swing * walk;
+        // The hand that carries a musket upright keeps it steady.
+        let steady = if s > 0.0 && def.weapon.kind == WeaponKind::Musket { 0.25 } else { 1.0 };
+        let swing = ph.sin() * def.arm_swing * walk * steady;
         let mut hand = shoulder + Vec3::new(s * 0.08 * k, -arm * 0.88, swing * arm * 0.45);
         // Air: arms up and out.
         hand = hand.lerp(shoulder + Vec3::new(s * arm * 0.55, arm * 0.25, 0.05), st.air * 0.7);
@@ -1313,6 +1380,21 @@ fn dress(def: &PuppetDef, st: &PuppetState, sk: &Skel, feet: Vec3, cam_fwd: Vec3
     push(pelvis, chest, tr * 0.92, tr, shirt);
     push(head, head, hr, hr, skin);
     let gear = &def.gear;
+    let trim = Color::try_hex(&gear.trim);
+    let brass = Color::hex("#c9a24a");
+    if let Some(hc) = Color::try_hex(&gear.hair) {
+        // Hair or a wig: over the back of the skull, curls over the ears and a tied queue.
+        let (f, x, hu) = (hq * Vec3::Z, hq * Vec3::X, sk.crown);
+        let c = head - f * hr * 0.28 + hu * hr * 0.12;
+        push(c, c, hr * 0.98, hr * 0.98, hc);
+        for sd in [-1.0f32, 1.0] {
+            let e = head + x * sd * hr * 0.84 - f * hr * 0.3 - hu * hr * 0.12;
+            push(e - hu * hr * 0.1, e + hu * hr * 0.1, hr * 0.21, hr * 0.21, hc);
+        }
+        let q = head - f * hr * 1.0 - hu * hr * 0.25;
+        push(q, q - hu * hr * 0.95 - f * hr * 0.12, hr * 0.17, hr * 0.09, hc);
+        push(q, q, hr * 0.15, hr * 0.15, Color::hex("#1a1a1e"));
+    }
     glow_now.set(gear.glow);
     if gear.helm != HelmKind::None {
         let hc = Color::try_hex(&gear.helm_color).unwrap_or(Color::hex("#8a8f99"));
@@ -1333,6 +1415,92 @@ fn dress(def: &PuppetDef, st: &PuppetState, sk: &Skel, feet: Vec3, cam_fwd: Vec3
                     let b = head + hu * hr * 0.8 + (x * a.cos() + f * a.sin()) * hr * 0.62;
                     push(b, b + hu * hr * 0.42, hr * 0.1, hr * 0.05, gold);
                 }
+            }
+            HelmKind::Tricorne => {
+                // A low round crown; the brim's three corners point forward and back to either
+                // side, the brim between them turned up into walls, edged in `trim`.
+                let base = head + hu * hr * 0.5;
+                push(base - hu * hr * 0.05, base + hu * hr * 0.25, hr * 0.8, hr * 0.72, hc);
+                let around = |a: f32| f * a.cos() + x * a.sin();
+                let third = std::f32::consts::TAU / 3.0;
+                let corner = |i: usize| base + around(i as f32 * third) * hr * 1.5;
+                let wall = |i: usize| base + hu * hr * 0.42 + around((i as f32 + 0.5) * third) * hr * 0.92;
+                for i in 0..3 {
+                    let (c0, m, c1) = (corner(i), wall(i), corner(i + 1));
+                    push(c0, m, hr * 0.17, hr * 0.16, hc);
+                    push(m, c1, hr * 0.16, hr * 0.17, hc);
+                    // Fill the corner from the crown out to its tip.
+                    push(base + (c0 - base) * 0.35 + hu * hr * 0.05, c0, hr * 0.3, hr * 0.16, hc);
+                    if let Some(t) = trim {
+                        push(c0 + hu * hr * 0.15, m + hu * hr * 0.15, hr * 0.06, hr * 0.06, t);
+                        push(m + hu * hr * 0.15, c1 + hu * hr * 0.15, hr * 0.06, hr * 0.06, t);
+                    }
+                }
+            }
+            HelmKind::Bicorne => {
+                // A cap over the skull under a crescent fan from ear to ear, thickest over the
+                // crown; `trim` edges the top and makes the cockade (white without it).
+                push(head + hu * hr * 0.35, head + hu * hr * 0.35, hr * 0.92, hr * 0.92, hc);
+                let arc = |t: f32| head + x * (t * hr * 1.6) + hu * (hr * (0.4 + 1.05 * (1.0 - t * t)));
+                let r = |t: f32| hr * (0.3 - 0.17 * t.abs());
+                let ts = [-1.0f32, -0.5, 0.0, 0.5, 1.0];
+                for w in ts.windows(2) {
+                    push(arc(w[0]), arc(w[1]), r(w[0]), r(w[1]), hc);
+                    if let Some(t) = trim {
+                        let lift = |s: f32| hu * r(s) * 0.85;
+                        push(arc(w[0]) + lift(w[0]), arc(w[1]) + lift(w[1]), hr * 0.06, hr * 0.06, t);
+                    }
+                }
+                let c = arc(-0.35) + f * hr * 0.2;
+                push(c, c, hr * 0.13, hr * 0.13, trim.unwrap_or(Color::hex("#e8e8ee")));
+            }
+            HelmKind::Bandana => {
+                // Tight over the skull and brow, knotted at the back with two tails.
+                let c = head + hu * hr * 0.24 - f * hr * 0.08;
+                push(c, c, hr * 0.95, hr * 0.95, hc);
+                let knot = head - f * hr * 1.02 + hu * hr * 0.2;
+                push(knot, knot, hr * 0.24, hr * 0.24, hc);
+                for sd in [-1.0f32, 1.0] {
+                    push(knot, knot - f * hr * 0.3 - hu * hr * 0.8 + x * sd * hr * 0.22, hr * 0.15, hr * 0.07, hc);
+                }
+            }
+            HelmKind::StrawHat => {
+                // A domed crown with a band, on a wide brim of two rings of segments.
+                let base = head + hu * hr * 0.55;
+                push(base, base + hu * hr * 0.42, hr * 0.72, hr * 0.72, hc);
+                let band = trim.unwrap_or(hc.scale(0.45));
+                push(base + hu * hr * 0.1, base + hu * hr * 0.1, hr * 0.735, hr * 0.735, band);
+                for (ring, drop, rr) in [(0.92f32, 0.0f32, 0.2f32), (1.3, 0.1, 0.17)] {
+                    let n = 10;
+                    for i in 0..n {
+                        let at = |j: usize| {
+                            let a = j as f32 / n as f32 * std::f32::consts::TAU;
+                            base - hu * hr * drop + (f * a.cos() + x * a.sin()) * hr * ring
+                        };
+                        push(at(i), at(i + 1), hr * rr, hr * rr, hc);
+                    }
+                }
+            }
+            HelmKind::BeakedHood => {
+                // Round over the skull and open at the face, which `trim` edges; the front comes
+                // to a peak over the brow like a beak, and the drape falls down the back.
+                let c = head + hu * hr * 0.22 - f * hr * 0.3;
+                push(c, c, hr * 1.14, hr * 1.14, hc);
+                // A ridge over the crown runs forward into the beak.
+                let ridge = head + hu * hr * 0.98 + f * hr * 0.42;
+                push(head + hu * hr * 1.08 - f * hr * 0.25, ridge, hr * 0.34, hr * 0.3, hc);
+                push(ridge, head + hu * hr * 0.5 + f * hr * 1.38, hr * 0.3, hr * 0.04, hc);
+                let edge = trim.unwrap_or(hc);
+                for sd in [-1.0f32, 1.0] {
+                    push(
+                        head + hu * hr * 0.62 + f * hr * 0.5 + x * sd * hr * 0.62,
+                        head - hu * hr * 0.55 + f * hr * 0.3 + x * sd * hr * 0.9,
+                        hr * 0.15,
+                        hr * 0.13,
+                        edge,
+                    );
+                }
+                push(head - f * hr * 0.75 - hu * hr * 0.1, head - f * hr * 0.95 - hu * hr * 1.5, hr * 0.85, hr * 0.55, hc);
             }
             _ => {
                 let full = matches!(gear.helm, HelmKind::Great);
@@ -1423,6 +1591,72 @@ fn dress(def: &PuppetDef, st: &PuppetState, sk: &Skel, feet: Vec3, cam_fwd: Vec3
             push(top + off, bottom + off * 1.35, lr * 0.85 * gear.cape, lr * 1.05 * gear.cape, cc);
         }
     }
+    // Bands round the torso (stripes, the belt strap): balls a shade wider than the torso
+    // there, so only a ring of each shows.
+    let torso_r = |t: f32| tr * (0.92 + 0.08 * t);
+    if let Some(sc) = Color::try_hex(&gear.stripes) {
+        for t in [0.3f32, 0.55, 0.8] {
+            let at = pelvis.lerp(chest, t);
+            push(at, at, torso_r(t) * 1.012, torso_r(t) * 1.012, sc);
+        }
+    }
+    let waist = pelvis + torso_dir * def.torso_length * k * 0.12;
+    if let Some(bc) = Color::try_hex(&gear.belt_strap) {
+        push(waist, waist, torso_r(0.12) * 1.035, torso_r(0.12) * 1.035, bc);
+    }
+    if gear.coat > 0.0 {
+        // Coat skirts from the waist: a panel over the outside and back of each thigh that
+        // strides with it, and the tails between them that swing out behind.
+        let cc = Color::try_hex(&gear.coat_color).unwrap_or(shirt);
+        let len = gear.coat.min(1.6);
+        let flow = (st.speed / 6.0).min(1.0) * 0.6 + st.lean_fwd.max(0.0) * 0.4;
+        let top = pelvis + torso_dir * def.torso_length * k * 0.18;
+        let mut mid = Vec3::ZERO;
+        for (i, s) in [(0usize, -1.0f32), (1, 1.0)] {
+            let (hip, knee) = (sk.hip[i], sk.knee[i]);
+            let foot = hip + (knee - hip) * len;
+            mid += foot * 0.5;
+            push(
+                top + pr * Vec3::new(s * tr * 0.72, 0.0, -tr * 0.3),
+                foot + pr * Vec3::new(s * lr * 1.0, 0.0, -lr * 1.0),
+                lr * 1.3,
+                lr * 1.5,
+                cc,
+            );
+        }
+        let tail = mid + pr * Vec3::new(0.0, 0.0, -lr * (1.9 + flow * 3.0)) + Vec3::Y * flow * lr * 1.5;
+        push(top + pr * Vec3::new(0.0, 0.0, -tr * 0.75), tail, lr * 1.35, lr * 1.55, cc);
+        if let Some(t) = trim {
+            // The coat's front edges, down the chest either side of the buttons.
+            for s in [-1.0f32, 1.0] {
+                let edge = |p: Vec3, tt: f32| p + cr * Vec3::new(s * tr * 0.42, 0.0, torso_r(tt) * 0.9);
+                push(edge(chest - torso_dir * tr * 0.2, 0.9), edge(waist, 0.1), lr * 0.32, lr * 0.32, t);
+            }
+        }
+    }
+    if gear.holsters > 0 {
+        // Pistols holstered at the front of the belt, butts up and forward (then two on the chest).
+        let leather = Color::try_hex(&gear.belt_strap).unwrap_or(Color::hex("#3a2a1a"));
+        let wood = Color::hex("#5a3b26");
+        for j in 0..gear.holsters.clamp(0, 4) {
+            let s = if j % 2 == 0 { 1.0f32 } else { -1.0 };
+            let (at, q) = if j < 2 {
+                (waist + pr * Vec3::new(s * tr * 0.55, 0.0, torso_r(0.12) * 0.95), pr)
+            } else {
+                (pelvis.lerp(chest, 0.62) + cr * Vec3::new(s * tr * 0.45, 0.0, torso_r(0.62) * 0.97), cr)
+            };
+            push(
+                at + q * Vec3::new(0.0, 0.02 * k, 0.0),
+                at + q * Vec3::new(s * 0.015 * k, -0.15 * k, 0.01 * k),
+                lr * 0.5,
+                lr * 0.42,
+                leather,
+            );
+            let butt = at + q * Vec3::new(s * 0.01 * k, 0.09 * k, 0.07 * k);
+            push(at + q * Vec3::new(0.0, 0.03 * k, 0.0), butt, lr * 0.36, lr * 0.46, wood);
+            push(butt, butt, lr * 0.42, lr * 0.42, brass);
+        }
+    }
 
     // Legs.
     for i in 0..2 {
@@ -1445,6 +1679,27 @@ fn dress(def: &PuppetDef, st: &PuppetState, sk: &Skel, feet: Vec3, cam_fwd: Vec3
             let p = shoulder + cr * Vec3::new(s * 0.03 * k, 0.04 * k, 0.0);
             let r = lr * 1.9 * def.gear.pauldrons;
             push(p, p + cr * Vec3::new(s * 0.05 * k, -0.02 * k, 0.0), r, r * 0.85, pc);
+        }
+        if let (Some(t), true) = (trim, gear.coat > 0.0) {
+            // Turned-back cuffs on the coat sleeves.
+            let c = elbow.lerp(hand, 0.72);
+            let along = (hand - elbow).normalize_or(Vec3::NEG_Y) * lr * 0.35;
+            push(c - along, c + along, lr * 1.12, lr * 1.12, t);
+        }
+        if let (0, Some(lc)) = (i, Color::try_hex(&gear.bracer)) {
+            // The bracer on the left forearm: leather between two brass bands, and the tap, a
+            // brass spigot on the back of the wrist.
+            let along = (hand - elbow).normalize_or(Vec3::NEG_Y);
+            push(elbow.lerp(hand, 0.3), elbow.lerp(hand, 0.88), lr * 1.2, lr * 1.12, lc);
+            for t in [0.36f32, 0.82] {
+                let c = elbow.lerp(hand, t);
+                push(c - along * lr * 0.1, c + along * lr * 0.1, lr * 1.3, lr * 1.25, brass);
+            }
+            let out = (cr * Vec3::NEG_X - along * along.dot(cr * Vec3::NEG_X)).normalize_or(Vec3::NEG_X);
+            let back = (out + Vec3::Y * 0.6).normalize();
+            let c = elbow.lerp(hand, 0.6) + back * lr * 1.1;
+            push(c, c + back * lr * 0.55, lr * 0.32, lr * 0.26, brass);
+            push(c + back * lr * 0.55, c + back * lr * 0.55 + along * lr * 0.5, lr * 0.24, lr * 0.2, brass);
         }
     }
     // Weapon in the right hand, off-hand item in the left.
@@ -1505,6 +1760,9 @@ pub fn weapon_length(k: WeaponKind) -> f32 {
         WeaponKind::Staff => 1.1,
         WeaponKind::Wand => 0.38,
         WeaponKind::Claw => 0.3,
+        WeaponKind::Pistol => 0.32,
+        WeaponKind::Musket => 1.0,
+        WeaponKind::Cutlass => 0.8,
     }
 }
 
@@ -1515,6 +1773,7 @@ pub fn weapon_parts(w: &WeaponLook, k: f32, h: Vec3, d: Vec3, off: Vec3, out: &m
     let g = Color::try_hex(&w.grip).unwrap_or(Color::hex("#5a3b26"));
     let sz = w.size.max(0.3) * k;
     let p = d.cross(Vec3::Y).normalize_or(Vec3::X);
+    let brass = Color::hex("#c9a24a");
     let glow = w.glow;
     let mut seg = |a: Vec3, b: Vec3, ra: f32, rb: f32, color: Color, glow: f32| {
         out.push(PuppetPart { a, b, ra: ra * k, rb: rb * k, color, glow });
@@ -1568,6 +1827,38 @@ pub fn weapon_parts(w: &WeaponLook, k: f32, h: Vec3, d: Vec3, off: Vec3, out: &m
                 seg(h + p * 0.04 * i * k, h + d * 0.3 * sz + p * 0.06 * i * k, 0.016, 0.006, c, glow);
             }
         }
+        WeaponKind::Pistol => {
+            // The hand holds the butt, which curls down behind it; stock, barrel and lock above.
+            let up = p.cross(d).normalize_or(Vec3::Y);
+            let pommel = h - d * 0.08 * sz - up * 0.1 * sz;
+            seg(h + up * 0.03 * sz, pommel, 0.026, 0.032, g, 0.0);
+            seg(pommel, pommel, 0.034, 0.034, brass, 0.0);
+            seg(h - d * 0.03 * sz + up * 0.035 * sz, h + d * 0.22 * sz + up * 0.04 * sz, 0.026, 0.022, g, 0.0);
+            seg(h + up * 0.055 * sz, h + d * 0.32 * sz + up * 0.055 * sz, 0.015, 0.014, c, glow);
+            let lock = h + d * 0.02 * sz + up * 0.06 * sz + p * 0.02 * sz;
+            seg(lock, lock, 0.016, 0.016, brass, 0.0);
+        }
+        WeaponKind::Musket => {
+            // Held at the wrist of the stock: the butt behind the hand, the barrel ahead.
+            let up = p.cross(d).normalize_or(Vec3::Y);
+            let butt = h - d * 0.5 * sz;
+            seg(butt - up * 0.035 * sz, h - d * 0.05 * sz, 0.048, 0.028, g, 0.0);
+            seg(butt - up * 0.035 * sz - d * 0.01, butt + up * 0.02 * sz - d * 0.01, 0.03, 0.03, brass, 0.0);
+            seg(h - d * 0.05 * sz, h + d * 0.72 * sz, 0.027, 0.022, g, 0.0);
+            seg(h + up * 0.02 * sz, h + d * 1.0 * sz + up * 0.02 * sz, 0.015, 0.013, c, glow);
+            let lock = h + d * 0.04 * sz + up * 0.03 * sz + p * 0.025 * sz;
+            seg(lock, lock, 0.02, 0.02, brass, 0.0);
+        }
+        WeaponKind::Cutlass => {
+            // A short blade curving back toward its spine, a brass knuckle bow over the hand.
+            let up = p.cross(d).normalize_or(Vec3::Y);
+            seg(h - d * 0.07, h + d * 0.06, 0.028, 0.028, g, 0.0);
+            seg(h + d * 0.07, h + d * 0.07, 0.05, 0.05, brass, 0.0);
+            seg(h + d * 0.07 - up * 0.04, h - d * 0.07 - up * 0.06, 0.014, 0.014, brass, 0.0);
+            let mid = h + d * 0.45 * sz + up * 0.02 * sz;
+            seg(h + d * 0.09, mid, 0.042, 0.036, c, glow);
+            seg(mid, h + d * 0.76 * sz + up * 0.1 * sz, 0.036, 0.01, c, glow);
+        }
     }
     let oc = Color::try_hex(&w.offhand_color).unwrap_or(Color::hex("#8a6a3a"));
     match w.offhand {
@@ -1613,6 +1904,50 @@ mod tests {
             def.look = Look::Cutout;
             let flat = pose(&def, &PuppetState::default(), None, Vec3::ZERO, Vec3::new(0.0, -0.5, -0.86).normalize());
             assert!(flat.iter().all(|p| p.a.is_finite() && p.b.is_finite()));
+        }
+    }
+
+    #[test]
+    fn pirate_gear_is_additive() {
+        // At their defaults the new gear fields stay out of saved looks, so old bytes keep.
+        let text = toml::to_string(&PuppetDef::default()).unwrap();
+        for key in ["trim", "coat", "coat_color", "hair", "stripes", "belt_strap", "bracer", "holsters"] {
+            assert!(!text.contains(&format!("\n{key} =")), "{key} saved at its default:\n{text}");
+        }
+        let old: GearLook = toml::from_str("helm = \"hood\"\nbelt = \"#c9a24a\"").unwrap();
+        assert_eq!(old.helm, HelmKind::Hood);
+        assert_eq!(old.coat, 0.0);
+        // Every new hat, accent and weapon adds finite parts to the plain puppet.
+        let st = PuppetState::default();
+        let plain = pose(&PuppetDef::default(), &st, None, Vec3::ZERO, Vec3::NEG_Y).len();
+        let mut looks = Vec::new();
+        for helm in [HelmKind::Tricorne, HelmKind::Bicorne, HelmKind::Bandana, HelmKind::StrawHat, HelmKind::BeakedHood] {
+            let mut d = PuppetDef::default();
+            d.gear.helm = helm;
+            d.gear.trim = "#e2b04a".into();
+            looks.push(d);
+        }
+        for kind in [WeaponKind::Pistol, WeaponKind::Musket, WeaponKind::Cutlass] {
+            let mut d = PuppetDef::default();
+            d.weapon.kind = kind;
+            looks.push(d);
+        }
+        let mut d = PuppetDef::default();
+        d.gear = GearLook {
+            trim: "#e8e8ee".into(),
+            coat: 1.0,
+            hair: "#f2efe8".into(),
+            stripes: "#2c3e66".into(),
+            belt_strap: "#3a2a20".into(),
+            bracer: "#8a5a32".into(),
+            holsters: 4,
+            ..Default::default()
+        };
+        looks.push(d);
+        for d in &looks {
+            let parts = pose(d, &st, None, Vec3::ZERO, Vec3::NEG_Y);
+            assert!(parts.len() > plain, "{:?} {:?}", d.gear.helm, d.weapon.kind);
+            assert!(parts.iter().all(|p| p.a.is_finite() && p.b.is_finite() && p.ra > 0.0), "{:?}", d.gear.helm);
         }
     }
 

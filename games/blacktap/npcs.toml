@@ -1,55 +1,96 @@
-# Archetypes (PLAN.md §9.9–9.11): how each looks (puppet), fights (pav_kit::combat::CombatProfile)
-# and sees (pav_kit::perception::Senses). Colours sRGB hex. Helm kinds: none, cap, helm, great,
-# crown, horned, halo, hood (more in later passes).
+# Archetypes (PLAN.md §9.9–9.11, §9.17): how each looks (puppet), fights
+# (pav_kit::combat::CombatProfile) and sees (pav_kit::perception::Senses). Colours sRGB hex.
+# Look fields (all optional; crates/blacktap/src/looks.rs):
+#   skin shirt pants shoes            body colours
+#   helm helm_color                   none cap helm great crown horned halo hood tricorne bicorne
+#                                     bandana straw_hat beaked_hood
+#   trim                              edging: hat brims, a bicorne's cockade, a straw hat's band,
+#                                     a beaked hood's face, a coat's front edges and cuffs
+#   hair                              hair or a wig round the hat, with a queue down the back
+#   coat coat_color                   coat skirts (0 none, 1 to the knees; colour "" = shirt)
+#   stripes                           bands round the shirt
+#   belt belt_strap                   the buckle and the strap round the waist
+#   gloves bracer holsters            gloves; the Tap bracer's leather (left forearm); pistols
+#                                     holstered at the belt (0..4)
+#   pauldrons armor_color cape cape_color
+#   weapon weapon_color weapon_grip   none sword cutlass axe mace dagger spear staff greatsword
+#                                     maul wand claw pistol musket; blade/barrel and wood colours
+#   scale bulk                        size; build (thicker torso, wider shoulders: brutes)
+# `variants` (crowds): partial looks laid over `look`; looks::look_variant(kind, index) picks one.
 
 [archetype.captain]
-look = { skin = "#c89a78", shirt = "#7a1f1f", pants = "#2a2826", shoes = "#2a1d14", helm = "hood", helm_color = "#3a2a2a", cape = 0.8, cape_color = "#5a1818", gloves = "#3a2a20", belt = "#c9a24a", weapon = "sword", weapon_color = "#d8dce4", scale = 1.0 }
+look = { skin = "#c89a78", shirt = "#7a1f1f", pants = "#2a2826", shoes = "#2a1d14", helm = "beaked_hood", helm_color = "#7a1f1f", coat = 1.0, coat_color = "#33302e", gloves = "#3a2a20", belt = "#c9a24a", belt_strap = "#3a2a20", bracer = "#8a5a32", holsters = 2, weapon = "cutlass", weapon_color = "#d8dce4", scale = 1.0 }
 
 [archetype.ally]
-look = { skin = "#b08060", shirt = "#d9c8a0", pants = "#3a4a5a", shoes = "#3a2a1a", helm = "cap", helm_color = "#a8322d", weapon = "sword", scale = 0.98 }
+look = { skin = "#b08060", shirt = "#d9c8a0", pants = "#3a4a5a", shoes = "#3a2a1a", helm = "bandana", helm_color = "#a8322d", belt_strap = "#5a3b26", weapon = "cutlass", scale = 0.98 }
+variants = [
+    { shirt = "#d9c8a0", helm = "bandana", helm_color = "#a8322d" },
+    { shirt = "#efe7d6", stripes = "#a8322d", helm = "bandana", helm_color = "#22201e" },
+    { shirt = "#6b4a2f", helm = "straw_hat", helm_color = "#d9c27a", skin = "#8a5a3c" },
+    { shirt = "#3a4a5a", helm = "tricorne", helm_color = "#3a2a20", hair = "#2a1d14" },
+    { shirt = "#efe7d6", stripes = "#22201e", helm = "none", hair = "#7a4a2a", skin = "#e0b898" },
+    { shirt = "#8a2a22", helm = "bandana", helm_color = "#c9a24a", skin = "#6a4430" },
+]
 combat = { hp = 80.0, damage = 14.0, windup = 0.55, interval = 2.0, reach = 2.0, speed = 3.6 }
 
 [archetype.crew]
-look = { skin = "#d2a682", shirt = "#e8e8ee", pants = "#2c3e66", shoes = "#1a1a1a", helm = "cap", helm_color = "#2c3e66", weapon = "sword", scale = 1.0 }
+look = { skin = "#d2a682", shirt = "#e8e8ee", pants = "#2c3e66", shoes = "#1a1a1a", helm = "straw_hat", helm_color = "#2a2a30", trim = "#e8e8ee", stripes = "#2c3e66", weapon = "cutlass", scale = 1.0 }
+variants = [
+    { stripes = "#2c3e66", helm = "straw_hat", helm_color = "#2a2a30", trim = "#e8e8ee" },
+    { stripes = "#2c3e66", helm = "cap", helm_color = "#2c3e66" },
+    { shirt = "#2c3e66", stripes = "", helm = "straw_hat", helm_color = "#d9c27a", trim = "#2c3e66" },
+    { stripes = "#a8322d", helm = "bandana", helm_color = "#2c3e66", skin = "#b08060" },
+    { shirt = "#e8e8ee", stripes = "", helm = "straw_hat", helm_color = "#2a2a30", trim = "#e8e8ee", hair = "#3a2a1a", skin = "#8a5a3c" },
+]
 combat = { hp = 50.0, damage = 12.0, windup = 0.5, interval = 2.4, reach = 2.0, speed = 3.4 }
 
 [archetype.officer]
-look = { skin = "#d8b090", shirt = "#2c3e66", pants = "#e8e8ee", shoes = "#1a1a1a", helm = "helm", helm_color = "#1f2c4a", pauldrons = 0.6, armor_color = "#e2b04a", weapon = "sword", weapon_color = "#e8e8f0", scale = 1.03 }
+look = { skin = "#d8b090", shirt = "#2c3e66", pants = "#e8e8ee", shoes = "#1a1a1a", helm = "bicorne", helm_color = "#1a1c22", trim = "#e2b04a", hair = "#3a2a1a", pauldrons = 0.6, armor_color = "#e2b04a", coat = 1.0, belt_strap = "#e8e8ee", belt = "#e2b04a", weapon = "sword", weapon_color = "#e8e8f0", scale = 1.03 }
 combat = { hp = 90.0, damage = 16.0, windup = 0.45, interval = 2.0, reach = 2.1, counter = "stagger", speed = 3.6 }
 
 [archetype.sobers]
-look = { skin = "#e0b898", shirt = "#1f2c4a", pants = "#e8e8ee", shoes = "#111111", helm = "helm", helm_color = "#111a2e", pauldrons = 0.9, armor_color = "#e2b04a", cape = 0.7, cape_color = "#2c3e66", weapon = "sword", weapon_color = "#f0f0f6", scale = 1.06 }
+look = { skin = "#e0b898", shirt = "#1f2c4a", pants = "#e8e8ee", shoes = "#111111", helm = "bicorne", helm_color = "#111a2e", trim = "#e2b04a", hair = "#5a4632", pauldrons = 0.9, armor_color = "#e2b04a", coat = 1.0, cape = 0.7, cape_color = "#2c3e66", belt_strap = "#e8e8ee", belt = "#e2b04a", weapon = "sword", weapon_color = "#f0f0f6", scale = 1.06 }
 combat = { hp = 120.0, damage = 18.0, windup = 0.45, interval = 1.9, reach = 2.2, counter = "stagger", speed = 3.8 }
 
 [archetype.guard]
-look = { skin = "#d2a682", shirt = "#2c3e66", pants = "#e8e8ee", shoes = "#1a1a1a", helm = "cap", helm_color = "#1f2c4a", weapon = "sword", scale = 1.0 }
+look = { skin = "#d2a682", shirt = "#2c3e66", pants = "#e8e8ee", shoes = "#1a1a1a", helm = "tricorne", helm_color = "#1e1e24", trim = "#e8e8ee", hair = "#4a3626", coat = 0.85, belt_strap = "#e8e8ee", belt = "#c9a24a", weapon = "sword", scale = 1.0 }
 combat = { hp = 60.0, damage = 12.0, windup = 0.55, interval = 2.4, reach = 2.0, speed = 3.4 }
 senses = { near = 8.0, far = 28.0, fov = 110.0 }
 
 [archetype.brute]
-look = { skin = "#c08a68", shirt = "#2c3e66", pants = "#3a3a44", shoes = "#1a1a1a", helm = "great", helm_color = "#444a58", pauldrons = 1.0, armor_color = "#5a6070", weapon = "axe", scale = 1.18 }
+look = { skin = "#c08a68", shirt = "#2c3e66", pants = "#3a3a44", shoes = "#1a1a1a", helm = "tricorne", helm_color = "#1e1e24", pauldrons = 0.8, armor_color = "#5a4632", coat = 0.95, coat_color = "#24345a", belt_strap = "#3a2a1a", belt = "#8a8f99", weapon = "axe", weapon_color = "#9aa0aa", bulk = 1.3, scale = 1.16 }
 combat = { hp = 140.0, damage = 22.0, windup = 0.65, interval = 2.8, reach = 2.3, counter = "stagger", blocks_light = true, speed = 3.0 }
 senses = { near = 7.0, far = 24.0, fov = 100.0 }
 
 [archetype.musketeer]
-look = { skin = "#d8b090", shirt = "#2c3e66", pants = "#e8e8ee", shoes = "#1a1a1a", helm = "cap", helm_color = "#e8e8ee", weapon = "spear", weapon_color = "#5a3b26", scale = 1.0 }
+look = { skin = "#d8b090", shirt = "#2c3e66", pants = "#e8e8ee", shoes = "#1a1a1a", helm = "tricorne", helm_color = "#1e1e24", trim = "#e8e8ee", hair = "#4a3626", coat = 0.85, belt_strap = "#e8e8ee", belt = "#c9a24a", weapon = "musket", weapon_color = "#4a4c54", weapon_grip = "#6b4a2f", scale = 1.0 }
 combat = { hp = 50.0, damage = 20.0, windup = 0.8, interval = 3.0, reach = 2.0, ranged = true, speed = 3.2 }
 senses = { near = 9.0, far = 34.0, fov = 100.0 }
 
 [archetype.courier]
-look = { skin = "#d8b090", shirt = "#e8e8ee", pants = "#2c3e66", shoes = "#2a1d14", helm = "cap", helm_color = "#c9a24a", scale = 0.96 }
+look = { skin = "#d8b090", shirt = "#e8e8ee", pants = "#2c3e66", shoes = "#2a1d14", helm = "tricorne", helm_color = "#2c3e66", trim = "#c9a24a", coat = 0.7, coat_color = "#e8e8ee", belt_strap = "#6b4a2f", belt = "#c9a24a", scale = 0.96 }
 combat = { hp = 30.0, damage = 6.0, speed = 2.6 }
 senses = { near = 6.0, far = 20.0, fov = 100.0 }
 
 [archetype.drye]
-look = { skin = "#e8c8b0", shirt = "#f0f0f4", pants = "#2c3e66", shoes = "#111111", helm = "crown", helm_color = "#e2b04a", cape = 0.9, cape_color = "#2c3e66", pauldrons = 0.7, armor_color = "#e2b04a", weapon = "sword", weapon_color = "#f0f0f6", scale = 1.04 }
+look = { skin = "#e8c8b0", shirt = "#22325a", pants = "#e8e8ee", shoes = "#111111", helm = "bicorne", helm_color = "#15171c", trim = "#e2b04a", hair = "#f2efe8", coat = 1.05, cape = 0.9, cape_color = "#2c3e66", pauldrons = 0.75, armor_color = "#e2b04a", belt_strap = "#f0f0f4", belt = "#e2b04a", weapon = "sword", weapon_color = "#f0f0f6", scale = 1.04 }
 combat = { hp = 120.0, damage = 14.0, windup = 0.6, interval = 2.4, reach = 2.1, counter = "stagger", speed = 3.4 }
 senses = { near = 8.0, far = 26.0, fov = 110.0 }
 
 [archetype.civilian]
-look = { skin = "#b88866", shirt = "#d9a35b", pants = "#6b4a2f", shoes = "#3a2a1a", helm = "hood", helm_color = "#8fc1a9", scale = 0.97 }
+look = { skin = "#b88866", shirt = "#d9a35b", pants = "#6b4a2f", shoes = "#3a2a1a", helm = "straw_hat", helm_color = "#d9c27a", scale = 0.97 }
+variants = [
+    { shirt = "#d9a35b", helm = "straw_hat", helm_color = "#d9c27a" },
+    { shirt = "#efe7d6", pants = "#3a4a5a", helm = "bandana", helm_color = "#a8322d", skin = "#8a5a3c" },
+    { shirt = "#5d8a6a", pants = "#6b4a2f", helm = "hood", helm_color = "#8fc1a9" },
+    { shirt = "#efe7d6", stripes = "#3fc1c0", pants = "#2c3e66", helm = "straw_hat", helm_color = "#e8d3a2", trim = "#a8322d", skin = "#e0b898" },
+    { shirt = "#b5543a", pants = "#efe7d6", helm = "bandana", helm_color = "#e8c547", skin = "#6a4430" },
+    { shirt = "#8b6b4a", pants = "#3a2a1a", helm = "none", hair = "#2a1d14", skin = "#c89a78" },
+    { shirt = "#e8c547", pants = "#6b4a2f", helm = "straw_hat", helm_color = "#cbbd9b", trim = "#5a3b26", skin = "#8a5a3c" },
+    { shirt = "#7a9ac8", stripes = "#efe7d6", pants = "#5a4632", helm = "cap", helm_color = "#6b4a2f", skin = "#d2a682" },
+]
 combat = { hp = 20.0, damage = 0.0, speed = 2.4 }
 
 [archetype.molasses]
-look = { skin = "#8a5a3c", shirt = "#c9822b", pants = "#5a2c22", shoes = "#2a1d14", helm = "hood", helm_color = "#7a3a20", cape = 0.5, cape_color = "#6b4a2f", scale = 0.95 }
+look = { skin = "#8a5a3c", shirt = "#c9822b", pants = "#5a2c22", shoes = "#2a1d14", helm = "bandana", helm_color = "#a8322d", cape = 0.5, cape_color = "#6b4a2f", scale = 0.95 }
 combat = { hp = 40.0, damage = 0.0, speed = 2.8 }
