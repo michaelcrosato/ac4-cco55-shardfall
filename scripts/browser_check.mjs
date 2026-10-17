@@ -126,6 +126,16 @@ async function waitMode(page, want, timeoutMs) {
   await page.waitForTimeout(2500);
   await shot(page, `${outDir}/desktop_back_to_title.png`);
   report('desktop: no console errors', errors.length === 0, errors.slice(0, 5).join(' | '));
+  // Persistence (localStorage): the first run saved its settings; a save put there survives a
+  // reload and the app finds both (it lists them in data-store).
+  const keys = await page.evaluate(() => Object.keys(localStorage));
+  report('settings saved to localStorage', keys.some((k) => k.endsWith('.settings')), `keys=${keys.join(',')}`);
+  const prefix = (keys.find((k) => k.endsWith('.settings')) || 'blacktap.settings').replace(/\.settings$/, '');
+  await page.evaluate((p) => localStorage.setItem(`${p}.progress`, JSON.stringify({ version: 1, rounds_done: 2, best_round: 3, continue_scene: 'blacktap/round/3' })), prefix);
+  await page.reload();
+  const m4 = await waitMode(page, ['title'], 180000);
+  const found = await page.evaluate(() => document.body.dataset.store || '');
+  report('after a reload the app finds settings and progress', m4 === 'title' && found.includes('settings') && found.includes('progress'), `data-store=${found}`);
   await page.close();
 }
 

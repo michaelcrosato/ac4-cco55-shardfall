@@ -42,6 +42,14 @@ compactions: after any restart read §14, then the top of this file, then `git l
 - `cargo test -p pav_core --test games`: 6 passed, incl. `zone_events_reach_the_games_post` and
   `hook_games_can_turn_the_bombs_off`. `cargo test -p pav_core --test nav25`: 9 passed.
   `cargo test -p blacktap` quick suites (data, determinism ×3, drydock ×8, persist, rounds R1).
+- `cargo test -p pav_tools --test attract -- --ignored` (= `pav attract minutes=30`, headless
+  front end + game + bot, fake clock): **30 segments, 5 seed sets (11–15 … 51–55) and the start
+  of a sixth loop, 0 stalls, 0 load errors, every segment ≥ 3 mechanics** — e.g. Rule the Waves
+  seed 15: board, boarding_won, brace, counter, disabled, finisher, telegraph; Last Call:
+  gull_sight, leap_of_spirits, take_helm, waterspout. Log: `out/attract30.log`.
+- `cargo test -p blacktap --test data`: 5 passed, incl. `the_tab_holds_every_collectible`
+  (4 sheets, 5 bottles, 8 chests, 3 Keg Taps, 6 flotsam) and `three_difficulties`
+  (Landlubber 0.6 < Sailor 1.0 < Captain 1.3).
 - `pav level_check` on `blacktap/round/6`: ok, no problems. Captures looked at:
   `out/ui/pause_map_live-1080.png` (the chart), `out/ui/hud_fix-1080.png` (markers).
 

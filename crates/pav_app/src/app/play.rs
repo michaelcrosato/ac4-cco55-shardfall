@@ -102,6 +102,17 @@ fn snake(mode: Mode) -> String {
     out
 }
 
+/// Tells the page (and the log) which saves were found at start: `data-store` lists
+/// `settings` and `progress` (the browser check reads it after a reload).
+fn publish_store(settings: bool, progress: bool) {
+    let found: Vec<&str> = [("settings", settings), ("progress", progress)].iter().filter(|f| f.1).map(|f| f.0).collect();
+    log::info!("store: found [{}]", found.join(","));
+    #[cfg(target_arch = "wasm32")]
+    if let Some(body) = web_sys::window().and_then(|w| w.document()).and_then(|d| d.body()) {
+        let _ = body.set_attribute("data-store", &found.join(","));
+    }
+}
+
 /// Tells the page (and the log) which screen the front end shows.
 fn publish_mode(name: &str, menu_button: Option<(f32, f32)>) {
     log::info!("frontend: {name}");
@@ -229,17 +240,26 @@ impl PlayApp {
             log::warn!("bindings: {e:#}");
             Bindings::default()
         });
-        let store = crate::store::AppStore;
+        let mut store = crate::store::AppStore;
         let save_key = if info.save_key.is_empty() { key.to_string() } else { info.save_key.clone() };
         use pav_core::persist::Store;
-        let (settings, err) = match store.get(&format!("{save_key}_settings")) {
-            Some(text) => UiSettings::load(&text),
+        let stored = store.get(&format!("{save_key}_settings"));
+        let (settings, err) = match &stored {
+            Some(text) => UiSettings::load(text),
             None => (UiSettings::default(), None),
         };
         if let Some(e) = err {
             log::warn!("settings were reset: {e}");
         }
-        let progress = store.get(&format!("{save_key}_progress")).and_then(|t| serde_json::from_str(&t).ok());
+        // First run: keep the defaults, so later runs (and the page) find a save.
+        if stored.is_none() {
+            if let Ok(text) = serde_json::to_string(&settings) {
+                store.set(&format!("{save_key}_settings"), &text);
+            }
+        }
+        let progress: Option<serde_json::Value> =
+            store.get(&format!("{save_key}_progress")).and_then(|t| serde_json::from_str(&t).ok());
+        publish_store(stored.is_some(), progress.is_some());
         let mobile = crate::platform::touch_screen();
         let platform = Platform { mobile, kiosk, can_quit: cfg!(not(target_arch = "wasm32")) };
         let fe = FrontEnd::new(info.clone(), settings, platform, progress.is_some());
