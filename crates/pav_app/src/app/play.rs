@@ -639,7 +639,9 @@ impl App {
         let game_input = p.fe.game_input();
         let name = snake(p.fe.mode());
         if name != p.published {
-            let ppp_css = self.gfx.as_ref().map(|g| g.size().1 as f32 / 1080.0 / g.window.scale_factor() as f32).unwrap_or(1.0);
+            // Points → CSS px: egui's own scale (phones draw the UI larger than 1080 points tall).
+            let ppp_css =
+                self.egui_ctx.pixels_per_point() / self.gfx.as_ref().map(|g| g.window.scale_factor() as f32).unwrap_or(1.0);
             let button = p.fe.menu_button().map(|c| (c.x * ppp_css, c.y * ppp_css));
             publish_mode(&name, button);
             p.published = name;
