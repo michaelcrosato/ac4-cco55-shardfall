@@ -152,6 +152,9 @@ pub struct BlackTap {
     pub land: crate::foot::Land,
     #[serde(default)]
     pub stealth: crate::stealth::Stealth,
+    /// The world seed: runs on different seeds differ a little (wind, gun timing).
+    #[serde(default)]
+    pub seed: u64,
     /// Events to emit in the next `post` (from places without the event list).
     #[serde(skip)]
     pub pending_events: Vec<SimEvent>,
@@ -220,7 +223,7 @@ pub fn build(sim: &mut Sim, rest: Option<&str>) -> Result<()> {
         between: None,
         round_start: 0.0,
         body: Body::Helm,
-        sea: Sea { wind: Vec2::new(5.0, -3.0), ..Default::default() },
+        sea: Sea { wind: Vec2::from_angle(seed_jitter(sim.state.seed, 0.35)).rotate(Vec2::new(5.0, -3.0)), ..Default::default() },
         stick_prev: 0.0,
         hold: 0.0,
         cam: OrbitCamera::default(),
@@ -245,11 +248,13 @@ pub fn build(sim: &mut Sim, rest: Option<&str>) -> Result<()> {
         results: None,
         land: crate::foot::Land::default(),
         stealth: crate::stealth::Stealth::default(),
+        seed: sim.state.seed,
         pending_events: Vec::new(),
         tool_press: 0,
         content: Some(content.clone()),
         world: Some(world.clone()),
     };
+    game.sea.jitter = seed_jitter(sim.state.seed, 1.5).abs();
     // The Black Tap is always afloat; six flotsam crates drift in the isles.
     let start = world.marker_xz("r1_start");
     game.sea.mine =
@@ -605,7 +610,12 @@ impl Game for BlackTap {
             for s in self.sea.ships.iter().filter(|s| s.alive() && s.speed > 2.0) {
                 let len = c.classes.get(&s.class).map(|k| k.length).unwrap_or(20.0);
                 let at = s.world(Vec3::new(0.0, 0.2, -len * 0.48));
-                events.push(SimEvent::Cue { cue: "wake_foam".into(), pos: at, gain: (s.speed / 7.0).clamp(0.3, 1.4), pitch: 1.0 });
+                events.push(SimEvent::Cue {
+                    cue: "wake_foam".into(),
+                    pos: at,
+                    gain: (s.speed / 7.0).clamp(0.3, 1.4),
+                    pitch: 1.0,
+                });
             }
         }
         let c = self.content();
@@ -692,6 +702,7 @@ impl Game for BlackTap {
             "step": def.and_then(|d| self.mission.current(d)).map(|s| s.id.clone()),
             "objective": def.and_then(|d| self.mission.current(d)).map(|s| s.objective.clone()),
             "complete": self.mission.complete,
+            "tab_complete": self.flags.contains("tab_complete"),
             "outcome": self.outcome,
             "time": round2(self.time),
             "body": self.body,
@@ -770,6 +781,16 @@ impl Game for BlackTap {
         self.caches();
         crate::commands::command(self, sim, name, args)
     }
+}
+
+/// A deterministic offset in ±`range` from the world seed (seed 1 gives 0: the authored run).
+pub fn seed_jitter(seed: u64, range: f32) -> f32 {
+    if seed <= 1 {
+        return 0.0;
+    }
+    let mut h = seed.wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    h ^= h >> 31;
+    ((h % 2001) as f32 / 1000.0 - 1.0) * range
 }
 
 pub fn round2(x: f32) -> f64 {

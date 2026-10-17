@@ -131,7 +131,7 @@ pub fn act(g: &mut BlackTap, sim: &mut Sim, name: &str) {
         "teach" => g.teach(arg.unwrap_or("")),
         "wind" => {
             // The wind blows FROM this heading (degrees from north).
-            let from: f32 = arg.and_then(|a| a.parse().ok()).unwrap_or(0.0);
+            let from: f32 = arg.and_then(|a| a.parse().ok()).unwrap_or(0.0) + crate::game::seed_jitter(g.seed, 12.0);
             let r = from.to_radians();
             let speed = g.sea.wind.length().max(5.5);
             g.sea.wind = -Vec2::new(r.sin(), -r.cos()) * speed;
@@ -465,6 +465,66 @@ pub fn start_at(g: &mut BlackTap, sim: &mut Sim, step: &str) {
                 s.sail = 2;
             }
             g.set_atmosphere("sunset", 0.0);
+        }
+        (2, "board" | "melee") => {
+            for s in g.sea.ships.iter_mut().filter(|s| s.tag == "gunboat") {
+                s.sunk = true;
+                s.hull = 0.0;
+            }
+            act(g, sim, "restraint_engage");
+            let mine = g.sea.my_ship().map(|s| (s.pos, s.heading, s.forward())).unwrap_or_default();
+            let found = g.sea.by_tag("restraint").next().map(|s| s.id);
+            if let Some(id) = found {
+                if let Some(r) = g.sea.ship_mut(id) {
+                    r.pos = mine.0 + Vec2::new(mine.2.y, -mine.2.x) * 16.0 + mine.2 * 4.0;
+                    r.heading = mine.1;
+                    r.speed = 0.0;
+                    r.hull = r.hull_max * 0.2;
+                    r.disabled = true;
+                    r.sail = 0;
+                }
+            }
+            if let Some(s) = g.sea.ship_mut(g.sea.mine) {
+                s.speed = 1.0;
+                s.sail = 0;
+            }
+            g.mission.set_flag("restraint_disabled");
+        }
+        (4, "chapel" | "survey" | "leap") => {
+            let w = g.world();
+            g.mission.set_flag("left_helm");
+            g.body = Body::Foot;
+            let at = if step == "chapel" { w.marker("r4_beach") } else { w.perch("chapel").map(|p| Vec3::from(p.at)) }
+                .unwrap_or_default();
+            if let Some(pid) = sim.state.player {
+                sim.set_position(pid, at + Vec3::Y * 1.2);
+            }
+            if step == "leap" {
+                g.mission.set_flag("surveyed_chapel");
+            }
+            let anchorage = w.marker_xz("r4_anchorage");
+            place_ship(g, anchorage, 300.0);
+            if let Some(s) = g.sea.ship_mut(g.sea.mine) {
+                s.anchored = true;
+            }
+        }
+        (5, "stocks") => {
+            g.mission.set_flag("has_key");
+        }
+        (6, "drye" | "last_words" | "flag") => {
+            let w = g.world();
+            g.mission.set_flag("in_fort");
+            let at = w.marker(if step == "drye" { "cellar" } else { "flagpole" }).unwrap_or_default();
+            if let Some(pid) = sim.state.player {
+                sim.set_position(pid, at + Vec3::Y * 1.2);
+            }
+            if step != "drye" {
+                g.mission.set_flag("drye_dead");
+                g.mission.set_flag("last_words_done");
+                for n in g.stealth.npcs.values_mut().filter(|n| n.kind == "drye") {
+                    n.dead = true;
+                }
+            }
         }
         _ => {}
     }

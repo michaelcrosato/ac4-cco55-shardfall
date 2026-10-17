@@ -91,6 +91,9 @@ pub struct Sea {
     /// Battery destroyed order (optional: mortar first).
     pub destroyed_order: Vec<String>,
     pub clock: f32,
+    /// Seconds added to the batteries' first volley (from the world seed).
+    #[serde(default)]
+    pub jitter: f32,
 }
 
 /// Things that happened at sea this tick, for the rules and the bot.
@@ -170,7 +173,7 @@ impl Sea {
             hp_max: hp,
             range,
             reload: if kind == BatteryKind::Mortar { 6.0 } else { 8.0 },
-            cooldown: 3.0 + id as f32 % 3.0,
+            cooldown: 3.0 + id as f32 % 3.0 + self.jitter,
             telegraph: 0.0,
             destroyed: false,
             half: if kind == BatteryKind::Mortar { Vec3::new(5.0, 9.0, 5.0) } else { Vec3::new(9.0, 4.0, 6.0) },
