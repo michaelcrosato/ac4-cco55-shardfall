@@ -1473,12 +1473,12 @@ pub fn draw(g: &BlackTap, sim: &Sim, out: &mut DrawList) {
         out.push(DrawItem::Emitter {
             key: (20 << 40) | n as u64,
             def: pav_core::fxdef::EmitterDef {
-                preset: "smoke".into(),
-                rate: 45.0 * k,
+                preset: "steam".into(),
+                rate: 40.0 * k,
                 color: "#e6e2da".into(),
-                size: 6.5,
-                speed: 0.6,
-                life: 0.9,
+                size: 9.0,
+                speed: 0.3,
+                life: 2.4,
                 area: Vec3::new(s.radius * 0.7, 0.8, s.radius * 0.7),
                 offset: Vec3::Y * 0.6,
                 ground: None,

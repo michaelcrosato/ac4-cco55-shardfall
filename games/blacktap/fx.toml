@@ -147,8 +147,8 @@ particles = [{ preset = "dust", count = 22, spread = 1.6, size = 0.9, color = "#
 particles = [{ preset = "dust", count = 12, spread = 1.0, size = 0.6, color = "#c8b898" }]
 
 [cue.hay_land]
-particles = [{ preset = "confetti", count = 40, spread = 2.4, size = 0.8, up = 2.0, color = "#e2c66a" },
-             { preset = "dust", count = 20, spread = 1.4, size = 1.0, color = "#d8c27a" }]
+particles = [{ preset = "confetti", count = 50, spread = 2.0, size = 3.0, up = 2.5, color = "#e2c66a" },
+             { preset = "dust", count = 24, spread = 1.6, size = 2.2, up = 0.6, color = "#d8c27a" }]
 
 [cue.water_dive]
 particles = [{ preset = "fountain", count = 36, spread = 1.4, up = 4.0, color = "#e8f4ff" }]
