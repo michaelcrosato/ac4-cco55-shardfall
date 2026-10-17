@@ -93,8 +93,85 @@ pub static TOOLS: &[Tool] = &[
             arg("width", "integer", "default 960"),
             arg("height", "integer", "default 540"),
             arg("stats", "string", "true adds render cost; only returns it without an image"),
+            arg("ui", "boolean", "true draws the game's HUD over the frame"),
+            arg("family", "string", "prompt glyphs: playstation, xbox or keyboard"),
         ],
         run: t_capture,
+    },
+    Tool {
+        name: "ui",
+        help: "Render a front-end screen or the HUD to PNG; nav= scripts the focus.",
+        args: &[
+            arg("screen", "string", "hud, title, menu, settings, paused, attract, mobile_menu..."),
+            arg("nav", "string", "presses first: down,down,confirm"),
+            arg("family", "string", "playstation, xbox or keyboard"),
+            arg("sample", "boolean", "sample HUD data instead of the live game"),
+            arg("backdrop", "boolean", "draw over the live frame (default with a game)"),
+            arg("width", "integer", "default 1920"),
+            arg("height", "integer", "default 1080"),
+            arg("out", "string", "output path"),
+        ],
+        run: crate::kit_tools::t_ui,
+    },
+    Tool {
+        name: "attract",
+        help: "Run the attract playlist headless: segments, showcase events, stalls, exits.",
+        args: &[
+            arg("minutes", "number", "attract time to simulate (default 6)"),
+            arg("step", "number", "seconds per front-end update (default 0.5)"),
+            arg("exit_every", "number", "press a key every N s to check the exit"),
+            arg("game", "string", "game key (default the running one)"),
+        ],
+        run: crate::kit_tools::t_attract,
+    },
+    Tool {
+        name: "ship",
+        help: "The player's ship: status, or do=sail|steer|fire|board|brace|repair.",
+        args: &[
+            arg("do", "string", "sail, steer, fire, board, brace, repair"),
+            arg("level", "integer", "sail level 0-3"),
+            arg("deg", "number", "steer to this heading"),
+            arg("side", "string", "port, starboard, ahead"),
+        ],
+        run: crate::kit_tools::t_ship,
+    },
+    Tool {
+        name: "mission",
+        help: "Mission state; goto=round/3[@step] jumps; complete=<step> finishes one.",
+        args: &[arg("goto", "string", "round/N or round/N@step"), arg("complete", "string", "step id to complete")],
+        run: crate::kit_tools::t_mission,
+    },
+    Tool {
+        name: "perception",
+        help: "Per-NPC awareness: state, meter, who sees the player, heat.",
+        args: &[arg("name", "string", "only NPCs whose kind or name contains this")],
+        run: crate::kit_tools::t_perception,
+    },
+    Tool {
+        name: "ocean",
+        help: "Sample the sea at a point, or set it (preset=storm, wind=deg).",
+        args: &[
+            arg("at", "array", "[x, z] point (default the focus)"),
+            arg("preset", "string", "flat, calm, breezy, rough, storm"),
+            arg("wind", "number", "wind direction, degrees"),
+        ],
+        run: crate::kit_tools::t_ocean,
+    },
+    Tool {
+        name: "level_check",
+        help: "Check every data reference of the running game's level.",
+        args: &[],
+        run: crate::kit_tools::t_level_check,
+    },
+    Tool {
+        name: "tour",
+        help: "The game's canonical vistas in one contact sheet PNG.",
+        args: &[
+            arg("width", "integer", "per shot, default 640"),
+            arg("height", "integer", "per shot, default 360"),
+            arg("out", "string", "default out/tour.png"),
+        ],
+        run: crate::kit_tools::t_tour,
     },
     Tool {
         name: "bench",
@@ -1276,7 +1353,14 @@ fn t_capture(s: &mut Session, a: &Args) -> Result<Output> {
     };
     let path = PathBuf::from(get_str(a, "out").map(String::from).unwrap_or(format!("out/capture-{}.png", s.sim.state.tick)));
     let t = Instant::now();
-    let rgba = s.render(w, h)?;
+    let mut ui_meta = None;
+    let rgba = if get_bool(a, "ui", false)? {
+        let (rgba, meta) = crate::kit_tools::composite_hud(s, a, w, h)?;
+        ui_meta = Some(meta);
+        rgba
+    } else {
+        s.render(w, h)?
+    };
     if stats == Some(true) {
         let mut reply = render_stats(s)?;
         reply["render_ms"] = json!(t.elapsed().as_millis());
@@ -1291,6 +1375,9 @@ fn t_capture(s: &mut Session, a: &Args) -> Result<Output> {
         json!({ "path": path, "width": w, "height": h, "tick": s.sim.state.tick, "render_ms": t.elapsed().as_millis() });
     if stats.is_some() {
         meta["stats"] = render_stats(s)?;
+    }
+    if let Some(u) = ui_meta {
+        meta["ui"] = u;
     }
     Ok(Output::Image { png, path: Some(path), meta })
 }

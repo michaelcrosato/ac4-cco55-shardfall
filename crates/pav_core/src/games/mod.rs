@@ -148,6 +148,12 @@ pub trait Game: Clone + Serialize + DeserializeOwned + Send + Sync + 'static {
 
     /// Restores saved progress (called by the app after building a scene).
     fn restore(&mut self, _v: &serde_json::Value) {}
+
+    /// A game-specific tool command (`pav ship`, `pav mission`...): None when the game has no
+    /// such command, else its JSON reply or an error message.
+    fn command(&mut self, _sim: &mut Sim, _name: &str, _args: &serde_json::Value) -> Option<Result<serde_json::Value, String>> {
+        None
+    }
 }
 
 /// One line of [`GAMES`]: made with [`entry`].
@@ -308,6 +314,7 @@ trait DynGame: Send + Sync {
     fn time_scale(&self) -> f32;
     fn progress(&self) -> Option<serde_json::Value>;
     fn restore(&mut self, v: &serde_json::Value);
+    fn command(&mut self, sim: &mut Sim, name: &str, args: &serde_json::Value) -> Option<Result<serde_json::Value, String>>;
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
@@ -364,6 +371,9 @@ impl<G: Game> DynGame for G {
     fn restore(&mut self, v: &serde_json::Value) {
         Game::restore(self, v)
     }
+    fn command(&mut self, sim: &mut Sim, name: &str, args: &serde_json::Value) -> Option<Result<serde_json::Value, String>> {
+        Game::command(self, sim, name, args)
+    }
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -399,6 +409,14 @@ impl Sim {
         let Some(mut g) = self.state.play.take() else { return };
         g.0.post(self, dt, events);
         self.state.play = Some(g);
+    }
+
+    /// Runs a game-specific tool command (see [`Game::command`]).
+    pub fn game_command(&mut self, name: &str, args: &serde_json::Value) -> Option<Result<serde_json::Value, String>> {
+        let mut g = self.state.play.take()?;
+        let out = g.0.command(self, name, args);
+        self.state.play = Some(g);
+        out
     }
 
     pub(crate) fn play_hud(&self) -> Vec<String> {

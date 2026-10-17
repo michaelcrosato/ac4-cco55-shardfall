@@ -44,6 +44,9 @@ pub struct Fighter {
     pub surrendered: bool,
     /// Lunging toward its target to attack (a few tenths of a second of movement).
     pub step: f32,
+    /// Not fighting: its brain (`stealth.rs`) walks it about until it is alerted.
+    #[serde(default)]
+    pub idle: bool,
 }
 
 /// A boarding action in progress.
@@ -116,6 +119,9 @@ pub struct Land {
     pub swim_time: f32,
     /// The Black Tap's deck collider while the player walks on it.
     pub deck: Option<EntityId>,
+    /// Free-run held this tick (a landing then rolls).
+    #[serde(default)]
+    pub sprinting: bool,
 }
 
 impl Land {
@@ -140,10 +146,18 @@ impl Land {
 
     /// The enemies still standing in the current fight.
     pub fn enemies_left(&self) -> usize {
-        self.fighters.values().filter(|f| f.team == Team::Enemy && !f.vitals.dead && !f.surrendered).count()
+        self.fighters.values().filter(|f| f.team == Team::Enemy && !f.vitals.dead && !f.surrendered && !f.idle).count()
     }
 
-    fn spawn_fighter(&mut self, sim: &mut Sim, kind: &str, team: Team, feet: Vec3, facing: f32, look: PuppetDef) -> EntityId {
+    pub(crate) fn spawn_fighter(
+        &mut self,
+        sim: &mut Sim,
+        kind: &str,
+        team: Team,
+        feet: Vec3,
+        facing: f32,
+        look: PuppetDef,
+    ) -> EntityId {
         let profile = crate::looks::profile(kind);
         let id = sim.spawn_npc(kind, feet, facing, look, None, None);
         self.fighters.insert(
@@ -159,6 +173,7 @@ impl Land {
                 circle: if id.0 % 2 == 0 { 1.0 } else { -1.0 },
                 surrendered: false,
                 step: 0.0,
+                idle: false,
             },
         );
         id
@@ -231,7 +246,8 @@ pub fn start_boarding(g: &mut BlackTap, _sim: &mut Sim, prize: u32, events: &mut
         m.speed = 0.0;
         m.sail = 0;
     }
-    g.land.boarding = Some(Boarding { prize, phase: BoardPhase::Swing, t: 0.0, decks: Vec::new(), won: false, focus: 0, stage: 0 });
+    g.land.boarding =
+        Some(Boarding { prize, phase: BoardPhase::Swing, t: 0.0, decks: Vec::new(), won: false, focus: 0, stage: 0 });
     events.push(SimEvent::cue("grapple", mine.world(Vec3::Y * 4.0)));
     g.shake(0.3, (0.6, 0.3, 250));
     g.show("boarding");
@@ -259,7 +275,8 @@ fn begin_fight(g: &mut BlackTap, sim: &mut Sim) {
     let fwd = Vec3::new(h.sin(), 0.0, -h.cos());
     let right = Vec3::new(-fwd.z, 0.0, fwd.x);
     let top = prize_deck.y + 0.3;
-    let at = |along: f32, across: f32| Vec3::new(prize_deck.x, top, prize_deck.z) + fwd * along * half.z + right * across * half.x;
+    let at =
+        |along: f32, across: f32| Vec3::new(prize_deck.x, top, prize_deck.z) + fwd * along * half.z + right * across * half.x;
     // The player lands amidships.
     g.body = Body::Foot;
     if let Some(pid) = sim.state.player {
@@ -322,8 +339,20 @@ pub fn plunder_tiles(stage: u8) -> (String, String, Vec<Tile>) {
             "PLUNDER".into(),
             "The Restraint's hold is yours".into(),
             vec![
-                Tile { name: "Repair the hull".into(), desc: "Patch the Black Tap to full".into(), cost: "".into(), icon: "repair".into(), disabled: false },
-                Tile { name: "Take the cargo".into(), desc: "Timber, iron and 300 reales".into(), cost: "".into(), icon: "cargo".into(), disabled: false },
+                Tile {
+                    name: "Repair the hull".into(),
+                    desc: "Patch the Black Tap to full".into(),
+                    cost: "".into(),
+                    icon: "repair".into(),
+                    disabled: false,
+                },
+                Tile {
+                    name: "Take the cargo".into(),
+                    desc: "Timber, iron and 300 reales".into(),
+                    cost: "".into(),
+                    icon: "cargo".into(),
+                    disabled: false,
+                },
             ],
         )
     } else {
@@ -331,10 +360,34 @@ pub fn plunder_tiles(stage: u8) -> (String, String, Vec<Tile>) {
             "SHIPWRIGHT".into(),
             "Choose one upgrade".into(),
             vec![
-                Tile { name: "Reinforced Hull".into(), desc: "+300 hull".into(), cost: "free".into(), icon: "hull".into(), disabled: false },
-                Tile { name: "Heavy Shot".into(), desc: "+35% cannon damage".into(), cost: "free".into(), icon: "shot".into(), disabled: false },
-                Tile { name: "Swift Rigging".into(), desc: "+12% speed".into(), cost: "free".into(), icon: "sail".into(), disabled: false },
-                Tile { name: "More Kegs".into(), desc: "+3 powder kegs".into(), cost: "free".into(), icon: "keg".into(), disabled: false },
+                Tile {
+                    name: "Reinforced Hull".into(),
+                    desc: "+300 hull".into(),
+                    cost: "free".into(),
+                    icon: "hull".into(),
+                    disabled: false,
+                },
+                Tile {
+                    name: "Heavy Shot".into(),
+                    desc: "+35% cannon damage".into(),
+                    cost: "free".into(),
+                    icon: "shot".into(),
+                    disabled: false,
+                },
+                Tile {
+                    name: "Swift Rigging".into(),
+                    desc: "+12% speed".into(),
+                    cost: "free".into(),
+                    icon: "sail".into(),
+                    disabled: false,
+                },
+                Tile {
+                    name: "More Kegs".into(),
+                    desc: "+3 powder kegs".into(),
+                    cost: "free".into(),
+                    icon: "keg".into(),
+                    disabled: false,
+                },
             ],
         )
     }
@@ -373,7 +426,14 @@ fn apply_choice(g: &mut BlackTap, stage: u8, choice: usize) {
 }
 
 /// One tick on foot (before characters move): the player's moves and every fighter's.
-pub fn pre(g: &mut BlackTap, sim: &mut Sim, input: &InputFrame, playing: bool, dt: f32, events: &mut Vec<SimEvent>) -> BTreeMap<EntityId, InputFrame> {
+pub fn pre(
+    g: &mut BlackTap,
+    sim: &mut Sim,
+    input: &InputFrame,
+    playing: bool,
+    dt: f32,
+    events: &mut Vec<SimEvent>,
+) -> BTreeMap<EntityId, InputFrame> {
     let mut out = BTreeMap::new();
     let Some(pid) = sim.state.player else { return out };
     // Boarding: the swing, then the fight, then the plunder overlay.
@@ -452,6 +512,17 @@ pub fn pre(g: &mut BlackTap, sim: &mut Sim, input: &InputFrame, playing: bool, d
     }
     if input.down(b::CROUCH) {
         me.held |= buttons::CROUCH;
+    }
+    // Free-run (R1) and Parkour Down / dive (◯) drive the traversal rules.
+    g.land.sprinting = input.down(b::SPRINT);
+    if g.land.sprinting {
+        me.held |= buttons::SPRINT;
+    }
+    if input.down(b::DROP) {
+        me.held |= buttons::DODGE;
+    }
+    if input.just(b::DROP) && g.land.enemies_left() == 0 {
+        me.pressed |= buttons::DODGE;
     }
     // ---- fighting
     let hero = &mut g.land.hero;
@@ -538,8 +609,22 @@ pub fn pre(g: &mut BlackTap, sim: &mut Sim, input: &InputFrame, playing: bool, d
 
 /// The fighter to strike: an assassination target first, else the nearest enemy in front.
 fn best_target(g: &BlackTap, sim: &Sim, feet: Vec3) -> Option<(EntityId, Vec3, Option<combat::Assassination>)> {
-    let falling = sim.state.player.and_then(|id| sim.state.entities.get(id)).and_then(|e| e.character.as_ref()).is_some_and(|c| !c.grounded && c.vel.y < -1.0);
-    let a = Assassin { feet, falling, on_ledge: false, hanging: false, hidden: false, double_unlocked: g.flags.contains("double_assassination") };
+    let falling = sim
+        .state
+        .player
+        .and_then(|id| sim.state.entities.get(id))
+        .and_then(|e| e.character.as_ref())
+        .is_some_and(|c| !c.grounded && c.vel.y < -1.0);
+    let ch = sim.state.player.and_then(|id| sim.state.entities.get(id)).and_then(|e| e.character.as_ref());
+    let hanging = ch.is_some_and(|c| c.hang.is_some());
+    let a = Assassin {
+        feet,
+        falling,
+        on_ledge: ch.is_some_and(|c| c.grounded) && sim.raycast(feet + Vec3::Y * 0.3, Vec3::NEG_Y, 1.8, None).is_none(),
+        hanging,
+        hidden: g.stealth.hidden || g.stealth.concealed,
+        double_unlocked: g.flags.contains("double_assassination"),
+    };
     let mut best: Option<(f32, EntityId, Vec3, Option<combat::Assassination>)> = None;
     for (&id, f) in &g.land.fighters {
         if f.team != Team::Enemy || f.vitals.dead || f.surrendered {
@@ -547,7 +632,14 @@ fn best_target(g: &BlackTap, sim: &Sim, feet: Vec3) -> Option<(EntityId, Vec3, O
         }
         let Some(tf) = sim.feet(id) else { continue };
         let facing = sim.state.entities.get(id).and_then(|e| e.character.as_ref()).map(|c| c.facing).unwrap_or(0.0);
-        let mark = Mark { id: id.0, feet: tf, facing, alerted: f.target.is_some(), unaware: f.target.is_none() };
+        let (alerted, unaware) = match g.stealth.npcs.get(&id) {
+            Some(n) => (
+                n.mind.aware() && n.blind <= 0.0 && n.sleep <= 0.0,
+                matches!(n.mind.state, pav_core::play::Awareness::Unaware) || n.out() || n.blind > 0.0 || n.drunk > 0.0,
+            ),
+            None => (f.target.is_some(), f.target.is_none()),
+        };
+        let mark = Mark { id: id.0, feet: tf, facing, alerted, unaware };
         let kind = combat::assassination(&a, &mark);
         let d = flat(tf - feet).length();
         if d > 3.2 && kind.is_none() {
@@ -615,7 +707,14 @@ fn fighters(g: &mut BlackTap, sim: &mut Sim, dt: f32, events: &mut Vec<SimEvent>
     let ids: Vec<EntityId> = g.land.fighters.keys().copied().collect();
     let positions: BTreeMap<EntityId, Vec3> = ids.iter().filter_map(|&id| sim.feet(id).map(|p| (id, p))).collect();
     let window = CounterWindow {
-        early: 0.35 * if g.options.difficulty < 0.8 { 1.4 } else if g.options.difficulty > 1.2 { 0.8 } else { 1.0 },
+        early: 0.35
+            * if g.options.difficulty < 0.8 {
+                1.4
+            } else if g.options.difficulty > 1.2 {
+                0.8
+            } else {
+                1.0
+            },
         late: 0.10,
     };
     for id in ids {
@@ -631,6 +730,11 @@ fn fighters(g: &mut BlackTap, sim: &mut Sim, dt: f32, events: &mut Vec<SimEvent>
             }
             g.land.fighters.insert(id, f);
             out.insert(id, inp);
+            continue;
+        }
+        if f.idle {
+            // The brain in `stealth.rs` moves it.
+            g.land.fighters.insert(id, f);
             continue;
         }
         if f.surrendered || f.vitals.helpless() {
@@ -798,8 +902,14 @@ pub fn post(g: &mut BlackTap, sim: &mut Sim, dt: f32, events: &mut Vec<SimEvent>
     if let Some(pid) = sim.state.player {
         for e in events.iter() {
             if let SimEvent::Land { speed, .. } = e {
-                let rolled = false;
-                let dmg = combat::fall_damage(*speed, rolled, g.land.hero.vitals.max);
+                let rolled = g.land.sprinting;
+                let feet = sim.feet(pid).unwrap_or_default();
+                let soft =
+                    g.world().hide_at(feet).is_some_and(|h| matches!(h.kind.as_str(), "hay" | "haystack" | "cart" | "awning"));
+                let dmg = if soft { 0.0 } else { combat::fall_damage(*speed, rolled, g.land.hero.vitals.max) };
+                if *speed > 9.0 && !soft {
+                    g.pending_events.push(SimEvent::cue("land_hard", feet));
+                }
                 if dmg > 0.0 {
                     g.land.hero.vitals.hurt(dmg);
                 }

@@ -6,6 +6,41 @@ compactions: after any restart read §14, then the top of this file, then `git l
 
 ---
 
+## 2026-10-17 — Phases 1–3 in progress: hook v2, kit, sea, renderer, UI kit
+
+**Built**
+- Hook v2 (`pav_core::play`): `PlayFrame` {camera hint, `UiModel`, `DrawList`, `Atmosphere`,
+  `AudioState`, `FrameEffects`} reaches `pav_view` (draw list, camera, atmosphere), `pav_app`
+  (front end, HUD, audio) and `pav_tools`. Runtime game registry (`games::register`), ocean
+  (`pav_core::ocean`: 6 Gerstner slots, presets, seabed), checkpoints outside `SimState`,
+  persistence `Store` (native file + localStorage), `InputFrame.look/triggers`,
+  `Character.scripted` (game-placed poses), `Weapon::None`.
+- `pav_kit`: camera director, demo, mission graphs, dialog, ballistics, naval (sailing, captains,
+  batteries), combat (vitals, tokens, counters, assassinations, pistols, tools), perception +
+  heat, cinematics, shipyard (lofted hulls, rigging, billowing sails with the emblem).
+- `blacktap`: Tab I markers/routes, R1–R6 mission graphs, sea module (helm, AI ships, forts,
+  mortar, flotsam, kegs), boarding (swing, deck arena, surrender, plunder), bot.
+- Renderer (agent C, merged `cc2c918`): sea + sky passes (GPU Gerstner identical to the sim's),
+  clouds, rain, lightning, ray fog, distance culling classes, Gull Sight x-ray silhouettes.
+  `pav_view::atmos::apply` is now called after the basic atmosphere; hook games set
+  `cull_small/vegetation/structure = 120/180/600 m` (`ViewSettings`, tunable).
+- `pav_ui` (agent B, merged `b0ca4c9`): theme + OFL fonts, data bindings, DualSense/Xbox/keyboard
+  glyphs, settings v2, front-end state machine (16 modes incl. attract, kiosk, mobile menu),
+  HUD from `UiModel`, CPU rasteriser. 45 tests pass (`cargo test -p pav_ui`).
+
+**Verified**
+- `./target/debug/pav play scene=blacktap/round/1 bot=true seeds=1 ticks=36000` → R1 complete
+  (24.5 s, optional done). Round 2 → complete in 147 s (gunboats sunk, Restraint disabled,
+  boarded, plunder) and flows into R3. R3 after the battery rebalance: mortar down by ~280 s.
+- Render agent contact sheet of the six atmosphere presets
+  (`cargo run -p pav_view --example sea_sky`): looked at it — sun glints, clouds, storm rain.
+
+**Open**
+- R3 batteries still slow for the bot; R4–R6 need traversal (agent running), stealth, nav.
+- `pav_app` play path waits on the audio v2 API (agent A).
+
+---
+
 ## 2026-10-17 — Phase 0: bootstrap
 
 **Executor (confirmed with `get_session`, claude-code-remote MCP):** `session_context.model` =

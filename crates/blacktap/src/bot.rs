@@ -64,12 +64,8 @@ pub fn input(g: &BlackTap, sim: &Sim) -> InputFrame {
         };
     }
     let c = g.content();
-    let skill = c
-        .missions
-        .get(g.round as usize - 1)
-        .and_then(|d| g.mission.current(d))
-        .map(|s| s.bot.clone())
-        .unwrap_or_default();
+    let skill =
+        c.missions.get(g.round as usize - 1).and_then(|d| g.mission.current(d)).map(|s| s.bot.clone()).unwrap_or_default();
     match g.body {
         Body::Helm => sea(g, sim, &skill),
         Body::Foot => crate::stealth::bot(g, sim, &skill),
@@ -206,7 +202,13 @@ fn sea(g: &BlackTap, sim: &Sim, skill: &str) -> InputFrame {
                 .unwrap_or(goal);
             want = Some(heading_of(next - me.pos));
             let d = goal.distance(me.pos);
-            want_sail = if d < 50.0 && arg == "r4_anchorage" { 0 } else if d < 140.0 && arg == "r4_anchorage" { 1 } else { 2 };
+            want_sail = if d < 50.0 && arg == "r4_anchorage" {
+                0
+            } else if d < 140.0 && arg == "r4_anchorage" {
+                1
+            } else {
+                2
+            };
             // Steer round waterspouts.
             for sp in &g.sea.spouts {
                 let ahead = me.pos + me.forward() * 40.0;
@@ -270,7 +272,13 @@ fn duel_at(g: &BlackTap, sim: &Sim, me: &pav_kit::naval::Vessel, tp: Vec2, range
     let rel = turn_to(me.heading, bearing);
     let (lo, hi) = range;
     let side = if rel >= 0.0 { 1.0 } else { -1.0 };
-    let lean = if dist < lo { -25.0 } else if dist > hi { 35.0 } else { 0.0 };
+    let lean = if dist < lo {
+        -25.0
+    } else if dist > hi {
+        35.0
+    } else {
+        0.0
+    };
     let heading = if dist > hi * 1.8 { bearing } else { (bearing - side * (90.0 - lean)).rem_euclid(360.0) };
     // Look straight at it: the weapon follows the look.
     let look = look_toward(g, bearing, Some(16.0));
@@ -294,15 +302,19 @@ fn duel_at(g: &BlackTap, sim: &Sim, me: &pav_kit::naval::Vessel, tp: Vec2, range
     (heading, look, fire)
 }
 
+pub use crate::bot_land::land;
+
 /// The boarding melee and land fights: counter on the tell, else attack the nearest.
 pub fn melee(g: &BlackTap, sim: &Sim) -> InputFrame {
     let mut i = InputFrame::default();
     let Some(pid) = sim.state.player else { return i };
     let Some(me) = sim.feet(pid) else { return i };
     // Counter: a strike at the player lands within 0.25 s.
-    let incoming = g.land.fighters.values().any(|f| {
-        f.target == Some(pid) && f.swing.is_some_and(|s| s.windup - s.t < 0.22 && s.windup - s.t > -0.05)
-    });
+    let incoming = g
+        .land
+        .fighters
+        .values()
+        .any(|f| f.target == Some(pid) && f.swing.is_some_and(|s| s.windup - s.t < 0.22 && s.windup - s.t > -0.05));
     if incoming && g.land.hero.counter_ago.is_none_or(|a| a > 0.4) {
         i.pressed |= b::INTERACT;
         i.held |= b::INTERACT;
@@ -312,7 +324,7 @@ pub fn melee(g: &BlackTap, sim: &Sim) -> InputFrame {
         .land
         .fighters
         .iter()
-        .filter(|(_, f)| f.team == crate::foot::Team::Enemy && !f.vitals.dead && !f.surrendered)
+        .filter(|(_, f)| f.team == crate::foot::Team::Enemy && !f.vitals.dead && !f.surrendered && !f.idle)
         .filter_map(|(&id, _)| sim.feet(id).map(|p| (id, p)))
         .min_by(|a, b| a.1.distance(me).total_cmp(&b.1.distance(me)));
     if let Some((_, tp)) = target {

@@ -43,7 +43,12 @@ pub fn camera_context(g: &BlackTap, sim: &Sim, input: &InputFrame) -> (&'static 
             }
         }
         Body::Foot => {
-            let swimming = sim.state.player.and_then(|id| sim.state.entities.get(id)).and_then(|e| e.character.as_ref()).is_some_and(|c| c.swimming);
+            let swimming = sim
+                .state
+                .player
+                .and_then(|id| sim.state.entities.get(id))
+                .and_then(|e| e.character.as_ref())
+                .is_some_and(|c| c.swimming);
             let ctx = if g.land.enemies_left() > 0 {
                 "combat"
             } else if swimming {
@@ -63,7 +68,7 @@ pub fn camera_context(g: &BlackTap, sim: &Sim, input: &InputFrame) -> (&'static 
 }
 
 pub fn camera(g: &BlackTap, sim: &Sim) -> Option<CameraHint> {
-    if let Some(h) = crate::stealth::cinematic_camera(g, sim) {
+    if let Some(h) = crate::stealth::cinematic_camera(g, sim).or_else(|| crate::traverse::camera(g, sim)) {
         return Some(h);
     }
     if g.mode == Mode::Title {
@@ -140,7 +145,9 @@ pub fn ui(g: &BlackTap, sim: &Sim) -> UiModel {
             ui.hud.push(HudItem::Counter { icon: "timber".into(), label: "Timber".into(), value: g.sea.timber.to_string() });
         }
         // Enemy ships and batteries get bars.
-        for s in g.sea.ships.iter().filter(|s| s.id != g.sea.mine && s.alive() && s.faction != pav_kit::naval::Faction::Brotherhood) {
+        for s in
+            g.sea.ships.iter().filter(|s| s.id != g.sea.mine && s.alive() && s.faction != pav_kit::naval::Faction::Brotherhood)
+        {
             let d = g.sea.my_ship().map(|m| m.pos.distance(s.pos)).unwrap_or(0.0);
             if d < 420.0 {
                 ui.markers.push(WorldMarker {
@@ -153,10 +160,22 @@ pub fn ui(g: &BlackTap, sim: &Sim) -> UiModel {
             }
         }
         for bt in g.sea.batteries.iter().filter(|b| !b.destroyed) {
-            ui.markers.push(WorldMarker { pos: bt.pos + Vec3::Y * 12.0, kind: MarkerKind::Enemy, label: bt.name.clone(), bar: Some(bt.hp / bt.hp_max), distance: true });
+            ui.markers.push(WorldMarker {
+                pos: bt.pos + Vec3::Y * 12.0,
+                kind: MarkerKind::Enemy,
+                label: bt.name.clone(),
+                bar: Some(bt.hp / bt.hp_max),
+                distance: true,
+            });
         }
         for sh in &g.sea.shells {
-            ui.markers.push(WorldMarker { pos: sh.at, kind: MarkerKind::Threat, label: String::new(), bar: None, distance: false });
+            ui.markers.push(WorldMarker {
+                pos: sh.at,
+                kind: MarkerKind::Threat,
+                label: String::new(),
+                bar: None,
+                distance: false,
+            });
         }
         // Prompts.
         if crate::rounds::boardable(g).is_some() {
@@ -171,6 +190,7 @@ pub fn ui(g: &BlackTap, sim: &Sim) -> UiModel {
             ui.prompts.push(Prompt::new("attack", "Swivel gun"));
         }
     } else {
+        crate::traverse::ui(g, sim, &mut ui);
         crate::stealth::ui(g, sim, &mut ui);
     }
     // Onboarding: one big prompt for the action being taught.
@@ -223,7 +243,8 @@ fn results(g: &BlackTap, focus: usize) -> Results {
     let mins = (s.time / 60.0) as u32;
     let secs = (s.time % 60.0) as u32;
     let c = g.content();
-    let checklist: Vec<(String, bool)> = c.missions.iter().flat_map(|m| m.optional.iter().map(|o| (o.text.clone(), false))).collect();
+    let checklist: Vec<(String, bool)> =
+        c.missions.iter().flat_map(|m| m.optional.iter().map(|o| (o.text.clone(), false))).collect();
     Results {
         title: "TAB I — THE DRY RUN".into(),
         pour: crate::rounds::pour(g),
@@ -237,9 +258,27 @@ fn results(g: &BlackTap, focus: usize) -> Results {
             ("Times detected".into(), s.detected.to_string()),
         ],
         tiles: vec![
-            Tile { name: "Continue".into(), desc: "Free roam the isles".into(), cost: String::new(), icon: "sail".into(), disabled: false },
-            Tile { name: "Replay a Round".into(), desc: "Chase a Full Pour".into(), cost: String::new(), icon: "repair".into(), disabled: false },
-            Tile { name: "Title".into(), desc: "Back to the title".into(), cost: String::new(), icon: "keg".into(), disabled: false },
+            Tile {
+                name: "Continue".into(),
+                desc: "Free roam the isles".into(),
+                cost: String::new(),
+                icon: "sail".into(),
+                disabled: false,
+            },
+            Tile {
+                name: "Replay a Round".into(),
+                desc: "Chase a Full Pour".into(),
+                cost: String::new(),
+                icon: "repair".into(),
+                disabled: false,
+            },
+            Tile {
+                name: "Title".into(),
+                desc: "Back to the title".into(),
+                cost: String::new(),
+                icon: "keg".into(),
+                disabled: false,
+            },
         ],
         focus,
     }
@@ -270,28 +309,58 @@ fn markers_for(g: &BlackTap, sim: &Sim, w: &crate::world::World, m: &str, ui: &m
     match (kind, name) {
         ("flotsam", _) => {
             for f in g.sea.floating.iter().filter(|f| f.kind == crate::sea::FloatKind::Flotsam) {
-                ui.markers.push(WorldMarker { pos: Vec3::new(f.pos.x, 2.0, f.pos.y), kind: MarkerKind::Objective, label: "Flotsam".into(), bar: None, distance: true });
+                ui.markers.push(WorldMarker {
+                    pos: Vec3::new(f.pos.x, 2.0, f.pos.y),
+                    kind: MarkerKind::Objective,
+                    label: "Flotsam".into(),
+                    bar: None,
+                    distance: true,
+                });
             }
         }
         ("ship", tag) => {
             for s in g.sea.by_tag(tag).filter(|s| s.alive()) {
-                ui.markers.push(WorldMarker { pos: s.world(Vec3::Y * 24.0), kind: MarkerKind::Objective, label: s.name.clone(), bar: Some(s.frac()), distance: true });
+                ui.markers.push(WorldMarker {
+                    pos: s.world(Vec3::Y * 24.0),
+                    kind: MarkerKind::Objective,
+                    label: s.name.clone(),
+                    bar: Some(s.frac()),
+                    distance: true,
+                });
             }
         }
         ("tag", tag) => {
             for s in g.sea.by_tag(tag).filter(|s| s.alive()) {
-                ui.markers.push(WorldMarker { pos: s.world(Vec3::Y * 14.0), kind: MarkerKind::Objective, label: s.name.clone(), bar: Some(s.frac()), distance: true });
+                ui.markers.push(WorldMarker {
+                    pos: s.world(Vec3::Y * 14.0),
+                    kind: MarkerKind::Objective,
+                    label: s.name.clone(),
+                    bar: Some(s.frac()),
+                    distance: true,
+                });
             }
             crate::stealth::markers_for_tag(g, sim, tag, ui);
         }
         ("battery", name) => {
             if let Some(bt) = g.sea.batteries.iter().find(|b| b.name == name && !b.destroyed) {
-                ui.markers.push(WorldMarker { pos: bt.pos + Vec3::Y * 14.0, kind: MarkerKind::Objective, label: format!("{} battery", bt.name), bar: Some(bt.hp / bt.hp_max), distance: true });
+                ui.markers.push(WorldMarker {
+                    pos: bt.pos + Vec3::Y * 14.0,
+                    kind: MarkerKind::Objective,
+                    label: format!("{} battery", bt.name),
+                    bar: Some(bt.hp / bt.hp_max),
+                    distance: true,
+                });
             }
         }
         ("marker", name) => {
             if let Some(p) = w.marker(name) {
-                ui.markers.push(WorldMarker { pos: p + Vec3::Y * 2.5, kind: MarkerKind::Objective, label: String::new(), bar: None, distance: true });
+                ui.markers.push(WorldMarker {
+                    pos: p + Vec3::Y * 2.5,
+                    kind: MarkerKind::Objective,
+                    label: String::new(),
+                    bar: None,
+                    distance: true,
+                });
             }
         }
         ("npc", name) => crate::stealth::markers_for_npc(g, sim, name, ui),
@@ -300,7 +369,13 @@ fn markers_for(g: &BlackTap, sim: &Sim, w: &crate::world::World, m: &str, ui: &m
 }
 
 /// Hull meshes by class, style and damage step (cached).
-fn hull(class_key: &str, style_key: &str, damage_step: u32, seed: u32, c: &crate::content::Content) -> Option<Arc<pav_core::play::Mesh>> {
+fn hull(
+    class_key: &str,
+    style_key: &str,
+    damage_step: u32,
+    seed: u32,
+    c: &crate::content::Content,
+) -> Option<Arc<pav_core::play::Mesh>> {
     use std::collections::BTreeMap;
     use std::sync::Mutex;
     static CACHE: Mutex<BTreeMap<(String, String, u32, u32), Arc<pav_core::play::Mesh>>> = Mutex::new(BTreeMap::new());
@@ -339,7 +414,14 @@ pub fn draw(g: &BlackTap, sim: &Sim, out: &mut DrawList) {
     // The islands while they are shapes (the terrain generator replaces this).
     if !crate::island::has_terrain(sim) {
         for (i, s) in w.shapes.iter().enumerate() {
-            out.push(DrawItem::Mesh { mesh: crate::island::shape_mesh(s, i as u64), pos: Vec3::ZERO, rot: Quat::IDENTITY, scale: Vec3::ONE, color: Color::WHITE, emissive: 0.0 });
+            out.push(DrawItem::Mesh {
+                mesh: crate::island::shape_mesh(s, i as u64),
+                pos: Vec3::ZERO,
+                rot: Quat::IDENTITY,
+                scale: Vec3::ONE,
+                color: Color::WHITE,
+                emissive: 0.0,
+            });
         }
     }
     // Ships.
@@ -361,7 +443,8 @@ pub fn draw(g: &BlackTap, sim: &Sim, out: &mut DrawList) {
         out.push(DrawItem::Mesh { mesh: h, pos, rot, scale: Vec3::ONE, color: Color::WHITE, emissive: 0.0 });
         let wind_rel = pav_kit::naval::turn_to(s.heading, pav_kit::naval::heading_of(-g.sea.wind));
         let emblem = s.tag == "black_tap";
-        let sails = pav_kit::shipyard::sails_mesh(cl, &style, s.sail_shown, wind_rel, g.time + s.id as f32, 1.0 - s.sails, emblem);
+        let sails =
+            pav_kit::shipyard::sails_mesh(cl, &style, s.sail_shown, wind_rel, g.time + s.id as f32, 1.0 - s.sails, emblem);
         out.push(DrawItem::Dynamic { mesh: sails, pos, rot, color: Color::WHITE, two_sided: true });
         let flag = if s.faction == pav_kit::naval::Faction::Brotherhood { [0.05, 0.05, 0.05] } else { Color::hex("#e8e8ee").0 };
         let pennant = pav_kit::shipyard::pennant_mesh(cl, flag, wind_rel, g.time + s.id as f32 * 0.37);
@@ -373,9 +456,21 @@ pub fn draw(g: &BlackTap, sim: &Sim, out: &mut DrawList) {
             for i in 0..n {
                 let along = (i as f32 / (n.max(2) - 1) as f32 - 0.5) * cl.length * 0.56;
                 let p = s.world(Vec3::new(side * (cl.beam * 0.5 + 0.1), cl.freeboard * 0.6, along));
-                out.push(DrawItem::Prim { shape: Shape::Box { half: Vec3::new(0.12, 0.25, 0.3) }, pos: p, rot, color: hex("#ff9a2e"), emissive: 3.0, look: Look::Unlit });
+                out.push(DrawItem::Prim {
+                    shape: Shape::Box { half: Vec3::new(0.12, 0.25, 0.3) },
+                    pos: p,
+                    rot,
+                    color: hex("#ff9a2e"),
+                    emissive: 3.0,
+                    look: Look::Unlit,
+                });
             }
-            out.push(DrawItem::Light { pos: s.world(Vec3::new(side * cl.beam * 0.6, cl.freeboard, 0.0)), color: hex("#ff9a2e"), intensity: 3.0, radius: 14.0 });
+            out.push(DrawItem::Light {
+                pos: s.world(Vec3::new(side * cl.beam * 0.6, cl.freeboard, 0.0)),
+                color: hex("#ff9a2e"),
+                intensity: 3.0,
+                radius: 14.0,
+            });
         }
         // Fire and smoke at half hull.
         if s.fire > 0.0 && !sink.is_nan() {
@@ -386,14 +481,27 @@ pub fn draw(g: &BlackTap, sim: &Sim, out: &mut DrawList) {
         if s.speed > 2.0 && s.alive() {
             for k in 1..4 {
                 let p = s.world(Vec3::new(0.0, 0.0, -cl.length * 0.5 - k as f32 * 7.0));
-                out.push(DrawItem::Decal { center: Vec3::new(p.x, g.ocean().height(Vec2::new(p.x, p.z)) + 0.05, p.z), radius: 2.0 + k as f32 * 1.4, ring: 0.82, color: hex("#f4f8f6"), alpha: 0.5 / k as f32 });
+                out.push(DrawItem::Decal {
+                    center: Vec3::new(p.x, g.ocean().height(Vec2::new(p.x, p.z)) + 0.05, p.z),
+                    radius: 2.0 + k as f32 * 1.4,
+                    ring: 0.82,
+                    color: hex("#f4f8f6"),
+                    alpha: 0.5 / k as f32,
+                });
             }
         }
     }
     // Batteries: stone emplacements with guns (until the fort is built from structures).
     for bt in &g.sea.batteries {
         let col = if bt.destroyed { hex("#4a4540") } else { hex("#cbbd9b") };
-        out.push(DrawItem::Prim { shape: Shape::Box { half: bt.half }, pos: bt.pos - Vec3::Y * bt.half.y * 0.5, rot: Quat::IDENTITY, color: col, emissive: 0.0, look: Look::Lit });
+        out.push(DrawItem::Prim {
+            shape: Shape::Box { half: bt.half },
+            pos: bt.pos - Vec3::Y * bt.half.y * 0.5,
+            rot: Quat::IDENTITY,
+            color: col,
+            emissive: 0.0,
+            look: Look::Lit,
+        });
         if bt.telegraph > 0.0 && !bt.destroyed {
             out.push(DrawItem::Light { pos: bt.pos + Vec3::Y * 2.0, color: hex("#ff9a2e"), intensity: 4.0, radius: 20.0 });
         }
@@ -402,8 +510,20 @@ pub fn draw(g: &BlackTap, sim: &Sim, out: &mut DrawList) {
     for sh in &g.sea.shells {
         let y = g.ocean().height(Vec2::new(sh.at.x, sh.at.z)) + 0.1;
         let t = (1.0 - sh.left / 2.2).clamp(0.0, 1.0);
-        out.push(DrawItem::Decal { center: Vec3::new(sh.at.x, y, sh.at.z), radius: sh.radius, ring: 0.9, color: hex("#e0281e"), alpha: 1.0 });
-        out.push(DrawItem::Decal { center: Vec3::new(sh.at.x, y + 0.02, sh.at.z), radius: sh.radius * t, ring: 0.0, color: hex("#a8322d"), alpha: 0.5 });
+        out.push(DrawItem::Decal {
+            center: Vec3::new(sh.at.x, y, sh.at.z),
+            radius: sh.radius,
+            ring: 0.9,
+            color: hex("#e0281e"),
+            alpha: 1.0,
+        });
+        out.push(DrawItem::Decal {
+            center: Vec3::new(sh.at.x, y + 0.02, sh.at.z),
+            radius: sh.radius * t,
+            ring: 0.0,
+            color: hex("#a8322d"),
+            alpha: 0.5,
+        });
     }
     // Shot in flight.
     for s in g.sea.shots.shots.iter().filter(|s| s.delay <= 0.0) {
@@ -412,7 +532,14 @@ pub fn draw(g: &BlackTap, sim: &Sim, out: &mut DrawList) {
             pav_kit::ballistics::ShotKind::Chain => 0.3,
             _ => 0.22,
         };
-        out.push(DrawItem::Prim { shape: Shape::Sphere { radius: r }, pos: s.pos, rot: Quat::IDENTITY, color: hex("#1a1a1a"), emissive: 0.0, look: Look::Lit });
+        out.push(DrawItem::Prim {
+            shape: Shape::Sphere { radius: r },
+            pos: s.pos,
+            rot: Quat::IDENTITY,
+            color: hex("#1a1a1a"),
+            emissive: 0.0,
+            look: Look::Lit,
+        });
     }
     // Floating crates and powder kegs.
     let ocean = g.ocean();
@@ -421,12 +548,39 @@ pub fn draw(g: &BlackTap, sim: &Sim, out: &mut DrawList) {
         let p = Vec3::new(f.pos.x, y + 0.2, f.pos.y);
         match f.kind {
             crate::sea::FloatKind::Flotsam => {
-                out.push(DrawItem::Prim { shape: Shape::Box { half: Vec3::new(0.7, 0.45, 0.6) }, pos: p, rot: Quat::from_rotation_y(f.id as f32), color: hex("#8b6b4a"), emissive: 0.0, look: Look::Lit });
-                out.push(DrawItem::Prim { shape: Shape::Box { half: Vec3::new(0.5, 0.3, 0.5) }, pos: p + Vec3::new(0.9, -0.1, 0.4), rot: Quat::from_rotation_y(f.id as f32 * 2.0), color: hex("#6b4a2f"), emissive: 0.0, look: Look::Lit });
-                out.push(DrawItem::Decal { center: Vec3::new(p.x, y + 0.05, p.z), radius: 3.0 + (g.time * 2.0).sin() * 0.3, ring: 0.85, color: hex("#e2b04a"), alpha: 0.7 });
+                out.push(DrawItem::Prim {
+                    shape: Shape::Box { half: Vec3::new(0.7, 0.45, 0.6) },
+                    pos: p,
+                    rot: Quat::from_rotation_y(f.id as f32),
+                    color: hex("#8b6b4a"),
+                    emissive: 0.0,
+                    look: Look::Lit,
+                });
+                out.push(DrawItem::Prim {
+                    shape: Shape::Box { half: Vec3::new(0.5, 0.3, 0.5) },
+                    pos: p + Vec3::new(0.9, -0.1, 0.4),
+                    rot: Quat::from_rotation_y(f.id as f32 * 2.0),
+                    color: hex("#6b4a2f"),
+                    emissive: 0.0,
+                    look: Look::Lit,
+                });
+                out.push(DrawItem::Decal {
+                    center: Vec3::new(p.x, y + 0.05, p.z),
+                    radius: 3.0 + (g.time * 2.0).sin() * 0.3,
+                    ring: 0.85,
+                    color: hex("#e2b04a"),
+                    alpha: 0.7,
+                });
             }
             crate::sea::FloatKind::Keg { .. } => {
-                out.push(DrawItem::Prim { shape: Shape::Cylinder { half_height: 0.45, radius: 0.35 }, pos: p, rot: Quat::from_rotation_z(1.2), color: hex("#6b4a2f"), emissive: 0.0, look: Look::Lit });
+                out.push(DrawItem::Prim {
+                    shape: Shape::Cylinder { half_height: 0.45, radius: 0.35 },
+                    pos: p,
+                    rot: Quat::from_rotation_z(1.2),
+                    color: hex("#6b4a2f"),
+                    emissive: 0.0,
+                    look: Look::Lit,
+                });
                 if (g.time * 4.0).sin() > 0.0 {
                     out.push(DrawItem::Light { pos: p + Vec3::Y * 0.6, color: hex("#ff5a2a"), intensity: 1.5, radius: 4.0 });
                 }
@@ -440,7 +594,14 @@ pub fn draw(g: &BlackTap, sim: &Sim, out: &mut DrawList) {
             let a = g.time * 3.0 + k as f32 * 0.7;
             let r = sp.radius * (0.25 + k as f32 * 0.05);
             let p = Vec3::new(sp.pos.x + a.cos() * r * 0.3, h, sp.pos.y + a.sin() * r * 0.3);
-            out.push(DrawItem::Prim { shape: Shape::Cylinder { half_height: 2.2, radius: r * 0.35 }, pos: p, rot: Quat::from_rotation_y(a), color: hex("#9aa6ae"), emissive: 0.0, look: Look::Lit });
+            out.push(DrawItem::Prim {
+                shape: Shape::Cylinder { half_height: 2.2, radius: r * 0.35 },
+                pos: p,
+                rot: Quat::from_rotation_y(a),
+                color: hex("#9aa6ae"),
+                emissive: 0.0,
+                look: Look::Lit,
+            });
         }
     }
     // Aim arcs while aiming broadsides.

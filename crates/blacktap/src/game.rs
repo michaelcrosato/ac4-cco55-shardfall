@@ -150,9 +150,14 @@ pub struct BlackTap {
     /// The results screen's focused tile (Some while it shows).
     pub results: Option<usize>,
     pub land: crate::foot::Land,
+    #[serde(default)]
+    pub stealth: crate::stealth::Stealth,
     /// Events to emit in the next `post` (from places without the event list).
     #[serde(skip)]
     pub pending_events: Vec<SimEvent>,
+    /// Buttons a tool presses on the next tick (`pav ship do=fire`).
+    #[serde(skip)]
+    pub tool_press: u32,
     #[serde(skip)]
     content: Option<Arc<Content>>,
     #[serde(skip)]
@@ -235,13 +240,16 @@ pub fn build(sim: &mut Sim, rest: Option<&str>) -> Result<()> {
         shanty: 0,
         results: None,
         land: crate::foot::Land::default(),
+        stealth: crate::stealth::Stealth::default(),
         pending_events: Vec::new(),
+        tool_press: 0,
         content: Some(content.clone()),
         world: Some(world.clone()),
     };
     // The Black Tap is always afloat; six flotsam crates drift in the isles.
     let start = world.marker_xz("r1_start");
-    game.sea.mine = game.sea.add_ship(&content.classes, "brig", "Black Tap", "black_tap", start, 45.0, pav_kit::naval::Faction::Brotherhood);
+    game.sea.mine =
+        game.sea.add_ship(&content.classes, "brig", "Black Tap", "black_tap", start, 45.0, pav_kit::naval::Faction::Brotherhood);
     for i in 1..=6 {
         let p = world.marker_xz(&format!("flotsam_{i}"));
         game.sea.add_float(p, crate::sea::FloatKind::Flotsam);
@@ -252,8 +260,10 @@ pub fn build(sim: &mut Sim, rest: Option<&str>) -> Result<()> {
         Mode::Tab => {
             if let Some(n) = demo {
                 let seg = content.demo.get(n as usize - 1);
-                game.showcase =
-                    Some(Showcase::new(seg.map(|s| s.caption.as_str()).unwrap_or("Demo"), seg.map(|s| s.seconds).unwrap_or(60.0)));
+                game.showcase = Some(Showcase::new(
+                    seg.map(|s| s.caption.as_str()).unwrap_or("Demo"),
+                    seg.map(|s| s.seconds).unwrap_or(60.0),
+                ));
             }
             game.start_round(sim, round, true, step.as_deref());
         }
@@ -361,7 +371,8 @@ impl BlackTap {
             crate::rounds::start_at(self, sim, step);
         }
         let title = def.title.clone();
-        let (head, sub) = title.split_once(" — ").map(|(a, b)| (a.to_string(), b.to_string())).unwrap_or((title.clone(), String::new()));
+        let (head, sub) =
+            title.split_once(" — ").map(|(a, b)| (a.to_string(), b.to_string())).unwrap_or((title.clone(), String::new()));
         self.banner(&head.to_uppercase(), &sub, "#e2b04a");
         sim.request_checkpoint(CheckpointRequest::Save);
     }
@@ -484,7 +495,8 @@ impl BlackTap {
         let h = ship.heading.to_radians();
         let facing = h.sin().atan2(-h.cos());
         if let Some(ch) = sim.state.entities.get_mut(pid).and_then(|e| e.character.as_mut()) {
-            ch.scripted = Some(Scripted { feet, facing, vel: Vec3::new(v.x, 0.0, v.y), pose: ScriptPose::Seated, climb_step: 0.0 });
+            ch.scripted =
+                Some(Scripted { feet, facing, vel: Vec3::new(v.x, 0.0, v.y), pose: ScriptPose::Seated, climb_step: 0.0 });
         }
     }
 }
@@ -494,6 +506,14 @@ impl Game for BlackTap {
 
     fn pre(&mut self, sim: &mut Sim, input: &InputFrame, dt: f32, events: &mut Vec<SimEvent>) -> BTreeMap<EntityId, InputFrame> {
         self.caches();
+        let pressed;
+        let input = if self.tool_press != 0 {
+            let tp = std::mem::take(&mut self.tool_press);
+            pressed = InputFrame { held: input.held | tp, pressed: input.pressed | tp, ..input.clone() };
+            &pressed
+        } else {
+            input
+        };
         let mut out = BTreeMap::new();
         let c = self.content();
         let w = self.world();
@@ -550,7 +570,12 @@ impl Game for BlackTap {
             }
         } else {
             out.extend(crate::foot::pre(self, sim, input, playing, dt, events));
+            if let (Some(pid), Some(over)) = (sim.state.player, crate::traverse::pre(self, sim, input, playing, dt, events)) {
+                out.insert(pid, over);
+            }
         }
+        // The town's and the fort's people (and the player's land tools).
+        out.extend(crate::stealth::pre(self, sim, input, playing, dt, events));
         // The camera.
         let (ctx_name, target, exclude) = crate::present::camera_context(self, sim, input);
         let ctx = c.camera.get(ctx_name);
@@ -632,8 +657,12 @@ impl Game for BlackTap {
 
     fn hud(&self, _sim: &Sim) -> Vec<String> {
         let c = self.content();
-        let step =
-            c.missions.get(self.round as usize - 1).and_then(|d| self.mission.current(d)).map(|s| s.objective.clone()).unwrap_or_default();
+        let step = c
+            .missions
+            .get(self.round as usize - 1)
+            .and_then(|d| self.mission.current(d))
+            .map(|s| s.objective.clone())
+            .unwrap_or_default();
         vec![format!("Round {} — {}", self.round, step)]
     }
 
@@ -711,7 +740,8 @@ impl Game for BlackTap {
                 _ => 1.0,
             };
             self.options.aim_assist = s.pointer("/accessibility/aim_assist").and_then(|a| a.as_bool()).unwrap_or(true);
-            self.options.colorblind = s.pointer("/accessibility/colorblind").and_then(|a| a.as_str()).unwrap_or("Off").to_lowercase();
+            self.options.colorblind =
+                s.pointer("/accessibility/colorblind").and_then(|a| a.as_str()).unwrap_or("Off").to_lowercase();
             self.options.subtitles = s.pointer("/accessibility/subtitles").and_then(|a| a.as_bool()).unwrap_or(true);
         }
         if let Some(p) = v.get("progress").filter(|p| !p.is_null()) {
@@ -721,6 +751,11 @@ impl Game for BlackTap {
 
     fn progress(&self) -> Option<serde_json::Value> {
         Some(crate::rounds::progress(self))
+    }
+
+    fn command(&mut self, sim: &mut Sim, name: &str, args: &serde_json::Value) -> Option<Result<serde_json::Value, String>> {
+        self.caches();
+        crate::commands::command(self, sim, name, args)
     }
 }
 

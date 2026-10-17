@@ -197,6 +197,9 @@ pub struct MissionRun {
     pub started: bool,
     pub complete: bool,
     pub failed: bool,
+    /// Tools: the current step counts as done on the next tick (`pav mission complete=`).
+    #[serde(default)]
+    pub forced: bool,
 }
 
 impl MissionRun {
@@ -317,7 +320,7 @@ impl MissionRun {
                 events.push(MissionEvent::Failed);
                 return (acts, events);
             }
-            if !step.done.as_ref().is_some_and(|c| self.eval(c, game)) {
+            if !std::mem::take(&mut self.forced) && !step.done.as_ref().is_some_and(|c| self.eval(c, game)) {
                 break;
             }
             self.apply(&step.on_done, &mut acts);

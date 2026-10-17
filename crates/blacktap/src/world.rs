@@ -39,6 +39,86 @@ pub struct LevelFile {
     /// Half-size of the play area (soft boundary at `soft`, hard at `hard`).
     #[serde(default)]
     pub bounds: Bounds,
+    #[serde(default)]
+    pub npc: Vec<NpcSpawn>,
+    #[serde(default)]
+    pub hide: Vec<Hide>,
+    #[serde(default)]
+    pub poster: Vec<[f32; 3]>,
+    #[serde(default)]
+    pub area: Vec<Area>,
+    #[serde(default)]
+    pub perch: Vec<Perch>,
+    #[serde(default)]
+    pub collectible: Vec<Collectible>,
+    /// Bot hints: named waypoint lists (x, y, z) with an action at each point.
+    #[serde(default)]
+    pub bot_hint: Vec<BotHint>,
+}
+
+/// People placed by the mission actions (`spawn_town`, `spawn_fort_guards`...), by group.
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(default)]
+pub struct NpcSpawn {
+    /// The action that spawns it: town, courier, stocks, fort, drye, crowd.
+    pub group: String,
+    /// Archetype in npcs.toml.
+    pub kind: String,
+    pub at: [f32; 3],
+    /// Facing (degrees, 0 = north) while standing at its post.
+    pub facing: f32,
+    /// A route it walks (loops unless `once`), or none to keep its post.
+    pub route: String,
+    pub once: bool,
+    /// Extra tags (courier, escort, bell_ringer, drye_guard, gossip...).
+    pub tags: Vec<String>,
+    /// How many to place around `at` (crowds).
+    pub count: u32,
+}
+
+/// Concealment: stalk grass and crowds conceal; haystacks and hay carts hide completely (and
+/// soften falls).
+#[derive(Clone, Debug, Deserialize)]
+pub struct Hide {
+    pub kind: String,
+    pub at: [f32; 3],
+    pub radius: f32,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct Area {
+    pub name: String,
+    pub kind: String,
+    pub center: [f32; 2],
+    pub radii: [f32; 2],
+}
+
+/// A Crow's Perch: survey here (reveals the named map icons), leap to `leap_to`.
+#[derive(Clone, Debug, Deserialize)]
+pub struct Perch {
+    pub name: String,
+    pub at: [f32; 3],
+    #[serde(default)]
+    pub leap_to: String,
+    #[serde(default)]
+    pub reveals: f32,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct Collectible {
+    pub kind: String,
+    pub name: String,
+    pub at: [f32; 3],
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(default)]
+pub struct BotHint {
+    pub name: String,
+    /// (x, y, z) points; `do` per point: walk, run, climb, swim, jump, crouch, wait, interact.
+    pub points: Vec<[f32; 3]>,
+    #[serde(rename = "do")]
+    pub actions: Vec<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -64,6 +144,13 @@ pub struct World {
     pub seabed: Arc<Seabed>,
     /// Terrain from the island generator, when the level has it: (x, z) → height.
     pub terrain: Option<Arc<dyn Fn(Vec2) -> Option<f32> + Send + Sync>>,
+    pub npcs: Vec<NpcSpawn>,
+    pub hides: Vec<Hide>,
+    pub posters: Vec<Vec3>,
+    pub areas: Vec<Area>,
+    pub perches: Vec<Perch>,
+    pub collectibles: Vec<Collectible>,
+    pub bot_hints: BTreeMap<String, BotHint>,
 }
 
 impl World {
@@ -87,6 +174,30 @@ impl World {
             }
         }
         self.seabed.height(p)
+    }
+
+    /// The named area (restricted zones) containing `p`.
+    pub fn area_at(&self, p: Vec2) -> Option<&Area> {
+        self.areas.iter().find(|a| {
+            let d = (p - Vec2::from(a.center)) / Vec2::from(a.radii).max(Vec2::splat(0.1));
+            d.length() < 1.0
+        })
+    }
+
+    /// The hiding spot `p` is in (feet), if any.
+    pub fn hide_at(&self, p: Vec3) -> Option<&Hide> {
+        self.hides.iter().find(|h| {
+            let c = Vec3::from(h.at);
+            Vec2::new(p.x - c.x, p.z - c.z).length() < h.radius && (p.y - c.y).abs() < 2.0
+        })
+    }
+
+    pub fn perch(&self, name: &str) -> Option<&Perch> {
+        self.perches.iter().find(|p| p.name == name)
+    }
+
+    pub fn hint(&self, name: &str) -> Option<&BotHint> {
+        self.bot_hints.get(name)
     }
 
     /// The island whose land contains `p`, if any.
@@ -167,6 +278,13 @@ pub fn load(text: &str) -> anyhow::Result<Arc<World>> {
         bounds: f.bounds,
         seabed,
         terrain: None,
+        npcs: f.npc,
+        hides: f.hide,
+        posters: f.poster.iter().map(|p| Vec3::from(*p)).collect(),
+        areas: f.area,
+        perches: f.perch,
+        collectibles: f.collectible,
+        bot_hints: f.bot_hint.into_iter().map(|h| (h.name.clone(), h)).collect(),
     });
     *CACHE.lock().unwrap_or_else(|p| p.into_inner()) = Some((key, w.clone()));
     Ok(w)

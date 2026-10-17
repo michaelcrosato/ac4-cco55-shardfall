@@ -149,7 +149,15 @@ pub fn act(g: &mut BlackTap, sim: &mut Sim, name: &str) {
             for (i, side) in [-1.0f32, 1.0].iter().enumerate() {
                 let r = Vec2::new(-me.1.y, me.1.x);
                 let at = me.0 + me.1 * 230.0 + r * side * 70.0;
-                let id = g.sea.add_ship(&c.classes, "gunboat", &format!("Gunboat {}", i + 1), "gunboat", at, heading(at, me.0), Faction::Temperance);
+                let id = g.sea.add_ship(
+                    &c.classes,
+                    "gunboat",
+                    &format!("Gunboat {}", i + 1),
+                    "gunboat",
+                    at,
+                    heading(at, me.0),
+                    Faction::Temperance,
+                );
                 g.sea.add_captain(id, CaptainKind::Gunboat, Vec::new(), None, true);
             }
         }
@@ -235,7 +243,8 @@ pub fn eval(g: &BlackTap, sim: &Sim, name: &str) -> bool {
         }
         "ashore" => {
             let beach = w.marker_xz("r4_beach");
-            BlackTap::player_feet(sim).is_some_and(|p| p.y > -0.2 && Vec2::new(p.x, p.z).distance(beach) < 40.0 && w.ground(Vec2::new(p.x, p.z)) > -0.6)
+            BlackTap::player_feet(sim)
+                .is_some_and(|p| p.y > -0.2 && Vec2::new(p.x, p.z).distance(beach) < 40.0 && w.ground(Vec2::new(p.x, p.z)) > -0.6)
         }
         "at_helm" => g.body == Body::Helm,
         "escaped" => {
@@ -287,11 +296,14 @@ pub fn sea_events(g: &mut BlackTap, sim: &mut Sim, input: &InputFrame, evs: Vec<
                     g.mission.set_flag("battery_first");
                 }
                 g.dialog.say(&c.dialog, "r3_battery_down");
-                g.toast(&format!("{} silenced", match name.as_str() {
-                    "west" => "West Battery",
-                    "north" => "North Battery",
-                    _ => "Mortar Tower",
-                }));
+                g.toast(&format!(
+                    "{} silenced",
+                    match name.as_str() {
+                        "west" => "West Battery",
+                        "north" => "North Battery",
+                        _ => "Mortar Tower",
+                    }
+                ));
                 g.show("battery");
             }
             SeaEvent::PlayerHit { damage } => {
@@ -360,7 +372,15 @@ pub fn post(g: &mut BlackTap, sim: &mut Sim, dt: f32, events: &mut Vec<SimEvent>
             if let Some(&start) = route.first() {
                 let id = g.sea.add_ship(&c.classes, "merchant", "Temperance convoy", "convoy", start, 90.0, Faction::Temperance);
                 g.sea.add_captain(id, CaptainKind::Merchant, route.clone(), None, false);
-                let esc = g.sea.add_ship(&c.classes, "gunboat", "Convoy escort", "convoy", start + Vec2::new(-30.0, 20.0), 90.0, Faction::Temperance);
+                let esc = g.sea.add_ship(
+                    &c.classes,
+                    "gunboat",
+                    "Convoy escort",
+                    "convoy",
+                    start + Vec2::new(-30.0, 20.0),
+                    90.0,
+                    Faction::Temperance,
+                );
                 g.sea.add_captain(esc, CaptainKind::Gunboat, Vec::new(), None, true);
                 g.dialog.say(&c.dialog, "fr_convoy");
             }

@@ -126,7 +126,16 @@ impl Sea {
     }
 
     /// Adds a ship; returns its id.
-    pub fn add_ship(&mut self, classes: &Classes, class: &str, name: &str, tag: &str, pos: Vec2, heading: f32, faction: Faction) -> u32 {
+    pub fn add_ship(
+        &mut self,
+        classes: &Classes,
+        class: &str,
+        name: &str,
+        tag: &str,
+        pos: Vec2,
+        heading: f32,
+        faction: Faction,
+    ) -> u32 {
         self.next_id += 1;
         let id = self.next_id;
         let c = classes.get(class).cloned().unwrap_or_default();
@@ -552,7 +561,16 @@ impl Sea {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn blast(&mut self, classes: &Classes, at: Vec3, radius: f32, damage: f32, owner: Owner, events: &mut Vec<SimEvent>, out: &mut Vec<SeaEvent>) {
+    fn blast(
+        &mut self,
+        classes: &Classes,
+        at: Vec3,
+        radius: f32,
+        damage: f32,
+        owner: Owner,
+        events: &mut Vec<SimEvent>,
+        out: &mut Vec<SeaEvent>,
+    ) {
         events.push(SimEvent::cue("explosion", at));
         events.push(SimEvent::Explosion { pos: at, radius: radius * 0.4 });
         let me = self.mine;
@@ -612,7 +630,9 @@ impl Sea {
                     self.blast(classes, imp.pos, imp.blast, imp.damage, imp.owner, events, out);
                 }
                 // A shot into a powder keg sets it off.
-                if let Some(f) = self.floating.iter_mut().find(|f| f.alive && matches!(f.kind, FloatKind::Keg { .. }) && f.pos.distance(Vec2::new(imp.pos.x, imp.pos.z)) < 3.0) {
+                if let Some(f) = self.floating.iter_mut().find(|f| {
+                    f.alive && matches!(f.kind, FloatKind::Keg { .. }) && f.pos.distance(Vec2::new(imp.pos.x, imp.pos.z)) < 3.0
+                }) {
                     f.alive = false;
                     let p = f.pos;
                     self.blast(classes, Vec3::new(p.x, 0.5, p.y), 14.0, 160.0, imp.owner, events, out);

@@ -17,6 +17,7 @@ pub mod creature_worker;
 pub mod game_tools;
 pub mod hall;
 pub mod import;
+pub mod kit_tools;
 pub mod live_feedback;
 pub mod material_tools;
 pub mod mcp;

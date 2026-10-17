@@ -4,6 +4,8 @@
 use std::borrow::Cow;
 
 pub mod bot;
+pub mod bot_land;
+pub mod commands;
 pub mod content;
 pub mod drydock;
 pub mod foot;

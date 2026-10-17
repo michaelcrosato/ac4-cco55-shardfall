@@ -2361,6 +2361,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "blacktap",
+ "egui",
  "glam 0.33.11",
  "libm",
  "log",
@@ -2369,6 +2370,7 @@ dependencies = [
  "pav_core",
  "pav_kit",
  "pav_render",
+ "pav_ui",
  "pav_view",
  "png",
  "serde",

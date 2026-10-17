@@ -45,7 +45,15 @@ pub fn shape_mesh(s: &IslandShape, i: u64) -> Arc<Mesh> {
         for x in 0..nx {
             let p = c - r + Vec2::new(x as f32, z as f32) * cell;
             let h = shape_height(shapes, p);
-            let col = if h < 0.3 { wet } else if h < 2.0 { sand } else if h < 10.0 { grass } else { jungle };
+            let col = if h < 0.3 {
+                wet
+            } else if h < 2.0 {
+                sand
+            } else if h < 10.0 {
+                grass
+            } else {
+                jungle
+            };
             m.vertex(Vec3::new(p.x, h, p.y), Vec3::Y, col);
         }
     }
