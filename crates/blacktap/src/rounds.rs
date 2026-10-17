@@ -377,8 +377,10 @@ pub fn post(g: &mut BlackTap, sim: &mut Sim, dt: f32, events: &mut Vec<SimEvent>
     let _ = dt;
     crate::stealth::post(g, sim, dt, events);
     if g.mode == Mode::FreeRoam {
-        // A Temperance convoy every few minutes.
-        if g.sea.ships.iter().filter(|s| s.tag == "convoy" && s.alive()).count() == 0 && (g.time % 180.0) < dt {
+        // A Temperance convoy every few minutes (the first half a minute in).
+        let first = !g.flags.contains("convoy_seen") && g.time > 30.0;
+        if g.sea.ships.iter().filter(|s| s.tag == "convoy" && s.alive()).count() == 0 && ((g.time % 180.0) < dt || first) {
+            g.flags.insert("convoy_seen".into());
             let c = g.content();
             let w = g.world();
             let route = w.route("convoy");

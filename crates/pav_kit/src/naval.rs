@@ -1028,6 +1028,36 @@ mod tests {
     }
 
     #[test]
+    fn ships_ride_the_waves() {
+        // Buoyancy: the hull heaves with the sea under it and pitches and rolls on a rough one;
+        // on a flat sea it sits still.
+        use pav_core::ocean::{Ocean, SeaPreset, SeaState};
+        let c = HullClass::default();
+        for (preset, moves) in [(SeaPreset::Rough, true), (SeaPreset::Flat, false)] {
+            let mut o = Ocean { sea: SeaState::preset(preset, 30.0), time: 0.0 };
+            let mut v = Vessel::new(1, &c, "s", "a", Vec2::ZERO, 0.0);
+            let (mut lo, mut hi, mut tilt, mut err) = (f32::MAX, f32::MIN, 0.0f32, 0.0f32);
+            for i in 0..1200 {
+                o.time += 1.0 / 60.0;
+                v.sail_step(&c, Helm::default(), Vec2::ZERO, Some(&o), &|_| -50.0, 1.0 / 60.0);
+                if i > 300 {
+                    lo = lo.min(v.heave);
+                    hi = hi.max(v.heave);
+                    tilt = tilt.max(v.pitch.abs()).max(v.roll.abs());
+                    err = err.max((v.heave - o.height(v.pos)).abs());
+                }
+            }
+            if moves {
+                assert!(hi - lo > 0.3, "{preset:?}: heave range {}", hi - lo);
+                assert!(tilt > 0.5, "{preset:?}: pitch/roll {tilt}°");
+                assert!(err < 2.5, "{preset:?}: the hull floats {err} m off the surface");
+            } else {
+                assert!(hi - lo < 0.05 && tilt < 0.2, "{preset:?}: a flat sea moves the hull");
+            }
+        }
+    }
+
+    #[test]
     fn ships_ground_on_shallows() {
         let c = HullClass::default();
         let mut v = Vessel::new(1, &c, "s", "a", Vec2::ZERO, 0.0);
