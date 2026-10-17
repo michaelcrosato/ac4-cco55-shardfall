@@ -726,12 +726,19 @@ impl App {
         let (w, h) = self.gfx.as_ref().unwrap().size();
         let aspect = w as f32 / h.max(1) as f32;
         let mut view = self.view.clone();
-        let quality = match p.fe.settings().display.quality {
-            pav_ui::settings::Quality::Low => crate::quality::Quality::Low,
-            pav_ui::settings::Quality::Medium => crate::quality::Quality::Medium,
-            pav_ui::settings::Quality::High => crate::quality::Quality::High,
+        let display = &p.fe.settings().display;
+        // The chosen look (Painted Seas, Memory Mist, Storm) over the game's own picture.
+        if let Some(l) = display.style.look_name().and_then(pav_view::look::look_preset) {
+            pav_view::look::Look::from_preset(l).apply(&mut view);
+        }
+        // The quality preset: the view lowers effects, shadows, ocean, plants and terrain
+        // detail (`pav_view::quality`); the scaler sets the resolution (Low 0.5 MP, Medium 1 MP).
+        let (quality, preset) = match display.quality {
+            pav_ui::settings::Quality::Low => (crate::quality::Quality::Low, pav_view::quality::QualityChoice::Low),
+            pav_ui::settings::Quality::Medium => (crate::quality::Quality::Medium, pav_view::quality::QualityChoice::Medium),
+            pav_ui::settings::Quality::High => (crate::quality::Quality::High, pav_view::quality::QualityChoice::High),
         };
-        quality.trim(self.touch_screen, &mut view);
+        view.quality = preset;
         self.builder.now = self.started.elapsed().as_secs_f64();
         let events: Vec<_> = std::mem::take(&mut *host.shared.events.lock().unwrap());
         self.builder.add_events(&events);
@@ -802,6 +809,10 @@ impl App {
         let ppp_out = out.pixels_per_point;
         let prims = self.egui_ctx.tessellate(out.shapes, ppp_out);
         let mut textures = out.textures_delta;
+        let (render_scale, lights) =
+            self.scaler.update(quality, self.touch_screen, p.wall_dt * 1000.0, gfx.size(), gfx.window.scale_factor() as f32);
+        gfx.renderer.render_scale = render_scale;
+        gfx.renderer.max_shadow_lights = lights;
         gfx.draw(&scene, Some((&prims, &mut textures, ppp_out)));
         if self.boot_done_at.is_none() {
             self.boot_done_at = Some(Instant::now());

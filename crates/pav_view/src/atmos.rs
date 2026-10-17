@@ -96,6 +96,25 @@ pub fn set_far_plane(cam: &mut rs::CameraData, far: f32) {
     }
 }
 
+/// Fits the sun's shadow square to the camera: `reach` times the radius `apply` set, centred
+/// ahead of the target along the view (a third of the radius), so what the camera sees in front
+/// of its focus is shadowed and little is spent behind the eye. Looking straight down keeps it
+/// on the target.
+pub fn fit_shadow(scene: &mut Scene, eye: Vec3, target: Vec3, reach: f32) {
+    let r = (scene.sun.shadow_radius * reach.max(0.05)).max(1.0);
+    scene.sun.shadow_radius = r;
+    let ahead = Vec2::new(target.x - eye.x, target.z - eye.z);
+    let len = ahead.length();
+    if len < 1e-3 {
+        scene.sun.shadow_center = target;
+        return;
+    }
+    // Full lead once the camera is as far behind its target as it is above it.
+    let level = (len / ((target.y - eye.y).abs() + len)).clamp(0.0, 1.0);
+    let lead = ahead / len * (r / 3.0) * level;
+    scene.sun.shadow_center = target + Vec3::new(lead.x, 0.0, lead.y);
+}
+
 /// How stormy `a` is (0..1): rain under a heavy sky.
 pub fn storminess(a: &Atmosphere) -> f32 {
     ((a.rain * 1.4).min(1.0) * smoothstep(0.45, 0.9, a.cloud_cover)).clamp(0.0, 1.0)
