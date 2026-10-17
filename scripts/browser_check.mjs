@@ -104,6 +104,8 @@ async function waitMode(page, want, timeoutMs) {
 // ---- desktop
 if (!process.argv.includes('--phone-only')) {
   const page = await browser.newPage({ viewport: { width: 960, height: 540 } });
+  // SwiftShader under load can take longer than Playwright's 30 s to load the page.
+  page.setDefaultNavigationTimeout(180000);
   const errors = watchConsole(page, 'desktop');
   await page.goto(url);
   const m1 = await waitMode(page, ['title'], 180000);
@@ -143,6 +145,7 @@ if (!process.argv.includes('--phone-only')) {
 {
   const ctx = await browser.newContext({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1 });
   const page = await ctx.newPage();
+  page.setDefaultNavigationTimeout(180000);
   const errors = watchConsole(page, 'phone');
   await page.goto(url);
   const m1 = await waitMode(page, ['attract'], 180000);
