@@ -73,16 +73,16 @@ fn generate(text: &str) -> anyhow::Result<Prebuilt> {
     Ok(Prebuilt { fields, patches, structures: all, vegetation, areas, markers })
 }
 
-/// The generated Tab I (built on first use).
-pub fn prebuilt() -> Arc<Prebuilt> {
-    static CACHE: Mutex<Option<Arc<Prebuilt>>> = Mutex::new(None);
+/// A level's generated geometry (built on first use, once per file).
+pub fn prebuilt_file(file: &str) -> Arc<Prebuilt> {
+    static CACHE: Mutex<BTreeMap<String, Arc<Prebuilt>>> = Mutex::new(BTreeMap::new());
     let mut c = CACHE.lock().unwrap_or_else(|p| p.into_inner());
-    if let Some(p) = c.as_ref() {
+    if let Some(p) = c.get(file) {
         return p.clone();
     }
-    let text = crate::data("tab1_world.toml").unwrap_or_default();
+    let text = crate::data(file).unwrap_or_default();
     let p = Arc::new(generate(&text).unwrap_or_else(|e| {
-        log::error!("{e:#}");
+        log::error!("{file}: {e:#}");
         Prebuilt {
             fields: Vec::new(),
             patches: Vec::new(),
@@ -92,14 +92,19 @@ pub fn prebuilt() -> Arc<Prebuilt> {
             markers: BTreeMap::new(),
         }
     }));
-    *c = Some(p.clone());
+    c.insert(file.to_string(), p.clone());
     p
 }
 
-/// Places Tab I in a fresh simulation.
+/// Tab I's generated geometry.
+pub fn prebuilt() -> Arc<Prebuilt> {
+    prebuilt_file("tab1_world.toml")
+}
+
+/// Places a level's geometry (the world's `geometry` file) in a fresh simulation.
 pub fn build(sim: &mut Sim, world: &World, content: &Content) -> anyhow::Result<()> {
-    let _ = (world, content);
-    let p = prebuilt();
+    let _ = content;
+    let p = prebuilt_file(&world.geometry);
     let st = &mut sim.state;
     for patch in &p.patches {
         st.statics.set_terrain(&mut st.physics, RegionKey::Chunk(patch.cx, patch.cz), patch.clone());
@@ -110,8 +115,8 @@ pub fn build(sim: &mut Sim, world: &World, content: &Content) -> anyhow::Result<
 }
 
 /// Whether the scene has generated terrain (else the shapes are drawn).
-pub fn has_terrain(_sim: &Sim) -> bool {
-    !prebuilt().fields.is_empty()
+pub fn has_terrain(world: &World) -> bool {
+    !prebuilt_file(&world.geometry).fields.is_empty()
 }
 
 /// A drawn mesh of an island shape (cached).

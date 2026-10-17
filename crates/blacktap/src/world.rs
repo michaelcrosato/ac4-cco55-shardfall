@@ -24,12 +24,19 @@ pub struct IslandShape {
     pub shelf: f32,
 }
 
+fn tab1_geometry() -> String {
+    "tab1_world.toml".into()
+}
+
 fn shelf() -> f32 {
     35.0
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
 pub struct LevelFile {
+    /// The generated geometry (islands, structures, plants) for this level.
+    #[serde(default = "tab1_geometry")]
+    pub geometry: String,
     #[serde(default)]
     pub marker: BTreeMap<String, [f32; 3]>,
     #[serde(default)]
@@ -161,6 +168,8 @@ pub struct World {
     pub bot_hints: BTreeMap<String, BotHint>,
     /// Generated areas: stalk grass and hay (hiding), soft landings, perches.
     pub zones: Vec<pav_core::structures::Area>,
+    /// The geometry file this world was built from.
+    pub geometry: String,
 }
 
 impl World {
@@ -294,7 +303,7 @@ pub fn load(text: &str) -> anyhow::Result<Arc<World>> {
         }
     }
     let f: LevelFile = toml::from_str(text)?;
-    let level = crate::island::prebuilt();
+    let level = crate::island::prebuilt_file(&f.geometry);
     let half = f.bounds.hard + 40.0;
     let seabed = Arc::new(if level.fields.is_empty() {
         bake_seabed(&f.shape, half)
@@ -347,6 +356,7 @@ pub fn load(text: &str) -> anyhow::Result<Arc<World>> {
         collectibles: f.collectible,
         bot_hints: f.bot_hint.into_iter().map(|h| (h.name.clone(), h)).collect(),
         zones: level.areas.clone(),
+        geometry: f.geometry.clone(),
     });
     *CACHE.lock().unwrap_or_else(|p| p.into_inner()) = Some((key, w.clone()));
     Ok(w)

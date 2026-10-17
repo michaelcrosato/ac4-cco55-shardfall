@@ -1,0 +1,13 @@
+# The Drydock's geometry: a compact cay and lagoon (pav_core::island format, see yard.toml).
+[markers]
+spawn = [0.0, 0.0, 0.0]
+
+[[island]]
+name = "drydock"
+seed = 3
+outline = [[-60, -20], [-40, -50], [0, -60], [40, -50], [60, -20], [55, 20], [30, 40], [-30, 40], [-55, 20]]
+beach = 10
+shelf = 20
+rise = 3
+peaks = [{ at = [0, -20], height = 6, radius = 40 }]
+noise = { scale = 20, amp = 0.6, seed = 1 }

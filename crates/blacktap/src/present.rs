@@ -192,6 +192,9 @@ pub fn ui(g: &BlackTap, sim: &Sim) -> UiModel {
     } else {
         crate::traverse::ui(g, sim, &mut ui);
         crate::stealth::ui(g, sim, &mut ui);
+        if g.mode == Mode::Drydock {
+            crate::drydock::ui(g, sim, &mut ui);
+        }
     }
     // Onboarding: one big prompt for the action being taught.
     if let Some(t) = &g.teaching {
@@ -440,7 +443,7 @@ pub fn draw(g: &BlackTap, sim: &Sim, out: &mut DrawList) {
     let c = g.content();
     let w = g.world();
     // The islands while they are shapes (the terrain generator replaces this).
-    if !crate::island::has_terrain(sim) {
+    if !crate::island::has_terrain(&g.world()) {
         for (i, s) in w.shapes.iter().enumerate() {
             out.push(DrawItem::Mesh {
                 mesh: crate::island::shape_mesh(s, i as u64),
@@ -625,6 +628,9 @@ pub fn draw(g: &BlackTap, sim: &Sim, out: &mut DrawList) {
         crate::stealth::draw_arcs(g, out);
     }
     crate::stealth::draw(g, sim, out);
+    if g.mode == crate::game::Mode::Drydock {
+        crate::drydock::draw(g, sim, out);
+    }
 }
 
 pub fn atmosphere(g: &BlackTap) -> Atmosphere {

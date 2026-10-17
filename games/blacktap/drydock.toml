@@ -1,0 +1,7 @@
+# The Drydock (developer level, PLAN §9.19): the rules' data, like tab1.toml. Its geometry is
+# drydock_world.toml.
+geometry = "drydock_world.toml"
+
+[marker]
+r1_start = [0.0, 0.0, 60.0]
+spawn = [0.0, 0.0, 0.0]

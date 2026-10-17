@@ -155,6 +155,12 @@ pub struct BlackTap {
     /// The world seed: runs on different seeds differ a little (wind, gun timing).
     #[serde(default)]
     pub seed: u64,
+    /// The level's rules file (tab1.toml; drydock.toml for the Drydock).
+    #[serde(default = "tab1_level")]
+    pub level: String,
+    /// The Drydock's state (stations, pads).
+    #[serde(default)]
+    pub dock: crate::drydock::Dock,
     /// Events to emit in the next `post` (from places without the event list).
     #[serde(skip)]
     pub pending_events: Vec<SimEvent>,
@@ -204,7 +210,8 @@ fn parse_scene(rest: Option<&str>) -> Result<(Mode, u8, Option<u8>, Option<Strin
 pub fn build(sim: &mut Sim, rest: Option<&str>) -> Result<()> {
     let (mode, round, demo, step) = parse_scene(rest)?;
     let content = crate::content::load()?;
-    let world = crate::world::load(&crate::data("tab1.toml").ok_or_else(|| anyhow!("games/blacktap/tab1.toml is missing"))?)?;
+    let level = if mode == Mode::Drydock { "drydock.toml" } else { "tab1.toml" };
+    let world = crate::world::load(&crate::data(level).ok_or_else(|| anyhow!("games/blacktap/{level} is missing"))?)?;
     crate::foot::build_world(sim, &world, &content)?;
     sim.config.bombs.weapon = CharWeapon::None;
     // Free-running and climbing everything vertical; ledges grab; swimmers climb out.
@@ -249,6 +256,8 @@ pub fn build(sim: &mut Sim, rest: Option<&str>) -> Result<()> {
         land: crate::foot::Land::default(),
         stealth: crate::stealth::Stealth::default(),
         seed: sim.state.seed,
+        level: level.to_string(),
+        dock: crate::drydock::Dock::default(),
         pending_events: Vec::new(),
         tool_press: 0,
         content: Some(content.clone()),
@@ -296,7 +305,7 @@ impl BlackTap {
 
     pub fn world(&self) -> Arc<World> {
         self.world.clone().unwrap_or_else(|| {
-            let text = crate::data("tab1.toml").unwrap_or_default();
+            let text = crate::data(&self.level).unwrap_or_default();
             crate::world::load(&text).unwrap_or_default()
         })
     }
@@ -585,6 +594,9 @@ impl Game for BlackTap {
         }
         // The town's and the fort's people (and the player's land tools).
         out.extend(crate::stealth::pre(self, sim, input, playing, dt, events));
+        if self.mode == Mode::Drydock {
+            out.extend(crate::drydock::pre(self, sim, input, dt, events));
+        }
         // The camera.
         let (ctx_name, target, exclude) = crate::present::camera_context(self, sim, input);
         let ctx = c.camera.get(ctx_name);
@@ -641,6 +653,9 @@ impl Game for BlackTap {
         }
         crate::foot::post(self, sim, dt, events);
         crate::rounds::post(self, sim, dt, events);
+        if self.mode == Mode::Drydock {
+            crate::drydock::post(self, sim, dt, events);
+        }
         // Spilled → back to the checkpoint.
         if let Some(t) = &mut self.spilled {
             *t -= dt;
@@ -781,6 +796,10 @@ impl Game for BlackTap {
         self.caches();
         crate::commands::command(self, sim, name, args)
     }
+}
+
+fn tab1_level() -> String {
+    "tab1.toml".into()
 }
 
 /// A deterministic offset in ±`range` from the world seed (seed 1 gives 0: the authored run).
