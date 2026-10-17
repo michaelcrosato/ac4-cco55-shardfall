@@ -356,6 +356,36 @@ pub fn setup(g: &mut BlackTap, sim: &mut Sim) {
     for group in GROUPS {
         spawn_group(g, sim, group);
     }
+    untangle_terrain_keys(sim);
+}
+
+/// The key the view gives a terrain chunk's render mesh (`pav_view::build`, kept in step).
+pub fn terrain_render_key(cx: i32, cz: i32, version: u64) -> u64 {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for x in [cx as i64 as u64, cz as i64 as u64, version] {
+        h = (h ^ x).wrapping_mul(0x0100_0000_01b3);
+    }
+    h
+}
+
+/// The view keys each terrain chunk's mesh by a hash of (cx, cz, version) that collides for
+/// some pairs of chunks (the Drydock had four land chunks east of x = 64 drawing open-sea
+/// meshes instead, so their land showed as surf). A chunk whose key is taken gets a fresh one:
+/// re-setting its palette bumps its version. Deterministic (chunk order).
+pub fn untangle_terrain_keys(sim: &mut Sim) {
+    let mut taken = std::collections::BTreeSet::new();
+    let regions: Vec<pav_core::statics::RegionKey> = sim.state.statics.chunks.keys().copied().collect();
+    for region in regions {
+        for _ in 0..64 {
+            let Some(chunk) = sim.state.statics.chunks.get(&region) else { break };
+            let Some(t) = &chunk.terrain else { break };
+            if taken.insert(terrain_render_key(t.cx, t.cz, chunk.version)) {
+                break;
+            }
+            let palette = chunk.palette.clone();
+            sim.state.statics.set_palette(region, palette);
+        }
+    }
 }
 
 /// The Black Tap at her mooring west of the pier, bow to the lagoon's mouth, anchored.
@@ -632,6 +662,40 @@ pub fn post(g: &mut BlackTap, sim: &mut Sim, dt: f32, _events: &mut Vec<SimEvent
 }
 
 // ---------------------------------------------------------------- pad effects
+
+/// Effect kinds `trigger` knows (`kind:arg`).
+const EFFECTS: [&str; 26] = [
+    "ship", "map", "ui", "wind", "flotsam", "gunnery", "duel", "mortar", "hulk", "lift", "slowmo", "survey", "ring", "tools",
+    "yard", "heat", "poster", "market", "theatre", "song", "mix", "sound", "atmos", "weather", "camera", "rumble",
+];
+
+/// Problems in the station table: unknown effects, lifts to missing markers, unknown
+/// atmospheres, camera contexts or overlays (`pav level_check` covers Tab I; tests run this).
+pub fn check(g: &BlackTap) -> Vec<String> {
+    let st = stations(g);
+    let w = g.world();
+    let c = g.content();
+    let mut problems = Vec::new();
+    for p in &st.pads {
+        let (kind, arg) = p.effect.split_once(':').unwrap_or((p.effect.as_str(), ""));
+        let ok = match kind {
+            "lift" => w.marker(arg).is_some(),
+            "atmos" => c.atmospheres.contains_key(arg),
+            "camera" => CONTEXTS.contains(&arg) && c.camera.0.contains_key(arg),
+            "ui" => ["tiles", "wheel", "results", "map", "cinematic", "off"].contains(&arg),
+            k => EFFECTS.contains(&k),
+        };
+        if !ok {
+            problems.push(format!("{}: pad '{}' has a bad effect '{}'", st.list[p.station].key, p.label, p.effect));
+        }
+    }
+    for m in ["r1_start", "start", "hulk", "duel_spawn", "gun_battery", "mortar_pos", "whistle", "ring_center", "map_table"] {
+        if w.marker(m).is_none() {
+            problems.push(format!("drydock.toml: marker '{m}' is missing"));
+        }
+    }
+    problems
+}
 
 /// Fires a pad's effect.
 fn trigger(g: &mut BlackTap, sim: &mut Sim, pad: &Pad, events: &mut Vec<SimEvent>) {

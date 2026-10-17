@@ -86,6 +86,8 @@ fn scene_builds_with_signs_pads_and_people() {
     assert!(g.land.deck.is_some(), "her deck is walkable");
     let st = stations(g);
     assert!(st.list.len() >= 21, "every station: {}", st.list.len());
+    let problems = blacktap::drydock::check(g);
+    assert!(problems.is_empty(), "{problems:#?}");
     for key in [
         "sailing_lane",
         "gunnery_range",
@@ -141,6 +143,23 @@ fn scene_builds_with_signs_pads_and_people() {
     let obj = frame.ui.objective.clone().expect("the station guide");
     assert_eq!(obj.title, "PIER");
     assert!(!obj.text.is_empty() && !obj.optional.is_empty());
+}
+
+#[test]
+fn every_terrain_chunk_has_its_own_render_mesh() {
+    // The view keys terrain meshes by a hash that collides for some chunks (their land then
+    // draws as open sea); the Drydock gives each chunk a fresh key.
+    let sim = common::sim(SCENE, 1);
+    let mut keys = std::collections::BTreeMap::new();
+    for (region, chunk) in &sim.state.statics.chunks {
+        if let Some(t) = &chunk.terrain {
+            let key = blacktap::drydock::terrain_render_key(t.cx, t.cz, chunk.version);
+            if let Some(other) = keys.insert(key, *region) {
+                panic!("{other:?} and {region:?} share a terrain render key");
+            }
+        }
+    }
+    assert!(keys.len() > 40, "terrain chunks: {}", keys.len());
 }
 
 #[test]
