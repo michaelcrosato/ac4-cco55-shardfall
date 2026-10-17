@@ -118,7 +118,9 @@ fn zone_events_reach_the_games_post() {
         note: String::new(),
     };
     let key = RegionKey::chunk_of(feet);
-    sim.state.statics.add_zone_to(key, zone(ZoneKind::Checkpoint, feet - Vec3::new(1.0, 0.5, 1.0), feet + Vec3::new(1.0, 2.0, 1.0)));
+    sim.state
+        .statics
+        .add_zone_to(key, zone(ZoneKind::Checkpoint, feet - Vec3::new(1.0, 0.5, 1.0), feet + Vec3::new(1.0, 2.0, 1.0)));
     sim.state.statics.add_zone_to(key, zone(ZoneKind::Water, feet - Vec3::new(1.0, 0.5, 1.0), feet + Vec3::new(1.0, 0.3, 1.0)));
     for _ in 0..3 {
         sim.step(&InputFrame::default());
