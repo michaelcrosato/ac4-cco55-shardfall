@@ -1,4 +1,4 @@
-//! A bot trace for debugging (not part of any gate): plays `BT_SCENE` (default `blacktap`) on
+//! A bot trace for debugging (not part of any gate): plays `BT_SCENE` (e.g. `blacktap`) on
 //! `BT_SEED` for `BT_SECS` seconds, printing a compact status every `BT_EVERY` seconds.
 //!
 //! `BT_SCENE=blacktap/round/2 BT_SEED=1 cargo test -p blacktap --test trace -- --ignored --nocapture`
@@ -44,7 +44,11 @@ fn compact(s: &Value) -> String {
 #[test]
 #[ignore = "debugging aid"]
 fn trace() {
-    let scene: String = env("BT_SCENE", "blacktap".to_string());
+    // Only on request (it would otherwise ride along with `--ignored` gate runs).
+    let Ok(scene) = std::env::var("BT_SCENE") else {
+        eprintln!("trace: set BT_SCENE (e.g. blacktap/round/2) to run it");
+        return;
+    };
     let seed: u64 = env("BT_SEED", 1);
     let secs: f32 = env("BT_SECS", 300.0);
     let every: f32 = env("BT_EVERY", 10.0);

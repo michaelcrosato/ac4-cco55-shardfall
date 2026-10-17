@@ -6,6 +6,52 @@ compactions: after any restart read §14, then the top of this file, then `git l
 
 ---
 
+## 2026-10-17 — The whole Tab by the bot on 3 seeds; map, nav25, Drydock, gear
+
+**Built**
+- **Map chart** (`crates/blacktap/src/map.rs`): coastlines and two hill contours traced from the
+  heightfields (`pav_core::island::contours`, marching squares + Douglas–Peucker), roads,
+  building footprints and place names (`[[map_label]]`); live icons for the player, ships,
+  flotsam, objectives, the fort, the tavern, lookouts (surveyed or not) and the collectibles a
+  survey revealed. The map opens zoomed ×2 on the player.
+- **nav25** (agent, merged `6918de9`): a layered walkable grid (streets, roofs, wall walks) with
+  A*, flow fields, ladder links and gates. Guards path with it when investigating, searching,
+  running to the bell and returning to post; fighters, the bot's melee and the bot's walking
+  go round walls with cached flow fields (`crates/blacktap/src/paths.rs`, `steer`).
+- **Drydock** (agent, merged `6224296`): `blacktap/drydock`, every station of §9.19 with signs,
+  guides and pads; 8 tests (`crates/blacktap/tests/drydock.rs`).
+- **Gear** (agent, merged `fcc07dd`): tricorne, bicorne, bandana, straw hat, beaked hood; coats,
+  hair, stripes, the Tap bracer, holsters; pistol, musket, cutlass; look variants per archetype
+  worn by crowds, guards, boarders and our crew.
+- Engine fixes: roads ramp out of plateaus (no 3 m step at Dryport's edge); terrain chunk mesh
+  keys are injective (`pav_core::terrain::render_key`: chunks drew each other's meshes);
+  broadside guns train ±12° toward a lead point; `safe_heading` heads for deep water when
+  already in the shallows; the `ray` tool reports its range on a miss; `pav fighters`.
+- Level fixes found by the bot and `level_check` (now reports structures standing on roads):
+  the camp fence and watchtower off the fort road, the road bypasses the smugglers' hut;
+  Round 6's route leaves Dryport round the waterfront row; a checkpoint when the Restraint duel
+  starts; the bot lets go of walls its route doesn't climb, runs off ledges it is stuck on,
+  steps onto the battlement perch before raising the flag.
+- HUD: marker health bars stack under the icon; compass letters give way to marks.
+
+**Verified**
+- `cargo test -p blacktap --test full_level -- --ignored` (bot, Round 1 → TAB COMPLETE):
+  seed 1 **788 s**, seed 2 **772 s**, seed 3 **788 s** — 3 passed.
+- `cargo test -p blacktap --test rounds -- --ignored` (each Round from its own start, 5 seeds):
+  R1 24–26 s, R2 93–148 s, R3 149–230 s, R4 50 s, R5 201 s, R6 144 s — 6 passed (30 runs).
+- `cargo test -p pav_core --test games`: 6 passed, incl. `zone_events_reach_the_games_post` and
+  `hook_games_can_turn_the_bombs_off`. `cargo test -p pav_core --test nav25`: 9 passed.
+  `cargo test -p blacktap` quick suites (data, determinism ×3, drydock ×8, persist, rounds R1).
+- `pav level_check` on `blacktap/round/6`: ok, no problems. Captures looked at:
+  `out/ui/pause_map_live-1080.png` (the chart), `out/ui/hud_fix-1080.png` (markers).
+
+**Decisions**
+- The bot uses flow fields (a pure function of the level and the goal, cached) rather than
+  per-bot paths, so it stays a stateless function of the game and replays stay exact.
+- Ledge safety stays for walking; the bot runs only when stuck.
+
+---
+
 ## 2026-10-17 — Phases 2–5: Tab I world, all six Rounds played by the bot, attract
 
 **Built**
