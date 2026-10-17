@@ -285,6 +285,7 @@ impl crate::world::NpcSpawn {
 pub fn act(g: &mut BlackTap, sim: &mut Sim, name: &str, _arg: Option<&str>) {
     match name {
         "spawn_town" => spawn_group(g, sim, "town"),
+        "spawn_tavern" => spawn_group(g, sim, "tavern"),
         "spawn_courier" => spawn_group(g, sim, "courier"),
         "spawn_stocks_guards" => spawn_group(g, sim, "stocks"),
         "spawn_fort_guards" => spawn_group(g, sim, "fort"),
@@ -363,6 +364,12 @@ pub fn on_kill(g: &mut BlackTap, sim: &mut Sim, id: EntityId, how: Option<Assass
     }
     if group == "stocks" {
         g.mission.set_flag("killed_at_stocks");
+    }
+    if group == "contract" {
+        g.flags.insert("contract_done".into());
+        g.stats.reales += 500;
+        g.toast("Contract complete: 500 reales");
+        g.pending_events.push(SimEvent::cue("pickup_chest", at));
     }
     if kind == "drye" {
         g.mission.set_flag("drye_dead");
@@ -799,6 +806,9 @@ fn interaction(g: &BlackTap, sim: &Sim) -> Option<(&'static str, &'static str, f
     {
         return Some(("flag", "Raise the Tap flag", 1.5));
     }
+    if g.mode == crate::game::Mode::FreeRoam && !g.flags.contains("contract_taken") && near("tavern", 3.5) {
+        return Some(("contract", "Mother Molasses: take the contract", 0.6));
+    }
     if g.mission.flag("has_key") && !g.mission.flag("in_fort") && near("cave", 2.6) {
         return Some(("tunnel", "Take the smugglers' tunnel", 0.5));
     }
@@ -884,6 +894,27 @@ fn do_interaction(g: &mut BlackTap, sim: &mut Sim, what: &str, events: &mut Vec<
                 events.push(SimEvent::cue("poster_tear", p));
                 g.show("poster");
             }
+        }
+        "contract" => {
+            // A tax collector walks one of the town's routes, picked from the seed and the time.
+            g.flags.insert("contract_taken".into());
+            let routes = ["town_patrol_a", "town_patrol_b", "courier_route"];
+            let pick = routes[((g.seed.wrapping_mul(31) + g.time as u64) % routes.len() as u64) as usize];
+            let route = g.world().route(pick);
+            let start = route.first().copied().unwrap_or(glam::Vec2::new(184.0, 18.0));
+            let spawn_def = crate::world::NpcSpawn {
+                group: "contract".into(),
+                kind: "officer".into(),
+                at: [start.x, 2.4, start.y],
+                route: pick.into(),
+                tags: vec!["collector".into(), "critical".into()],
+                ..Default::default()
+            };
+            spawn(g, sim, &spawn_def, glam::Vec2::ZERO, 0);
+            let c = g.content();
+            g.dialog.say(&c.dialog, "fr_contract");
+            g.toast("Contract: the tax collector walks Dryport");
+            events.push(SimEvent::cue("objective_new", p));
         }
         "tunnel" => {
             // Through the smugglers' tunnel to the fort's cellar (a fade covers the cut).
@@ -1185,9 +1216,12 @@ pub fn post(g: &mut BlackTap, sim: &mut Sim, dt: f32, events: &mut Vec<SimEvent>
         }
     }
     // Collectibles on land (walk over them).
+    let ship = g.sea.my_ship().filter(|_| g.body == Body::Helm).map(|s| s.pos);
     for c in &w.collectibles {
         let at = Vec3::from(c.at);
-        if !g.stealth.collected.contains(&c.name) && at.distance(feet) < 1.8 {
+        // On foot: walk over it; at sea (floating ones): sail through it.
+        let by_ship = at.y < 0.6 && ship.is_some_and(|sp| sp.distance(glam::Vec2::new(at.x, at.z)) < 12.0);
+        if !g.stealth.collected.contains(&c.name) && (at.distance(feet) < 1.8 || by_ship) {
             g.stealth.collected.insert(c.name.clone());
             g.stats.collectibles += 1;
             let (cue, text, reales) = match c.kind.as_str() {

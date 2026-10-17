@@ -415,7 +415,7 @@ impl Vessel {
         // Fire burns the hull until put out.
         if self.fire > 0.0 {
             self.fire -= dt;
-            self.hull -= 6.0 * dt;
+            self.hull -= 3.0 * dt;
         }
         if self.hull <= 0.0 && self.sinking <= 0.0 {
             self.hull = 0.0;

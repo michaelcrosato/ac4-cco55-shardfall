@@ -452,3 +452,9 @@ do = ["walk", "climb", "walk"]
 name = "r6_dive"
 points = [[336.0, 15.0, -212.0], [338.6, 15.0, -219.0], [344.0, 26.1, -219.0]]
 do = ["walk", "climb", "walk"]
+
+[[npc]]
+group = "tavern"
+kind = "molasses"
+at = [190.0, 2.4, 25.5]
+facing = 0.0

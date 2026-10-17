@@ -254,6 +254,11 @@ priority = 3
 speaker = "molasses"
 text = "The Last Drop is open again. And I've a contract, if you're thirsty for work."
 
+[line.fr_contract]
+speaker = "molasses"
+text = "The tax collector's back, sniffing at every barrel in Dryport. Tap him, Captain — quietly."
+priority = 2
+
 [line.fr_convoy]
 speaker = "pip"
 text = "Temperance convoy on the horizon — fat with seized rum."

@@ -172,12 +172,12 @@ impl Sea {
             hp,
             hp_max: hp,
             range,
-            reload: if kind == BatteryKind::Mortar { 6.0 } else { 8.0 },
+            reload: if kind == BatteryKind::Mortar { 7.0 } else { 8.0 },
             cooldown: 3.0 + id as f32 % 3.0 + self.jitter,
             telegraph: 0.0,
             destroyed: false,
             half: if kind == BatteryKind::Mortar { Vec3::new(5.0, 9.0, 5.0) } else { Vec3::new(9.0, 4.0, 6.0) },
-            damage: if kind == BatteryKind::Mortar { 34.0 } else { 10.0 },
+            damage: if kind == BatteryKind::Mortar { 22.0 } else { 10.0 },
             spread: 3.0,
         });
         id
