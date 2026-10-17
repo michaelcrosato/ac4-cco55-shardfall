@@ -17,7 +17,7 @@ fn flat(v: Vec3) -> Vec2 {
 }
 
 fn tap(sim: &Sim, every: u64) -> bool {
-    sim.state.tick % every.max(2) == 0
+    sim.state.tick.is_multiple_of(every.max(2))
 }
 
 fn press(i: &mut InputFrame, bit: u32) {
@@ -210,7 +210,7 @@ fn creep(g: &BlackTap, sim: &Sim, id: pav_core::entity::EntityId, at: Vec3, kill
     let back = Vec2::new(facing.sin(), facing.cos());
     let behind = at - Vec3::new(back.x, 0.0, back.y) * 1.1;
     let d = flat(at - p).length();
-    let mut i = if d > 3.0 { go(g, sim, behind, false) } else { go(g, sim, behind, false) };
+    let mut i = go(g, sim, behind, false);
     if d < 6.0 {
         i.held |= b::CROUCH;
     }

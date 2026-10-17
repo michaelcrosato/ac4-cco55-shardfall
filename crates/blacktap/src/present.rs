@@ -654,7 +654,7 @@ pub fn atmosphere(g: &BlackTap) -> Atmosphere {
     // Lightning in the storm: brief flashes from the game's clock (deterministic).
     if a.rain > 0.5 {
         let t = g.time * 0.37;
-        let f = (t.sin() * 43758.5453).fract().abs();
+        let f = (t.sin() * 43_758.547).fract().abs();
         a.lightning = if f > 0.985 { 1.0 } else { 0.0 };
     }
     a

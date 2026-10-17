@@ -31,7 +31,7 @@ fn steer(g: &BlackTap, want: f32) -> f32 {
 
 /// Presses `bit` on alternate ticks (a held-down button never "just" presses again).
 fn tap(sim: &Sim, every: u64) -> bool {
-    sim.state.tick % every.max(2) == 0
+    sim.state.tick.is_multiple_of(every.max(2))
 }
 
 pub fn input(g: &BlackTap, sim: &Sim) -> InputFrame {

@@ -647,7 +647,9 @@ pub fn apply_upgrade(g: &mut BlackTap, up: &str) {
             }
         }
         "heavy_shot" => g.sea.heavy_shot += 0.35,
-        "swift_rigging" => g.flags.insert("swift_rigging".into()).then_some(()).unwrap_or(()),
+        "swift_rigging" => {
+            g.flags.insert("swift_rigging".into());
+        }
         "more_kegs" => {
             if let Some(s) = g.sea.ship_mut(me) {
                 s.guns.kegs_left += 3;
