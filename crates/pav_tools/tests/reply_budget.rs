@@ -54,7 +54,9 @@ fn asset_replies_fit_their_budgets() {
     // reads these rows at 3.0-3.8 bytes per token (tiktoken on the template rows), so at most 3
     // bytes a token is a safe count without a tokenizer.
     let found: Value = serde_json::from_str(&call(&mut s, "assets", json!({"find":"wood"}))).unwrap();
-    assert_eq!(found["rows"][0][0], "BUILTIN/crate", "{found}");
+    // The crate stays near the top (LIB/core/driftwood, added for beaches, now leads: its name
+    // holds the word).
+    assert!(found["rows"].as_array().unwrap().iter().take(3).any(|r| r[0] == "BUILTIN/crate"), "{found}");
     for row in rows.iter().chain(found["rows"].as_array().unwrap()) {
         let tokens = row.to_string().len().div_ceil(3);
         assert!(tokens <= 46, "listing row of ~{tokens} tokens: {row}");
