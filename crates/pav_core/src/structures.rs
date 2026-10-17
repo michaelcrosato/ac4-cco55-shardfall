@@ -648,7 +648,7 @@ impl B<'_> {
 fn flat_roof(b: &mut B, cx: f32, cz: f32, w: f32, d: f32, top: f32, color: &str, cap: &str) -> f32 {
     let t = 0.25;
     let (x0, x1, z0, z1) = (cx - w * 0.5, cx + w * 0.5, cz - d * 0.5, cz + d * 0.5);
-    b.block(Vec3::new(x0 + t, top, z0 + t), Vec3::new(x1 - t, top + 0.08, z1 - t), cap, ROOF, Some(MAT_TERRACOTTA));
+    b.block(Vec3::new(x0 + t, top, z0 + t), Vec3::new(x1 - t, top + 0.08, z1 - t), cap, ROOF, Some(MAT_PLASTER));
     let py = top + PARAPET;
     b.block(Vec3::new(x0, top, z1 - t), Vec3::new(x1, py, z1), color, CLIMBABLE | ROOF, Some(MAT_PLASTER));
     b.block(Vec3::new(x0, top, z0), Vec3::new(x1, py, z0 + t), color, CLIMBABLE | ROOF, Some(MAT_PLASTER));
@@ -766,11 +766,6 @@ pub fn generate(def: &StructureDef, ground: &dyn Fn(Vec2) -> f32) -> StructureOu
     generate_with(def, 0, ground, &[])
 }
 
-/// Generates one structure named `<kind><index>` unless the def names it.
-pub fn generate_named(def: &StructureDef, index: usize, ground: &dyn Fn(Vec2) -> f32) -> StructureOut {
-    generate_with(def, index, ground, &[])
-}
-
 /// Generates a list in order: lines between roofs find the roofs of the structures before them.
 pub fn generate_all(defs: &[StructureDef], ground: &dyn Fn(Vec2) -> f32) -> StructureOut {
     let mut all = StructureOut::default();
@@ -859,7 +854,7 @@ fn house(b: &mut B, def: &StructureDef, w: f32, d: f32, tavern: bool) {
     b.foundation(Vec2::ZERO, w + 0.2, d + 0.2, p, STONE_DARK);
     b.mass(Vec3::new(-w * 0.5, p, -d * 0.5), Vec3::new(w * 0.5, p + h, d * 0.5), st.wall, st.mat);
     let top = p + h;
-    let roof_tone = if b.r(3) < 0.5 { "#c98a5e" } else { "#d4a27a" };
+    let roof_tone = b.pick(3, &["#cf9f78", "#d9b38c", "#c88e66", "#e0c4a0"]);
     let py = flat_roof(b, 0.0, 0.0, w, d, top, st.wall, roof_tone);
     b.marker("roof", Vec3::new(0.0, top + 0.08, 0.0));
     // String courses at the floor lines (front and back), handholds.

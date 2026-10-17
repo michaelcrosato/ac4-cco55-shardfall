@@ -247,4 +247,15 @@ fn measure_a_320_by_220_island() {
     );
     assert!(hf.w >= 360 && hf.h >= 260);
     assert!(collider_ms < trimesh_ms, "height fields build faster than trimeshes");
+    // The whole yard level: island, 40 structures, vegetation, sea.
+    let t = std::time::Instant::now();
+    let mut sim = Sim::empty(1);
+    let built = island::build_level(&mut sim, &island::yard_def());
+    let level_ms = t.elapsed().as_secs_f64() * 1000.0;
+    let (blocks, decor, props, ladders) = built.structures.counts();
+    println!(
+        "yard build {level_ms:.0} ms: {blocks} blocks, {decor} decor, {props} props, {ladders} ladders from structures; plants {:?}; {} colliders",
+        built.vegetation.counts,
+        sim.state.physics.colliders.len()
+    );
 }

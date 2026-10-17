@@ -1001,8 +1001,6 @@ pub struct BuiltLevel {
     pub markers: BTreeMap<String, Vec3>,
     /// Gates by name, ready for `structures::set_gate`.
     pub gates: BTreeMap<String, crate::structures::GateRefs>,
-    /// Timings (ms) of the build steps, for reports.
-    pub timings: Vec<(String, f64)>,
 }
 
 impl BuiltLevel {
@@ -1015,32 +1013,10 @@ impl BuiltLevel {
     }
 }
 
-fn now_ms() -> f64 {
-    // Timings are for reports only (never reach game state); wasm has no clock here.
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        use std::sync::OnceLock;
-        static START: OnceLock<std::time::Instant> = OnceLock::new();
-        START.get_or_init(std::time::Instant::now).elapsed().as_secs_f64() * 1000.0
-    }
-    #[cfg(target_arch = "wasm32")]
-    {
-        0.0
-    }
-}
-
 /// Builds a level into the sim's static world: terrain chunks (mesh + height-field collider),
 /// structures, vegetation and the sea. Deterministic.
 pub fn build_level(sim: &mut Sim, def: &LevelDef) -> BuiltLevel {
-    let mut out = BuiltLevel::default();
-    let mut t = now_ms();
-    let mut lap = |name: &str, out: &mut BuiltLevel| {
-        let n = now_ms();
-        out.timings.push((name.to_string(), n - t));
-        t = n;
-    };
-    out.fields = def.island.iter().map(|d| Arc::new(generate(d))).collect();
-    lap("heightfields", &mut out);
+    let mut out = BuiltLevel { fields: def.island.iter().map(|d| Arc::new(generate(d))).collect(), ..Default::default() };
     let arcs = out.fields.clone();
     let refs: Vec<&Heightfield> = arcs.iter().map(|f| f.as_ref()).collect();
     let ground = |p: Vec2| height_at(&refs, p);
@@ -1049,7 +1025,6 @@ pub fn build_level(sim: &mut Sim, def: &LevelDef) -> BuiltLevel {
     for patch in terrain_patches(&refs) {
         st.statics.set_terrain(&mut st.physics, RegionKey::Chunk(patch.cx, patch.cz), Arc::new(patch));
     }
-    lap("terrain", &mut out);
 
     // Structures.
     let mut all = StructureOut::default();
@@ -1059,12 +1034,10 @@ pub fn build_level(sim: &mut Sim, def: &LevelDef) -> BuiltLevel {
     }
     let gates = all.place(&mut st.statics, &mut st.physics);
     out.gates = gates;
-    lap("structures", &mut out);
 
     // Vegetation.
     let veg = crate::vegetation::scatter(&def.vegetation, &refs, &all.footprints);
     veg.place(&mut st.statics, &mut st.physics);
-    lap("vegetation", &mut out);
 
     // Sea.
     if let Some(sea) = &def.sea {
@@ -1117,7 +1090,6 @@ pub fn build_level(sim: &mut Sim, def: &LevelDef) -> BuiltLevel {
     }
     out.structures = all;
     out.vegetation = veg;
-    lap("finish", &mut out);
     out
 }
 

@@ -8,6 +8,8 @@ spawn = [-22.0, 0.0, 28.0]
 overview = [0.0, 0.0, 0.0]
 
 [sea]
+min = [-260.0, -220.0]
+max = [260.0, 220.0]
 color = "#2f8fa6"
 
 [[island]]
@@ -23,7 +25,7 @@ cliffs = [{ from = [44, -80], to = [104, -28], height = 15 }]
 noise = { scale = 34, amp = 2.2, seed = 4 }
 # The town plateau above the south bay and the fort plateau on the cliff top.
 flatten = [
-  { polygon = [[-64, 10], [12, 10], [14, 52], [-62, 52]], height = 3.0, blend = 8, ground = "dirt", color = "#c9ad83" },
+  { polygon = [[-64, 10], [-14, 10], [-12, 1], [12, 1], [14, 52], [-62, 52]], height = 3.0, blend = 8, ground = "dirt", color = "#c9ad83" },
   { polygon = [[44, -70], [92, -62], [96, -26], [46, -20]], height = 15.0, blend = 10, ground = "grass" },
 ]
 roads = [{ points = [[12, 30], [24, 22], [32, 4], [42, -12], [56, -14]], width = 4 },
@@ -34,7 +36,7 @@ grass = [[[18, -8], [34, -10], [34, 6], [20, 8]],
 
 [vegetation]
 seed = 5
-grass = { spacing = 0.9, height = [1.0, 1.3], width = 1.05, color = "#a9b552", color2 = "#7c9a3e" }
+grass = { spacing = 1.0, height = [1.0, 1.3], width = 1.15, color = "#a9b552", color2 = "#7c9a3e" }
 
 # Beach palms: dense on the sand, leaning out to sea.
 [[vegetation.rule]]
@@ -58,6 +60,7 @@ slope = 30
 spacing = 8
 chance = 0.7
 scale = [0.9, 1.3]
+clear = 5
 seeds = 4
 pole = { radius = 0.3, height = 5.0, lean = 0.0 }
 
@@ -98,8 +101,8 @@ asset = "LIB/core/fern"
 ground = ["jungle", "grass"]
 height = [2.0, 40.0]
 slope = 34
-spacing = 4.5
-chance = 0.45
+spacing = 6.5
+chance = 0.5
 scale = [1.0, 1.6]
 seeds = 3
 
@@ -121,14 +124,28 @@ spacing = 5
 chance = 0.35
 patchy = 0.4
 
+# Boulders on the rocky slopes and a few on the grass and the beach.
+[[vegetation.rule]]
+asset = "LIB/core/rock_cluster"
+ground = ["rock", "cliff", "grass", "sand"]
+height = [0.3, 40.0]
+slope = 48
+spacing = 13
+chance = 0.35
+patchy = 0.35
+scale = [0.8, 1.6]
+seeds = 4
+solid = true
+align = true
+
 # Driftwood on the wet sand.
 [[vegetation.rule]]
 asset = "LIB/core/driftwood"
 ground = ["wet_sand", "sand"]
-height = [0.05, 1.0]
+height = [0.1, 1.4]
 slope = 14
-spacing = 14
-chance = 0.45
+spacing = 8
+chance = 0.5
 scale = [0.8, 1.2]
 seeds = 3
 align = true
@@ -400,7 +417,7 @@ size = [16, 12]
 kind = "battery"
 name = "east_battery"
 at = [93, -42]
-yaw = 270
+yaw = 90
 size = [14, 8]
 cannons = 4
 

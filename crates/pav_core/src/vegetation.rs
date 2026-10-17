@@ -324,8 +324,9 @@ pub fn scatter(def: &VegetationDef, fields: &[&Heightfield], footprints: &[Footp
                     if !clear.ok(p, rule.clear, rule.plateaus, rule.in_grass) {
                         continue;
                     }
-                    let gap = s * 0.45;
-                    if taken.iter().any(|(q, r)| q.distance(p) < gap.max(*r)) {
+                    // The room a plant takes; earlier plants keep theirs.
+                    let room = (s * 0.3).clamp(0.5, 3.0);
+                    if taken.iter().any(|(q, r)| q.distance(p) < *r + room * 0.5) {
                         continue;
                     }
                     let yaw = hash_f32(rs, i, k, 4) * std::f32::consts::TAU;
@@ -344,7 +345,7 @@ pub fn scatter(def: &VegetationDef, fields: &[&Heightfield], footprints: &[Footp
                         let c2 = t.color2.as_deref().map_or(c1, Color::hex);
                         out.decor.push(tuft(base, t.width * scale, th, yaw, c1.lerp(c2, hash_f32(rs, i, k, 8))));
                         *out.counts.entry("tufts".into()).or_default() += 1;
-                        taken.push((p, gap * 0.4));
+                        taken.push((p, room * 0.6));
                         continue;
                     }
                     out.props.push(StaticProp::new(&rule.asset, base, rot, scale, variant, rule.solid));
@@ -352,7 +353,7 @@ pub fn scatter(def: &VegetationDef, fields: &[&Heightfield], footprints: &[Footp
                         out.poles.push(trunk_pole(base, rot, scale, t));
                     }
                     *out.counts.entry(rule.asset.clone()).or_default() += 1;
-                    taken.push((p, gap * 0.6));
+                    taken.push((p, room));
                 }
             }
         }
