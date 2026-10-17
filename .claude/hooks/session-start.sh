@@ -1,8 +1,9 @@
 #!/bin/bash
-# Cloud-session setup: native build deps, software Vulkan (lavapipe) for captures, and a
-# prebuilt `pav` for the shardfall MCP server (.mcp.json). The server connects while this
-# hook still runs: its `cargo run` waits on the build lock, so `MCP_TIMEOUT` in
-# settings.json (default 30 s) must outlast a cold build (~4.5 min on 4 cores).
+# Cloud-session setup: native build deps, software Vulkan (lavapipe) for captures, the wasm32
+# target and wasm-bindgen for the browser build, Playwright's Chromium check, and a prebuilt
+# `pav` for the MCP server (.mcp.json). The server connects while this hook still runs: its
+# `cargo run` waits on the build lock, so `MCP_TIMEOUT` in settings.json (default 30 s) must
+# outlast a cold build (~4.5 min on 4 cores). Assassin's Keg additions: scripts/setup-game.sh.
 set -euo pipefail
 
 if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
@@ -24,4 +25,5 @@ if [ ${#missing[@]} -gt 0 ]; then
 fi
 
 echo 'export CARGO_BUILD_JOBS=4' >> "${CLAUDE_ENV_FILE:-/dev/null}"
+scripts/setup-game.sh
 CARGO_BUILD_JOBS=4 cargo build --locked -q -p pav_tools --bin pav

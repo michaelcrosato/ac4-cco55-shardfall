@@ -9,8 +9,8 @@ its commodore. It is built on the Pavilion engine from
 [shardfall](https://github.com/michaelcrosato/shardfall), extended here into the foundation for
 the full game.
 
-**Status:** planning complete. The full build plan is [`PLAN.md`](PLAN.md); implementation
-follows it phase by phase and logs progress in `docs/BUILD_LOG.md`.
+**Status:** in development (Phase 0 done: the engine is vendored and builds here). The build
+plan is [`PLAN.md`](PLAN.md); progress is logged in [`docs/BUILD_LOG.md`](docs/BUILD_LOG.md).
 
 ## Source Information
 
@@ -20,7 +20,7 @@ follows it phase by phase and logs progress in `docs/BUILD_LOG.md`.
 | **SOURCE** | *Assassin's Creed IV: Black Flag* (Ubisoft Montreal, 2013; PS3, PS4, Xbox 360, Xbox One, Wii U, PC) |
 | **GAME ENGINE** | Pavilion (shardfall), https://github.com/michaelcrosato/shardfall at commit `0098196`, workspace 0.1.0: Rust 1.98.1, wgpu 30 (WebGPU), rapier3d 0.36, egui 0.36. Vendored and extended in this repository. |
 | **Environment** | Claude Code 2.1.302 in an Anthropic-managed cloud container (claude.ai/code remote session launched from the Claude desktop app); Ubuntu 24.04.5 LTS, Linux 6.18 x86_64, 4 vCPUs, 15 GiB RAM, no GPU (Mesa lavapipe for headless rendering); headless Chromium 1194 via Playwright 1.56.1 for browser checks. Targets: the browser (Chrome/Edge with WebGPU, one self-contained HTML file), native Linux and Windows. |
-| **Model and Effort Level** | Planning: Anthropic Claude Opus 5.5 (`claude-opus-5-5`), effort max (confirmed from session metadata). Implementation: to be confirmed and recorded by the executing session. |
+| **Model and Effort Level** | Planning: Anthropic Claude Opus 5.5 (`claude-opus-5-5`), effort max (confirmed from session metadata). Implementation: Anthropic **Claude Opus 5.5** (`claude-opus-5-5`), effort **xhigh** — confirmed with `get_session` (`session_context.model` = `claude-opus-5-5`, `external_metadata.last_served_model` = `claude-opus-5-5`, `effort_level` = `xhigh`). |
 
 The engine evaluation is kept separate from this block: see [`PLAN.md`, Appendix D](PLAN.md#appendix-d-preliminary-engine-analysis-planning-view)
 (planning view) and, once the game is built, `docs/ENGINE_ANALYSIS.md`.
