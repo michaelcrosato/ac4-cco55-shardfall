@@ -16,6 +16,13 @@ height = 38.0
 shelf = 40.0
 
 [[shape]]
+name = "Abstinence Head"
+center = [330.0, -215.0]
+radii = [72.0, 52.0]
+height = 18.0
+shelf = 30.0
+
+[[shape]]
 name = "Gull Rock"
 center = [-120.0, -160.0]
 radii = [16.0, 14.0]

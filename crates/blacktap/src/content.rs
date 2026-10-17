@@ -152,6 +152,9 @@ pub struct Content {
     pub credits: Vec<CreditBlock>,
     pub classes: pav_kit::naval::Classes,
     pub styles: BTreeMap<String, pav_kit::shipyard::ShipStyle>,
+    /// The six Rounds, in order.
+    pub missions: Vec<pav_kit::mission::MissionDef>,
+    pub dialog: pav_kit::dialog::DialogBank,
 }
 
 impl Content {
@@ -173,5 +176,21 @@ pub fn load() -> Result<Arc<Content>> {
     let demo = pav_kit::demo::parse_playlist(&file("demo.toml")?).context("demo.toml")?;
     let credits: Credits = toml::from_str(&file("credits.toml")?).context("credits.toml")?;
     let ships: ShipsFile = toml::from_str(&file("ships.toml")?).context("ships.toml")?;
-    Ok(Arc::new(Content { info, camera, atmospheres, demo, credits: credits.block, classes: ships.class, styles: ships.style }))
+    let mut missions = Vec::new();
+    for n in 1..=6 {
+        let path = format!("missions/r{n}.toml");
+        missions.push(pav_kit::mission::MissionDef::parse(&file(&path)?).with_context(|| path.clone())?);
+    }
+    let dialog = pav_kit::dialog::DialogBank::parse(&file("dialog.toml")?).context("dialog.toml")?;
+    Ok(Arc::new(Content {
+        info,
+        camera,
+        atmospheres,
+        demo,
+        credits: credits.block,
+        classes: ships.class,
+        styles: ships.style,
+        missions,
+        dialog,
+    }))
 }

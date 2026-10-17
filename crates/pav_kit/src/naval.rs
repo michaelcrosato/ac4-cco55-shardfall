@@ -887,6 +887,19 @@ pub struct Battery {
     pub destroyed: bool,
     /// Half extents of its hit box.
     pub half: Vec3,
+    /// Damage of one ball (guns) or one shell (mortar), and the guns' spread (degrees).
+    #[serde(default = "battery_damage")]
+    pub damage: f32,
+    #[serde(default = "battery_spread")]
+    pub spread: f32,
+}
+
+fn battery_damage() -> f32 {
+    16.0
+}
+
+fn battery_spread() -> f32 {
+    2.0
 }
 
 /// A mortar shell's marked landing point.
@@ -937,7 +950,7 @@ impl Battery {
                         let d = to.normalize_or(Vec2::X);
                         let el = ballistics::elevation_for(to.length(), aim.y - self.pos.y, 75.0).unwrap_or(0.1);
                         for i in 0..self.guns {
-                            let spread = ((i as f32 * 2.3).sin() * 1.2).to_radians();
+                            let spread = ((i as f32 * 2.3 + self.cooldown).sin() * self.spread).to_radians();
                             let dd = rotate(d, spread);
                             let v = Vec3::new(dd.x * el.cos(), el.sin(), dd.y * el.cos()) * 75.0;
                             out.fire(Shot {
@@ -945,7 +958,7 @@ impl Battery {
                                 vel: v,
                                 kind: ShotKind::Round,
                                 owner: Owner::Battery(self.id),
-                                damage: 26.0,
+                                damage: self.damage,
                                 blast: 0.0,
                                 delay: i as f32 * 0.25,
                                 life: 8.0,
@@ -964,7 +977,7 @@ impl Battery {
                             vel,
                             kind: ShotKind::Mortar,
                             owner: Owner::Battery(self.id),
-                            damage: 60.0,
+                            damage: self.damage,
                             blast: 9.0,
                             delay: 0.0,
                             life: 4.0,

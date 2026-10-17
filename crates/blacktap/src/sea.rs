@@ -165,6 +165,8 @@ impl Sea {
             telegraph: 0.0,
             destroyed: false,
             half: if kind == BatteryKind::Mortar { Vec3::new(5.0, 9.0, 5.0) } else { Vec3::new(9.0, 4.0, 6.0) },
+            damage: if kind == BatteryKind::Mortar { 45.0 } else { 15.0 },
+            spread: 2.2,
         });
         id
     }
@@ -433,11 +435,10 @@ impl Sea {
         for e in ev {
             match e {
                 NavalEvent::Sunk(id) => {
-                    let by = self.ship(id).is_some_and(|s| s.took.get("player").copied().unwrap_or(0.0) > 0.0);
+                    // Gone under (the sinking was reported when it began).
                     if let Some(s) = self.ship(id) {
                         events.push(SimEvent::cue("sink", s.world(Vec3::ZERO)));
                     }
-                    out.push(SeaEvent::Sunk { ship: id, by_player: by });
                 }
                 NavalEvent::Grounded { id, damage } => {
                     if let Some(s) = self.ship(id) {
@@ -582,6 +583,10 @@ impl Sea {
             return;
         }
         let can_disable = s.tag == "restraint";
+        // A disabled prize stays afloat to be boarded.
+        if can_disable && s.disabled {
+            s.hull = s.hull.max(s.hull_max * 0.05);
+        }
         if let Some(e) = s.update_state(can_disable) {
             match e {
                 NavalEvent::Disabled(id) => out.push(SeaEvent::Disabled { ship: id, by: by.to_string() }),

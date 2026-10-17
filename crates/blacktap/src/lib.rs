@@ -3,9 +3,19 @@
 
 use std::borrow::Cow;
 
+pub mod bot;
 pub mod content;
+pub mod drydock;
+pub mod foot;
 pub mod game;
+pub mod island;
+pub mod looks;
+pub mod map;
+pub mod present;
+pub mod rounds;
 pub mod sea;
+pub mod stealth;
+pub mod traverse;
 pub mod world;
 
 mod embedded {

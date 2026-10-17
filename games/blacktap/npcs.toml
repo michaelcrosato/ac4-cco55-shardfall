@@ -1,0 +1,55 @@
+# Archetypes (PLAN.md §9.9–9.11): how each looks (puppet), fights (pav_kit::combat::CombatProfile)
+# and sees (pav_kit::perception::Senses). Colours sRGB hex. Helm kinds: none, cap, helm, great,
+# crown, horned, halo, hood (more in later passes).
+
+[archetype.captain]
+look = { skin = "#c89a78", shirt = "#7a1f1f", pants = "#2a2826", shoes = "#2a1d14", helm = "hood", helm_color = "#3a2a2a", cape = 0.8, cape_color = "#5a1818", gloves = "#3a2a20", belt = "#c9a24a", weapon = "sword", weapon_color = "#d8dce4", scale = 1.0 }
+
+[archetype.ally]
+look = { skin = "#b08060", shirt = "#d9c8a0", pants = "#3a4a5a", shoes = "#3a2a1a", helm = "cap", helm_color = "#a8322d", weapon = "sword", scale = 0.98 }
+combat = { hp = 80.0, damage = 14.0, windup = 0.55, interval = 2.0, reach = 2.0, speed = 3.6 }
+
+[archetype.crew]
+look = { skin = "#d2a682", shirt = "#e8e8ee", pants = "#2c3e66", shoes = "#1a1a1a", helm = "cap", helm_color = "#2c3e66", weapon = "sword", scale = 1.0 }
+combat = { hp = 50.0, damage = 12.0, windup = 0.5, interval = 2.4, reach = 2.0, speed = 3.4 }
+
+[archetype.officer]
+look = { skin = "#d8b090", shirt = "#2c3e66", pants = "#e8e8ee", shoes = "#1a1a1a", helm = "helm", helm_color = "#1f2c4a", pauldrons = 0.6, armor_color = "#e2b04a", weapon = "sword", weapon_color = "#e8e8f0", scale = 1.03 }
+combat = { hp = 90.0, damage = 16.0, windup = 0.45, interval = 2.0, reach = 2.1, counter = "stagger", speed = 3.6 }
+
+[archetype.sobers]
+look = { skin = "#e0b898", shirt = "#1f2c4a", pants = "#e8e8ee", shoes = "#111111", helm = "helm", helm_color = "#111a2e", pauldrons = 0.9, armor_color = "#e2b04a", cape = 0.7, cape_color = "#2c3e66", weapon = "sword", weapon_color = "#f0f0f6", scale = 1.06 }
+combat = { hp = 120.0, damage = 18.0, windup = 0.45, interval = 1.9, reach = 2.2, counter = "stagger", speed = 3.8 }
+
+[archetype.guard]
+look = { skin = "#d2a682", shirt = "#2c3e66", pants = "#e8e8ee", shoes = "#1a1a1a", helm = "cap", helm_color = "#1f2c4a", weapon = "sword", scale = 1.0 }
+combat = { hp = 60.0, damage = 12.0, windup = 0.55, interval = 2.4, reach = 2.0, speed = 3.4 }
+senses = { near = 8.0, far = 28.0, fov = 110.0 }
+
+[archetype.brute]
+look = { skin = "#c08a68", shirt = "#2c3e66", pants = "#3a3a44", shoes = "#1a1a1a", helm = "great", helm_color = "#444a58", pauldrons = 1.0, armor_color = "#5a6070", weapon = "axe", scale = 1.18 }
+combat = { hp = 140.0, damage = 22.0, windup = 0.65, interval = 2.8, reach = 2.3, counter = "stagger", blocks_light = true, speed = 3.0 }
+senses = { near = 7.0, far = 24.0, fov = 100.0 }
+
+[archetype.musketeer]
+look = { skin = "#d8b090", shirt = "#2c3e66", pants = "#e8e8ee", shoes = "#1a1a1a", helm = "cap", helm_color = "#e8e8ee", weapon = "spear", weapon_color = "#5a3b26", scale = 1.0 }
+combat = { hp = 50.0, damage = 20.0, windup = 0.8, interval = 3.0, reach = 2.0, ranged = true, speed = 3.2 }
+senses = { near = 9.0, far = 34.0, fov = 100.0 }
+
+[archetype.courier]
+look = { skin = "#d8b090", shirt = "#e8e8ee", pants = "#2c3e66", shoes = "#2a1d14", helm = "cap", helm_color = "#c9a24a", scale = 0.96 }
+combat = { hp = 30.0, damage = 6.0, speed = 2.6 }
+senses = { near = 6.0, far = 20.0, fov = 100.0 }
+
+[archetype.drye]
+look = { skin = "#e8c8b0", shirt = "#f0f0f4", pants = "#2c3e66", shoes = "#111111", helm = "crown", helm_color = "#e2b04a", cape = 0.9, cape_color = "#2c3e66", pauldrons = 0.7, armor_color = "#e2b04a", weapon = "sword", weapon_color = "#f0f0f6", scale = 1.04 }
+combat = { hp = 120.0, damage = 14.0, windup = 0.6, interval = 2.4, reach = 2.1, counter = "stagger", speed = 3.4 }
+senses = { near = 8.0, far = 26.0, fov = 110.0 }
+
+[archetype.civilian]
+look = { skin = "#b88866", shirt = "#d9a35b", pants = "#6b4a2f", shoes = "#3a2a1a", helm = "hood", helm_color = "#8fc1a9", scale = 0.97 }
+combat = { hp = 20.0, damage = 0.0, speed = 2.4 }
+
+[archetype.molasses]
+look = { skin = "#8a5a3c", shirt = "#c9822b", pants = "#5a2c22", shoes = "#2a1d14", helm = "hood", helm_color = "#7a3a20", cape = 0.5, cape_color = "#6b4a2f", scale = 0.95 }
+combat = { hp = 40.0, damage = 0.0, speed = 2.8 }
