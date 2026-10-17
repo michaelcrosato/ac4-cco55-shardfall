@@ -166,7 +166,11 @@ pub static TOOLS: &[Tool] = &[
     Tool {
         name: "ray",
         help: "What a ray hits: point, normal, entity, static block and its flags.",
-        args: &[arg("from", "array", "[x, y, z] start"), arg("dir", "array", "[x, y, z] direction (default down)"), arg("max", "number", "length (default 50)")],
+        args: &[
+            arg("from", "array", "[x, y, z] start"),
+            arg("dir", "array", "[x, y, z] direction (default down)"),
+            arg("max", "number", "length (default 50)"),
+        ],
         run: crate::kit_tools::t_ray,
     },
     Tool {

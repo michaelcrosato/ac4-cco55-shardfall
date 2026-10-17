@@ -283,11 +283,11 @@ pub fn land(g: &BlackTap, sim: &Sim, skill: &str) -> InputFrame {
             let p = BlackTap::player_feet(sim).unwrap_or_default();
             let stocks = g.world().marker("stocks").unwrap_or_default();
             // Put each stocks guard to sleep, then open the stocks.
-            if let Some((_, at)) = nearest(g, sim, |n| n.group == "stocks" && !n.out()) {
+            if let Some((_, at)) = nearest(g, sim, |n| n.group == "stocks" && n.fighter && !n.out()) {
                 if flat(at - p).length() < 22.0 && g.land.hero.tools.count(pav_kit::combat::Tool::Nightcap) > 0 {
                     return dart(g, sim, at);
                 }
-                if let Some((id, at)) = nearest(g, sim, |n| n.group == "stocks" && !n.out()) {
+                if let Some((id, at)) = nearest(g, sim, |n| n.group == "stocks" && n.fighter && !n.out()) {
                     return creep(g, sim, id, at, true);
                 }
             }
@@ -342,6 +342,14 @@ pub fn land(g: &BlackTap, sim: &Sim, skill: &str) -> InputFrame {
         }
         "escape_to_ship" => {
             let p = BlackTap::player_feet(sim).unwrap_or_default();
+            // From the battlement: the Leap of Spirits into the sea.
+            if crate::traverse::perch_here(g, sim).is_some_and(|q| !q.leap_to.is_empty()) && g.stealth.leap.is_none() {
+                let mut i = InputFrame::default();
+                if tap(sim, 20) {
+                    press(&mut i, b::JUMP);
+                }
+                return i;
+            }
             // On deck: take the helm.
             if g.land.deck.is_some() {
                 if let Some(s) = g.sea.my_ship() {

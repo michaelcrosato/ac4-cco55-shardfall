@@ -21,7 +21,10 @@ pub fn perch_here<'a>(g: &'a BlackTap, sim: &Sim) -> Option<crate::world::Perch>
     let p = BlackTap::player_feet(sim)?;
     let w = g.world();
     // On it, or on the top just under it (a belfry floor under its roof's plank).
-    w.perches.iter().find(|q| Vec2::new(q.at[0] - p.x, q.at[2] - p.z).length() < 3.0 && (-2.0..4.8).contains(&(q.at[1] - p.y))).cloned()
+    w.perches
+        .iter()
+        .find(|q| Vec2::new(q.at[0] - p.x, q.at[2] - p.z).length() < 3.0 && (-2.0..4.8).contains(&(q.at[1] - p.y)))
+        .cloned()
 }
 
 /// Perches, the survey and the leap: from `BlackTap::pre` while on foot. Returns an input
@@ -39,7 +42,7 @@ pub fn pre(
     if let Some(mut l) = g.stealth.leap.clone() {
         l.t += dt;
         let k = (l.t / l.len).clamp(0.0, 1.0);
-        let arc = (k * std::f32::consts::PI).sin() * 2.5;
+        let arc = (k * std::f32::consts::PI).sin() * (2.5 + l.from.distance(l.to) * 0.06);
         let p = l.from.lerp(l.to, k * k * (3.0 - 2.0 * k) * 0.3 + k * 0.7) + Vec3::Y * arc;
         let d = l.to - l.from;
         if let Some(ch) = sim.state.entities.get_mut(pid).and_then(|e| e.character.as_mut()) {
@@ -98,7 +101,8 @@ pub fn pre(
         let w = g.world();
         if let Some(to) = w.marker(&perch.leap_to) {
             let from = BlackTap::player_feet(sim).unwrap_or(Vec3::from(perch.at));
-            let len = (1.0 + (from.y - to.y).max(0.0) / 14.0).clamp(1.0, 2.4);
+            let far = Vec2::new(to.x - from.x, to.z - from.z).length();
+            let len = (1.0 + (from.y - to.y).max(0.0) / 14.0 + far / 45.0).clamp(1.0, 3.6);
             g.stealth.leap = Some(Leap { from, to, t: 0.0, len });
             events.push(SimEvent::cue("leap_whoosh", from));
             return Some(InputFrame::default());

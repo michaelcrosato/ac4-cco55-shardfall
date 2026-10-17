@@ -71,7 +71,7 @@ dryport = [180.0, 2.0, 20.0]
 hook_wreck = [-262.0, 0.0, 128.0]
 # Land.
 gull_water = [-92.0, 0.0, -140.0]
-cliff_water = [338.0, 0.0, -300.0]
+cliff_water = [340.0, 0.0, -296.0]
 
 # Markers taken from the generated structures (games/blacktap/tab1_world.toml).
 [marker_from]
@@ -82,7 +82,7 @@ fort_keep = "keep.center"
 flagpole = "keep.flagpole"
 bell_tower = "keep.door"
 fort_gate = "fort_gate.outside"
-cellar = "keep.door+-6,0,3"
+cellar = "barracks.center+-6.5,0,0"
 cave = "cave_hut.door"
 chapel_perch = "chapel.perch"
 chapel_hay = "chapel_cart.landing"
@@ -93,7 +93,7 @@ tavern = "tavern.door"
 town_square = "stocks.center"
 dryport = "stocks.center"
 gull_perch = "lighthouse.perch"
-battlement = "north_battery.cannon2"
+battlement = "keep.flagpole"
 
 # ---------------------------------------------------------------- routes (loops, x/z)
 [route]
@@ -111,6 +111,7 @@ courier_route = [[186.0, 5.0], [200.0, 9.0], [203.0, 28.0], [200.0, 38.0], [196.
 fort_courtyard = [[332.0, -182.0], [362.0, -182.0], [362.0, -220.0], [332.0, -222.0]]
 fort_wall_west = [[310.4, -180.0], [310.4, -224.0]]
 fort_wall_north = [[318.0, -231.6], [362.0, -231.6]]
+drye_walk = [[336.0, -204.0], [358.0, -204.0]]
 
 
 
@@ -405,15 +406,15 @@ facing = 90.0
 [[npc]]
 group = "fort"
 kind = "guard"
-at = [348.0, 15.0, -195.0]
+at = [354.0, 15.0, -210.0]
 facing = 180.0
 tags = ["bell_ringer"]
 
 [[npc]]
 group = "drye"
 kind = "drye"
-at = [348.0, 22.4, -198.6]
-facing = 180.0
+at = [347.0, 15.0, -204.0]
+route = "drye_walk"
 tags = ["critical"]
 
 [[npc]]
@@ -421,14 +422,14 @@ group = "drye"
 kind = "brute"
 at = [343.0, 15.0, -194.0]
 facing = 160.0
-tags = ["drye_guard", "critical"]
+tags = ["drye_guard", "escort", "critical"]
 
 [[npc]]
 group = "drye"
 kind = "musketeer"
 at = [353.0, 15.0, -194.0]
 facing = 200.0
-tags = ["drye_guard", "critical"]
+tags = ["drye_guard", "escort", "critical"]
 
 
 # ---------------------------------------------------------------- bot hints (routes with an action per point)
@@ -436,3 +437,18 @@ tags = ["drye_guard", "critical"]
 name = "r4_climb_chapel"
 points = [[110.0, 1.0, 14.0], [132.0, 2.4, 13.0], [150.0, 2.4, 14.5], [156.0, 2.4, 15.8], [161.0, 2.4, 15.0], [160.5, 2.4, 8.5], [157.6, 2.4, 7.2], [154.0, 22.4, 7.2], [158.2, 26.65, 7.15]]
 do = ["run", "run", "walk", "walk", "walk", "walk", "climb", "climb", "walk"]
+
+[[bot_hint]]
+name = "r6_infiltrate"
+points = [[296.0, 10.0, -108.0], [297.2, 10.4, -116.0]]
+do = ["run", "interact"]
+
+[[bot_hint]]
+name = "r6_flag"
+points = [[336.0, 15.0, -212.0], [338.6, 15.0, -219.0], [344.0, 26.1, -219.0]]
+do = ["walk", "climb", "walk"]
+
+[[bot_hint]]
+name = "r6_dive"
+points = [[336.0, 15.0, -212.0], [338.6, 15.0, -219.0], [344.0, 26.1, -219.0]]
+do = ["walk", "climb", "walk"]

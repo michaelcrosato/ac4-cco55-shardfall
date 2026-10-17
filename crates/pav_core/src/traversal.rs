@@ -109,8 +109,9 @@ impl<'a> Probe<'a> {
         if self.mp.climb_all {
             return Some(None);
         }
-        let flagged =
-            BlockRef::from_tag(c.user_data).and_then(|r| self.st.statics.get(r)).is_some_and(|b| b.has(block_flags::LADDER) || b.has(block_flags::CLIMBABLE));
+        let flagged = BlockRef::from_tag(c.user_data)
+            .and_then(|r| self.st.statics.get(r))
+            .is_some_and(|b| b.has(block_flags::LADDER) || b.has(block_flags::CLIMBABLE));
         flagged.then_some(None)
     }
 

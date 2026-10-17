@@ -702,6 +702,12 @@ fn hit_fighter(g: &mut BlackTap, sim: &mut Sim, id: EntityId, dmg: f32, events: 
 /// NPC fighters: choose targets, close in, wait for a token, telegraph and strike.
 fn fighters(g: &mut BlackTap, sim: &mut Sim, dt: f32, events: &mut Vec<SimEvent>) -> BTreeMap<EntityId, InputFrame> {
     let mut out = BTreeMap::new();
+    if g.stealth.last_words.is_some() {
+        for f in g.land.fighters.values_mut() {
+            f.swing = None;
+        }
+        return out;
+    }
     let Some(pid) = sim.state.player else { return out };
     let player_feet = sim.feet(pid).unwrap_or_default();
     let ids: Vec<EntityId> = g.land.fighters.keys().copied().collect();

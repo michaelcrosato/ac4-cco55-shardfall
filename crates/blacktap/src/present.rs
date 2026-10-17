@@ -230,7 +230,7 @@ pub fn ui(g: &BlackTap, sim: &Sim) -> UiModel {
         letterbox: crate::stealth::letterbox(g),
         vignette: (1.0 - g.land.hero.vitals.since_hit.min(1.0)) * 0.6,
         desaturate: if hp < 0.3 { (0.3 - hp) * 2.0 } else { 0.0 } + if g.gull { 0.6 } else { 0.0 },
-        fade: g.spilled.map(|t| (1.0 - t / 2.5).clamp(0.0, 1.0)).unwrap_or(0.0),
+        fade: g.spilled.map(|t| (1.0 - t / 2.5).clamp(0.0, 1.0)).unwrap_or(0.0).max((g.stealth.tunnel_fade / 0.6).min(1.0)),
         white: crate::stealth::white(g),
     };
     dedupe_markers(&mut ui.markers);

@@ -139,6 +139,9 @@ pub struct Stealth {
     pub quick: Option<f32>,
     /// Seconds since a crime was seen (civilians point you out at heat 2+).
     pub since_crime: f32,
+    /// The fade over the tunnel cut (seconds left).
+    #[serde(default)]
+    pub tunnel_fade: f32,
 }
 
 fn yaw_to(from: Vec3, to: Vec3) -> f32 {
@@ -259,7 +262,7 @@ fn spawn_group(g: &mut BlackTap, sim: &mut Sim, group: &str) {
             let a = i as f32 / n as f32 * std::f32::consts::TAU;
             let off = if n > 1 { Vec2::new(a.cos(), a.sin()) * 1.3 } else { Vec2::ZERO };
             let id = spawn(g, sim, &s, off, i);
-            if s.has_tag("courier") {
+            if s.has_tag("courier") || s.kind == "drye" {
                 lead = Some(id);
             }
         }
@@ -652,12 +655,12 @@ fn brains(g: &mut BlackTap, sim: &mut Sim, dt: f32, events: &mut Vec<SimEvent>) 
             if n.kind == "musketeer" {
                 let d = flat(pfeet - feet).length();
                 face = Some(yaw_to(feet, pfeet));
-                if d < 30.0 && d > 3.5 && n.shot_cd <= 0.0 && sees_point(sim, id, pfeet + Vec3::Y, 30.0) {
-                    n.shot_cd = 3.2;
+                if d < 25.0 && d > 3.5 && n.shot_cd <= 0.0 && sees_point(sim, id, pfeet + Vec3::Y, 25.0) {
+                    n.shot_cd = 4.0;
                     events.push(SimEvent::cue("pistol_fire", feet + Vec3::Y * 1.5));
                     g.stealth.noises.push(Noise { at: feet, radius: noise::PISTOL });
-                    if g.land.hero.vitals.iframes <= 0.0 && hash01(id.0 as u64, sim.state.tick) < 0.55 {
-                        let dmg = 14.0 * g.options.difficulty;
+                    if g.land.hero.vitals.iframes <= 0.0 && hash01(id.0 as u64, sim.state.tick) < 0.4 {
+                        let dmg = 10.0 * g.options.difficulty;
                         g.land.hero.vitals.hurt(dmg);
                         g.shake(0.3, (0.6, 0.4, 120));
                     }
@@ -796,6 +799,9 @@ fn interaction(g: &BlackTap, sim: &Sim) -> Option<(&'static str, &'static str, f
     {
         return Some(("flag", "Raise the Tap flag", 1.5));
     }
+    if g.mission.flag("has_key") && !g.mission.flag("in_fort") && near("cave", 2.6) {
+        return Some(("tunnel", "Take the smugglers' tunnel", 0.5));
+    }
     if !g.mission.flag("molasses_freed") && g.flags.contains("spawned_stocks") && near("stocks", 3.0) {
         return Some(("stocks", "Free Mother Molasses", 1.0));
     }
@@ -878,6 +884,15 @@ fn do_interaction(g: &mut BlackTap, sim: &mut Sim, what: &str, events: &mut Vec<
                 events.push(SimEvent::cue("poster_tear", p));
                 g.show("poster");
             }
+        }
+        "tunnel" => {
+            // Through the smugglers' tunnel to the fort's cellar (a fade covers the cut).
+            if let (Some(pid), Some(to)) = (sim.state.player, g.world().marker("cellar")) {
+                sim.set_position(pid, to + Vec3::Y * 0.1);
+            }
+            g.stealth.tunnel_fade = 1.2;
+            events.push(SimEvent::cue("climb_grab", p));
+            g.show("tunnel");
         }
         "helm" => {
             if let Some(d) = g.land.deck.take() {
@@ -998,6 +1013,10 @@ pub fn pre(
                 }
             }
         }
+    }
+    // Last Words: the world holds its breath.
+    if g.stealth.last_words.is_some() {
+        return g.stealth.npcs.keys().map(|&id| (id, InputFrame::default())).collect();
     }
     perceive(g, sim, dt, events);
     brains(g, sim, dt, events)
@@ -1122,6 +1141,7 @@ fn pistol(g: &mut BlackTap, sim: &mut Sim, aimed: bool, events: &mut Vec<SimEven
 pub fn post(g: &mut BlackTap, sim: &mut Sim, dt: f32, events: &mut Vec<SimEvent>) {
     g.stealth.heat.tick(dt);
     g.stealth.since_crime += dt;
+    g.stealth.tunnel_fade = (g.stealth.tunnel_fade - dt).max(0.0);
     g.stealth.alarm = (g.stealth.alarm - dt).max(0.0);
     if g.flags.remove("alarm_pending") {
         ring_alarm(g, sim);

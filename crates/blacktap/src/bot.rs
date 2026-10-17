@@ -324,6 +324,11 @@ pub fn melee(g: &BlackTap, sim: &Sim) -> InputFrame {
     let mut i = InputFrame::default();
     let Some(pid) = sim.state.player else { return i };
     let Some(me) = sim.feet(pid) else { return i };
+    // A Grog Ration when hurt.
+    if g.land.hero.vitals.frac() < 0.45 && g.land.hero.grog > 0 && tap(sim, 30) {
+        i.pressed |= b::HEAL;
+        i.held |= b::HEAL;
+    }
     // Counter: a strike at the player lands within 0.25 s.
     let incoming = g
         .land
