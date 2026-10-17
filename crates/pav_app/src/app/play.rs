@@ -77,6 +77,8 @@ pub(crate) struct PlayApp {
     theme_installed: bool,
     /// The mode last published to the page / log (browser checks read it).
     published: String,
+    /// The ☰ button's centre last published (CSS px), once drawn.
+    published_menu: Option<(i32, i32)>,
     /// Wall-clock seconds since the last frame, uncapped (idle timers count real time even
     /// when frames are slow, as on SwiftShader).
     wall_dt: f32,
@@ -307,6 +309,7 @@ impl PlayApp {
             grabbed: false,
             theme_installed: false,
             published: String::new(),
+            published_menu: None,
             wall_dt: 0.0,
             fx_bank,
             continue_next: false,
@@ -639,12 +642,9 @@ impl App {
         let game_input = p.fe.game_input();
         let name = snake(p.fe.mode());
         if name != p.published {
-            // Points → CSS px: egui's own scale (phones draw the UI larger than 1080 points tall).
-            let ppp_css =
-                self.egui_ctx.pixels_per_point() / self.gfx.as_ref().map(|g| g.window.scale_factor() as f32).unwrap_or(1.0);
-            let button = p.fe.menu_button().map(|c| (c.x * ppp_css, c.y * ppp_css));
-            publish_mode(&name, button);
+            publish_mode(&name, None);
             p.published = name;
+            p.published_menu = None;
         }
 
         // ---- game input (only while playing)
@@ -839,6 +839,14 @@ impl App {
         let out = self.egui_ctx.run_ui(raw, |ui| fe.draw(ui.ctx(), play_frame, &env));
         state.platform_output(&gfx.window, out.platform_output);
         let ppp_out = out.pixels_per_point;
+        // The ☰ button where it was just drawn, in CSS px (points × pixels per point ÷ the
+        // window's scale factor), for the page and the browser checks.
+        let css = ppp_out / gfx.window.scale_factor() as f32;
+        let menu = fe.menu_button().map(|c| ((c.x * css).round() as i32, (c.y * css).round() as i32));
+        if menu.is_some() && menu != p.published_menu {
+            publish_mode(&p.published, menu.map(|(x, y)| (x as f32, y as f32)));
+            p.published_menu = menu;
+        }
         let prims = self.egui_ctx.tessellate(out.shapes, ppp_out);
         let mut textures = out.textures_delta;
         let (render_scale, lights) =
