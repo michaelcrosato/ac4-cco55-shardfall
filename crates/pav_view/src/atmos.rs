@@ -154,9 +154,9 @@ pub fn apply(a: &Atmosphere, eye: Vec3, target: Vec3, scene: &mut Scene) {
         horizon,
         ground: fog,
         sun_dir,
-        sun_color: sun_col * 14.0 * (1.0 - 0.85 * storm),
+        sun_color: sun_col * 8.0 * (1.0 - 0.85 * storm),
         sun_size: 1.3,
-        sun_glow: 0.65 * (1.0 - 0.8 * storm),
+        sun_glow: 0.45 * (1.0 - 0.8 * storm),
         clouds: rs::Clouds {
             cover,
             density: (0.82 + 0.18 * storm).min(1.0),
@@ -187,7 +187,7 @@ pub fn apply(a: &Atmosphere, eye: Vec3, target: Vec3, scene: &mut Scene) {
         let mut o = rs::Ocean::from_sea(sea, a.sea_time);
         o.sky_zenith = zenith;
         o.sky_horizon = horizon.lerp(fog, 0.5);
-        o.glint = (1.0 - 0.9 * storm) * (1.0 - 0.5 * cover * cover) * set;
+        o.glint = 0.6 * (1.0 - 0.9 * storm) * (1.0 - 0.5 * cover * cover) * set;
         // A storm greys the water.
         let grey = Vec3::splat(o.deep.dot(Vec3::new(0.3, 0.5, 0.2)));
         o.deep = o.deep.lerp(grey, 0.45 * storm);

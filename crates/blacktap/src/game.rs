@@ -595,6 +595,15 @@ impl Game for BlackTap {
         self.time += dt;
         self.stats.time = self.time;
         events.append(&mut self.pending_events);
+        // Wakes: foam astern of every ship under way (a view-only cue).
+        if sim.state.tick.is_multiple_of(5) {
+            let c = self.content();
+            for s in self.sea.ships.iter().filter(|s| s.alive() && s.speed > 2.0) {
+                let len = c.classes.get(&s.class).map(|k| k.length).unwrap_or(20.0);
+                let at = s.world(Vec3::new(0.0, 0.2, -len * 0.48));
+                events.push(SimEvent::Cue { cue: "wake_foam".into(), pos: at, gain: (s.speed / 7.0).clamp(0.3, 1.4), pitch: 1.0 });
+            }
+        }
         let c = self.content();
         self.atmos_t = (self.atmos_t + dt / self.atmos_len.max(0.01)).min(1.0);
         self.shake = (self.shake - dt * 2.5).max(0.0);

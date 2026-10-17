@@ -233,9 +233,37 @@ pub fn ui(g: &BlackTap, sim: &Sim) -> UiModel {
         fade: g.spilled.map(|t| (1.0 - t / 2.5).clamp(0.0, 1.0)).unwrap_or(0.0),
         white: crate::stealth::white(g),
     };
+    dedupe_markers(&mut ui.markers);
     ui.map = Some(crate::map::map(g));
     ui.map_icons = crate::map::icons(g, sim);
     ui
+}
+
+/// One marker per thing: an objective marker takes over the enemy marker on the same ship or
+/// battery (its health bar and name), so labels never stack.
+fn dedupe_markers(m: &mut Vec<WorldMarker>) {
+    let mut drop = vec![false; m.len()];
+    for i in 0..m.len() {
+        if !matches!(m[i].kind, MarkerKind::Objective | MarkerKind::Target) {
+            continue;
+        }
+        for j in 0..m.len() {
+            if i != j && !drop[j] && m[j].kind == MarkerKind::Enemy && m[j].pos.distance(m[i].pos) < 14.0 {
+                let (bar, label, pos) = (m[j].bar, m[j].label.clone(), m[j].pos);
+                m[i].bar = m[i].bar.or(bar);
+                if m[i].label.is_empty() {
+                    m[i].label = label;
+                }
+                m[i].pos = pos;
+                drop[j] = true;
+            }
+        }
+    }
+    let mut k = 0;
+    m.retain(|_| {
+        k += 1;
+        !drop[k - 1]
+    });
 }
 
 fn results(g: &BlackTap, focus: usize) -> Results {
@@ -477,19 +505,7 @@ pub fn draw(g: &BlackTap, sim: &Sim, out: &mut DrawList) {
             let p = s.world(Vec3::new(0.0, cl.freeboard + 0.5, cl.length * 0.1));
             out.push(DrawItem::Light { pos: p + Vec3::Y, color: hex("#ff7a2a"), intensity: 2.5, radius: 12.0 });
         }
-        // Wake: pale rings astern while under way.
-        if s.speed > 2.0 && s.alive() {
-            for k in 1..4 {
-                let p = s.world(Vec3::new(0.0, 0.0, -cl.length * 0.5 - k as f32 * 7.0));
-                out.push(DrawItem::Decal {
-                    center: Vec3::new(p.x, g.ocean().height(Vec2::new(p.x, p.z)) + 0.05, p.z),
-                    radius: 2.0 + k as f32 * 1.4,
-                    ring: 0.82,
-                    color: hex("#f4f8f6"),
-                    alpha: 0.5 / k as f32,
-                });
-            }
-        }
+        // The wake is foam particles from the `wake_foam` cue (game post).
     }
     // Batteries: stone emplacements with guns (until the fort is built from structures).
     for bt in &g.sea.batteries {

@@ -162,24 +162,41 @@ fn sea(g: &BlackTap, sim: &Sim, skill: &str) -> InputFrame {
             }
         }
         "bombard" => {
+            // Shell each battery from its firing spot in open water (`fire_<name>` markers):
+            // the nearest first (the showcase goes for the Mortar Tower first).
+            let showcase = g.showcase.is_some();
             let target = g.sea.batteries.iter().filter(|b| !b.destroyed).min_by(|a, b| {
-                let da = Vec2::new(a.pos.x, a.pos.z).distance(me.pos);
-                let db = Vec2::new(b.pos.x, b.pos.z).distance(me.pos);
-                // Mortar first (the Full Pour), then the nearest.
-                let ka = if a.name == "mortar" { 0.0 } else { 1.0 };
-                let kb = if b.name == "mortar" { 0.0 } else { 1.0 };
-                (ka, da).partial_cmp(&(kb, db)).unwrap()
+                let sa = w.marker_xz(&format!("fire_{}", a.name));
+                let sb = w.marker_xz(&format!("fire_{}", b.name));
+                let ka = if showcase && a.name == "mortar" { 0.0 } else { 1.0 };
+                let kb = if showcase && b.name == "mortar" { 0.0 } else { 1.0 };
+                (ka, sa.distance(me.pos)).partial_cmp(&(kb, sb.distance(me.pos))).unwrap()
             });
             if let Some(t) = target {
                 let tp = Vec2::new(t.pos.x, t.pos.z);
-                let (h, look, fire) = duel_at(g, sim, me, tp, (175.0, 215.0));
-                want = Some(h);
+                let spot = w.marker(&format!("fire_{}", t.name)).map(|m| Vec2::new(m.x, m.z)).unwrap_or(tp);
+                let (h, look, fire) = duel_at(g, sim, me, tp, (150.0, 225.0));
                 i.look = look;
                 if fire {
                     i.pressed |= b::FIRE;
                     i.held |= b::FIRE;
                 }
-                want_sail = 1;
+                let _ = h;
+                let to_spot = spot - me.pos;
+                if to_spot.length() > 70.0 {
+                    want = Some(heading_of(to_spot));
+                    want_sail = if to_spot.length() > 160.0 { 2 } else { 1 };
+                } else {
+                    // A racetrack round the spot, beam-on to the target: of the two beam
+                    // headings, the one that leads back toward the spot.
+                    let bearing = heading_of(tp - me.pos);
+                    let a = (bearing + 90.0).rem_euclid(360.0);
+                    let b2 = (bearing + 270.0).rem_euclid(360.0);
+                    let dir = |hd: f32| Vec2::new(hd.to_radians().sin(), -hd.to_radians().cos());
+                    let back = if to_spot.length() > 1.0 { to_spot.normalize() } else { dir(me.heading) };
+                    want = Some(if dir(a).dot(back) >= dir(b2).dot(back) { a } else { b2 });
+                    want_sail = 1;
+                }
             }
         }
         "sail_to" => {

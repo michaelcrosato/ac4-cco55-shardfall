@@ -171,3 +171,7 @@ flash = { color = "#cfe0ff", intensity = 12.0, radius = 120.0, seconds = 0.18 }
 
 [cue.gull_sight_on]
 particles = [{ preset = "magic", count = 20, spread = 2.0, color = "#9fd3ff" }]
+
+# Not a sound: foam astern of ships under way (sent every few ticks).
+[cue.wake_foam]
+particles = [{ preset = "steam", count = 6, spread = 0.7, size = 3.0, life = 2.4, area = 1.4, up = -0.2, color = "#f2f6f4" }]

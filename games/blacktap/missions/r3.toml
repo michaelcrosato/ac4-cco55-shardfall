@@ -1,7 +1,7 @@
 # Third Round — Batteries Not Included (~5 min, sea vs fort).
 id = "r3"
 title = "Third Round — Batteries Not Included"
-setup = [{ game = "supplies" }, { game = "place_ship:r3_start" }, { game = "player_at_helm" }, { game = "sail:2" }, { atmosphere = "golden_hour" }]
+setup = [{ game = "supplies" }, { game = "place_ship:r3_start" }, { game = "player_at_helm" }, { game = "sail:2" }, { game = "wind:0" }, { atmosphere = "golden_hour" }]
 on_start = [{ music = "fort_siege" }, { line = "r3_intro" }, { game = "start_fort" }]
 
 [[step]]

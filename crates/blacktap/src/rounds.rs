@@ -24,6 +24,7 @@ pub const ACTS: &[&str] = &[
     "sail:",
     "teach:",
     "supplies",
+    "wind:",
     "spawn_flotsam",
     "spawn_restraint_patrol",
     "spawn_gunboats",
@@ -128,6 +129,13 @@ pub fn act(g: &mut BlackTap, sim: &mut Sim, name: &str) {
             }
         }
         "teach" => g.teach(arg.unwrap_or("")),
+        "wind" => {
+            // The wind blows FROM this heading (degrees from north).
+            let from: f32 = arg.and_then(|a| a.parse().ok()).unwrap_or(0.0);
+            let r = from.to_radians();
+            let speed = g.sea.wind.length().max(5.5);
+            g.sea.wind = -Vec2::new(r.sin(), -r.cos()) * speed;
+        }
         "supplies" => {
             // A Round played from its own start has what the Tab would have given by then.
             g.sea.timber = g.sea.timber.max(4);

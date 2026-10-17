@@ -55,6 +55,8 @@ pub(crate) struct PlayApp {
     cursor: Vec2,
     any_anchor: Option<Vec2>,
     touch_any: bool,
+    /// This frame's clicks came from a finger (they don't count as "any input" on phones).
+    touch_tapped: bool,
     /// Pad buttons held last frame, the stick direction held for menu repeat and its timer.
     pad_prev: BTreeSet<PadButton>,
     stick_dir: Option<Nav>,
@@ -265,6 +267,7 @@ impl PlayApp {
             cursor: Vec2::ZERO,
             any_anchor: None,
             touch_any: false,
+            touch_tapped: false,
             pad_prev: BTreeSet::new(),
             stick_dir: None,
             stick_timer: 0.0,
@@ -386,9 +389,17 @@ impl App {
                 p.cursor = pos;
                 false
             }
-            WindowEvent::Touch(_) => {
+            WindowEvent::Touch(t) => {
                 p.touch_any = true;
                 p.dev = Dev::Touch;
+                // A tap is a click where the finger lands (the ☰ button, menus).
+                let at = Vec2::new(t.location.x as f32, t.location.y as f32);
+                p.cursor = at;
+                p.any_anchor = Some(at);
+                if t.phase == winit::event::TouchPhase::Started {
+                    p.mouse_taps.push(0);
+                    p.touch_tapped = true;
+                }
                 #[cfg(target_arch = "wasm32")]
                 {
                     p.audio_locked = false;
@@ -565,7 +576,7 @@ impl App {
             p.any_anchor = Some(p.cursor);
         }
         ui.any = !p.key_taps.is_empty()
-            || !p.mouse_taps.is_empty()
+            || (!p.mouse_taps.is_empty() && !(p.touch_tapped && p.mobile))
             || p.wheel != 0.0
             || moved
             || pad.any
@@ -672,6 +683,7 @@ impl App {
         p.wheel = 0.0;
         p.mouse_delta = Vec2::ZERO;
         p.touch_any = false;
+        p.touch_tapped = false;
         p.pad_prev = pad.held;
 
         // ---- commands
