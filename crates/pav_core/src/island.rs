@@ -417,6 +417,12 @@ impl Heightfield {
         self.ground[g.y as usize * self.w + g.x as usize]
     }
 
+    /// The surface material at `p` (same as `ground`: sand, wet sand, grass, jungle, rock,
+    /// dirt/road, cliff).
+    pub fn material(&self, p: Vec2) -> Ground {
+        self.ground(p)
+    }
+
     /// The drawn ground colour at `p` (nearest sample, linear RGB).
     pub fn color(&self, p: Vec2) -> Color {
         let g = ((p - self.origin) / self.cell).round();
