@@ -1,6 +1,7 @@
 //! The world map: coastlines from the islands, labels, revealed icons.
 
-use std::sync::{Arc, OnceLock};
+use std::collections::BTreeMap;
+use std::sync::{Arc, Mutex};
 
 use glam::Vec2;
 use pav_core::play::{MapData, MapIcon};
@@ -8,31 +9,34 @@ use pav_core::sim::Sim;
 
 use crate::game::BlackTap;
 
-/// The static layers (built once).
+/// The static layers (built once per level file: Tab I's isles, the Drydock's cay).
 pub fn map(g: &BlackTap) -> Arc<MapData> {
-    static MAP: OnceLock<Arc<MapData>> = OnceLock::new();
-    MAP.get_or_init(|| {
-        let w = g.world();
-        let mut m = MapData { min: Vec2::splat(-600.0), max: Vec2::splat(600.0), ..Default::default() };
-        for s in &w.shapes {
-            let c = Vec2::from(s.center);
-            let r = Vec2::from(s.radii);
-            let ring = |k: f32| {
-                (0..48)
-                    .map(|i| {
-                        let a = i as f32 / 48.0 * std::f32::consts::TAU;
-                        c + Vec2::new(a.cos() * r.x * k, a.sin() * r.y * k)
-                    })
-                    .collect::<Vec<_>>()
-            };
-            m.fills.push((ring(1.0), "#d9c08a".into()));
-            m.lines.push((ring(1.0), "#5a3c24".into(), 2.0));
-            m.lines.push((ring(1.0 + s.shelf / r.min_element().max(1.0)), "#8fc1a9".into(), 1.0));
-            m.labels.push((c, s.name.clone()));
-        }
-        Arc::new(m)
-    })
-    .clone()
+    static MAPS: Mutex<BTreeMap<String, Arc<MapData>>> = Mutex::new(BTreeMap::new());
+    let mut maps = MAPS.lock().unwrap_or_else(|p| p.into_inner());
+    maps.entry(g.level.clone())
+        .or_insert_with(|| {
+            let w = g.world();
+            let half = w.bounds.hard;
+            let mut m = MapData { min: Vec2::splat(-half), max: Vec2::splat(half), ..Default::default() };
+            for s in &w.shapes {
+                let c = Vec2::from(s.center);
+                let r = Vec2::from(s.radii);
+                let ring = |k: f32| {
+                    (0..48)
+                        .map(|i| {
+                            let a = i as f32 / 48.0 * std::f32::consts::TAU;
+                            c + Vec2::new(a.cos() * r.x * k, a.sin() * r.y * k)
+                        })
+                        .collect::<Vec<_>>()
+                };
+                m.fills.push((ring(1.0), "#d9c08a".into()));
+                m.lines.push((ring(1.0), "#5a3c24".into(), 2.0));
+                m.lines.push((ring(1.0 + s.shelf / r.min_element().max(1.0)), "#8fc1a9".into(), 1.0));
+                m.labels.push((c, s.name.clone()));
+            }
+            Arc::new(m)
+        })
+        .clone()
 }
 
 /// Live icons: the player, ships, objectives.

@@ -249,7 +249,7 @@ fn spawn(g: &mut BlackTap, sim: &mut Sim, s: &crate::world::NpcSpawn, offset: Ve
     id
 }
 
-fn spawn_group(g: &mut BlackTap, sim: &mut Sim, group: &str) {
+pub(crate) fn spawn_group(g: &mut BlackTap, sim: &mut Sim, group: &str) {
     if g.flags.contains(&format!("spawned_{group}")) {
         return;
     }

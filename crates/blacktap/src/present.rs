@@ -31,6 +31,11 @@ pub fn camera_context(g: &BlackTap, sim: &Sim, input: &InputFrame) -> (&'static 
         }
         return ("combat", feet, sim.state.player);
     }
+    if g.mode == Mode::Drydock
+        && let Some(c) = crate::drydock::camera_context(g, sim)
+    {
+        return c;
+    }
     match g.body {
         Body::Helm => {
             let at = g.sea.my_ship().map(|s| s.world(Vec3::Y * 2.0)).unwrap_or_default();
@@ -192,9 +197,9 @@ pub fn ui(g: &BlackTap, sim: &Sim) -> UiModel {
     } else {
         crate::traverse::ui(g, sim, &mut ui);
         crate::stealth::ui(g, sim, &mut ui);
-        if g.mode == Mode::Drydock {
-            crate::drydock::ui(g, sim, &mut ui);
-        }
+    }
+    if g.mode == Mode::Drydock {
+        crate::drydock::ui(g, sim, &mut ui);
     }
     // Onboarding: one big prompt for the action being taught.
     if let Some(t) = &g.teaching {
@@ -669,7 +674,7 @@ pub fn audio(g: &BlackTap, sim: &Sim) -> AudioState {
     let intensity = crate::stealth::music_intensity(g).max(if g.sea.ships.iter().any(|s| s.telegraph > 0.0) { 0.9 } else { 0.5 });
     let a = atmosphere(g);
     let on_land = g.body == Body::Foot && BlackTap::player_feet(sim).is_some_and(|p| p.y > 0.5);
-    AudioState {
+    let mut out = AudioState {
         music: Some(MusicCue { song, intensity }),
         ambience: vec![
             ("sea".into(), if on_land { 0.35 } else { 0.85 }),
@@ -682,7 +687,11 @@ pub fn audio(g: &BlackTap, sim: &Sim) -> AudioState {
             ("jungle".into(), crate::stealth::jungle_level(g, sim)),
         ],
         listener: None,
+    };
+    if g.mode == Mode::Drydock {
+        crate::drydock::audio(g, &mut out);
     }
+    out
 }
 
 pub fn effects(g: &BlackTap, _sim: &Sim) -> FrameEffects {
