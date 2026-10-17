@@ -47,10 +47,10 @@ impl Consonant {
     fn params(self) -> Option<(f32, Filter, f32, f32, f32)> {
         Some(match self {
             Consonant::None => return None,
-            Consonant::S => (0.075, Filter::Hp, 5200.0, 0.8, 0.5),
-            Consonant::Sh => (0.08, Filter::Bp, 2600.0, 1.2, 0.6),
-            Consonant::T => (0.018, Filter::Bp, 3800.0, 1.0, 0.9),
-            Consonant::K => (0.024, Filter::Bp, 1900.0, 1.4, 0.9),
+            Consonant::S => (0.075, Filter::Hp, 5200.0, 0.8, 0.36),
+            Consonant::Sh => (0.08, Filter::Bp, 2600.0, 1.2, 0.45),
+            Consonant::T => (0.018, Filter::Bp, 3800.0, 1.0, 0.7),
+            Consonant::K => (0.024, Filter::Bp, 1900.0, 1.4, 0.7),
             Consonant::P => (0.012, Filter::Lp, 900.0, 0.7, 1.0),
             Consonant::H => (0.06, Filter::Bp, 1300.0, 0.6, 0.35),
             Consonant::F => (0.06, Filter::Hp, 6500.0, 0.7, 0.25),

@@ -35,7 +35,8 @@ fn save(name: &str, samples: &[f32], secs: f32) {
     let out = root().join("out/audio");
     std::fs::create_dir_all(&out).unwrap();
     write_wav(&out.join(format!("{name}.wav")), samples, 48000).unwrap();
-    let w = ((secs * 40.0) as usize).clamp(400, 2400);
+    let px: f32 = std::env::var("PX_PER_S").ok().and_then(|s| s.parse().ok()).unwrap_or(40.0);
+    let w = ((secs * px) as usize).clamp(400, 2400);
     let h = 360;
     let img = spectrogram(samples, 48000.0, w, h);
     std::fs::write(out.join(format!("{name}.png")), png_rgba(w, h, &img)).unwrap();
@@ -57,6 +58,34 @@ fn report(name: &str, r: &Renderer, samples: &[f32], took: f32, secs: f32) {
         s.limiter,
         secs / took.max(1e-6)
     );
+    if s.stolen.iter().any(|&x| x > 0) || s.voices_peak[1] > 16 {
+        println!("    voices peak {:?} stolen {:?}", s.voices_peak, s.stolen);
+    }
+}
+
+/// Clicks: single-sample jumps far above the local derivative energy. Returns (time s, ratio).
+fn clicks(s: &[f32]) -> Vec<(f32, f32)> {
+    let n = s.len() / 2;
+    let d: Vec<f32> = (1..n).map(|i| (s[i * 2] - s[(i - 1) * 2]).abs().max((s[i * 2 + 1] - s[(i - 1) * 2 + 1]).abs())).collect();
+    let w = 240; // 5 ms each side
+    let mut out = Vec::new();
+    let mut acc: f64 = d[..w.min(d.len())].iter().map(|x| (x * x) as f64).sum();
+    for i in 0..d.len() {
+        if i + w < d.len() {
+            acc += (d[i + w] * d[i + w]) as f64;
+        }
+        if i > w {
+            acc -= (d[i - w - 1] * d[i - w - 1]) as f64;
+        }
+        let cnt = (i + w).min(d.len() - 1) - i.saturating_sub(w) + 1;
+        let rms = (acc.max(0.0) / cnt as f64).sqrt() as f32;
+        if d[i] > 0.02 && d[i] > rms * 9.0 {
+            if out.last().is_none_or(|&(t, _): &(f32, f32)| (i as f32 / 48000.0) - t > 0.05) {
+                out.push((i as f32 / 48000.0, d[i] / rms.max(1e-9)));
+            }
+        }
+    }
+    out
 }
 
 fn main() {
@@ -79,8 +108,86 @@ fn main() {
         let t = Instant::now();
         let s = r.render(secs);
         report(name, &r, &s, t.elapsed().as_secs_f32(), secs);
+        let c = clicks(&s);
+        if !c.is_empty() {
+            println!("    {} possible clicks: {:?}", c.len(), &c[..c.len().min(8)]);
+        }
         save(name, &s, secs);
     };
+    if what == "arr" {
+        // The arrangement as text: per bar, the chord and what each part plays.
+        let name = if filter.is_empty() { "drunken_sailor" } else { filter.as_str() };
+        let a = music.song(name).expect("song");
+        let names = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
+        let nn = |m: f32| format!("{}{}", names[(m.round() as i32).rem_euclid(12) as usize], (m.round() as i32) / 12 - 1);
+        println!("{} ({}): {:.0} qpm, {} bars, {:.1} s", a.name, a.title, a.qpm, a.song.bars.len(), a.seconds());
+        for (i, p) in a.parts.iter().enumerate() {
+            println!("  part {i}: {} {:?} stem {}", p.inst.name(), p.role, p.stem);
+        }
+        for b in a.song.bars.iter().take(secs as usize) {
+            let chord = a.song.chord_at(b.start + 1e-6);
+            println!("bar {:>2} @{:>5.1} {:?}", b.number, b.start, chord.map(|c| (names[c.root as usize], c.quality)));
+            for e in a.events.iter().filter(|e| e.start >= b.start - 0.05 && e.start < b.start + b.len - 0.05) {
+                let notes: Vec<String> = e.notes[..e.n as usize].iter().map(|&m| nn(m)).collect();
+                println!(
+                    "    {:>5.2} {:<9} {:<14} len {:.2} vel {:.2} {:?}->{:?} {:?}",
+                    e.start - b.start,
+                    e.inst.name(),
+                    notes.join(" "),
+                    e.len,
+                    e.vel,
+                    e.vowel.0,
+                    e.vowel.1,
+                    e.cons
+                );
+            }
+        }
+        return;
+    }
+    if what == "parts" {
+        // Loudness of each part alone in context (the same 30 s), to balance the mix.
+        let name = if filter.is_empty() { "drunken_sailor" } else { filter.as_str() };
+        let a = music.song(name).expect("song");
+        for p in 0..a.parts.len() {
+            let mut solo = (**a).clone();
+            solo.events.retain(|e| e.part as usize == p);
+            let mut m = (*music).clone();
+            let idx = m.index[name];
+            m.songs[idx] = Arc::new(solo);
+            let mut r = Renderer::new();
+            r.mixer.load_music(Arc::new(m));
+            r.at(0.0, Cmd::Apply(Box::new(music_state(name, 1.0)), Listener::default()));
+            let s = r.render(secs);
+            let (rms, peak) = stats_of(&s);
+            let db = |x: f32| 20.0 * x.max(1e-9).log10();
+            println!(
+                "part {p} {:<10} {:?}: rms {:>6.1} dB peak {:>6.1} dB",
+                a.parts[p].inst.name(),
+                a.parts[p].role,
+                db(rms),
+                db(peak)
+            );
+            save(&format!("part_{name}_{p}_{}", a.parts[p].inst.name()), &s, secs);
+        }
+        return;
+    }
+    if what == "voices" {
+        // Each speaker says a "line" (14 blips), one after another.
+        let mut r = Renderer::new();
+        r.mixer.load_bank(bank.clone());
+        let mut t = 0.0;
+        for sp in bank.speakers.keys() {
+            println!("{t:>6.2}s {sp}");
+            for i in 0..14 {
+                r.at(t + i as f64 * 0.1, Cmd::Blip(sp.clone()));
+            }
+            t += 2.0;
+        }
+        let s = r.render(t as f32);
+        report("voices", &r, &s, 1.0, t as f32);
+        save("voices", &s, t as f32);
+        return;
+    }
     if what == "insts" {
         // Each instrument alone on a phrase (drums on their pattern), to compare loudness and tone.
         let abc =

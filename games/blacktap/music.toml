@@ -27,6 +27,7 @@ section = [
 [[song.drunken_sailor.part]]
 inst = "choir"
 role = "choir"
+octave = -1
 gain = 1.0
 [[song.drunken_sailor.part]]
 inst = "accordion"
@@ -90,6 +91,7 @@ section = [
 [[song.haul_away_joe.part]]
 inst = "choir"
 role = "choir"
+octave = -1
 [[song.haul_away_joe.part]]
 inst = "fiddle"
 role = "melody"
@@ -128,7 +130,7 @@ passes = [2]
 [[song.haul_away_joe.part]]
 inst = "shout"
 role = "drums"
-pattern = "......X."
+pattern = "....X..."
 gain = 0.6
 stem = 0.85
 bars = "4,8,16,20"
@@ -145,6 +147,7 @@ section = [
 [[song.leave_her_johnny.part]]
 inst = "choir"
 role = "choir"
+octave = -1
 [[song.leave_her_johnny.part]]
 inst = "accordion"
 role = "melody"
@@ -196,6 +199,7 @@ section = [
 [[song.spanish_ladies.part]]
 inst = "choir"
 role = "choir"
+octave = -1
 [[song.spanish_ladies.part]]
 inst = "fiddle"
 role = "melody"
@@ -204,7 +208,7 @@ pan = -0.3
 [[song.spanish_ladies.part]]
 inst = "guitar"
 role = "chords"
-gain = 0.7
+gain = 0.4
 pan = 0.35
 stem = 0.1
 [[song.spanish_ladies.part]]
@@ -244,6 +248,7 @@ section = [
 [[song.blow_the_man_down.part]]
 inst = "choir"
 role = "choir"
+octave = -1
 [[song.blow_the_man_down.part]]
 inst = "accordion"
 role = "melody"
@@ -293,6 +298,7 @@ section = [
 [[song.south_australia.part]]
 inst = "choir"
 role = "choir"
+octave = -1
 [[song.south_australia.part]]
 inst = "fiddle"
 role = "melody"
@@ -301,7 +307,7 @@ pan = -0.3
 [[song.south_australia.part]]
 inst = "guitar"
 role = "chords"
-gain = 0.65
+gain = 0.38
 pan = 0.35
 stem = 0.1
 [[song.south_australia.part]]
@@ -349,6 +355,7 @@ bars = "9-32"
 [[song.the_black_tap.part]]
 inst = "choir"
 role = "choir"
+octave = -1
 gain = 0.8
 vowel = "ah"
 bars = "17-32"
@@ -362,9 +369,9 @@ pan = 0.3
 [[song.the_black_tap.part]]
 inst = "bass"
 role = "bass"
-pattern = "R....."
+pattern = "R_____"
 legato = 0.95
-gain = 0.8
+gain = 0.6
 [[song.the_black_tap.part]]
 inst = "bodhran"
 role = "drums"
@@ -692,8 +699,8 @@ stem = 0.4
 [[song.storm_escape.part]]
 inst = "choir"
 role = "choir"
-vowel = "oh"
 octave = -1
+vowel = "oh"
 gain = 0.6
 stem = 0.6
 

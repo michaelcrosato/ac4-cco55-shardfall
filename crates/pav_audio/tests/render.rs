@@ -20,6 +20,20 @@ fn check(name: &str, s: &[f32], floor_db: f32) -> (f32, f32) {
     (rms_db, 20.0 * peak.log10())
 }
 
+/// Renders a music state or song, checking inside the mixer too (the limiter would hide a
+/// NaN): no voice blew up, every bus stayed finite, nothing was stolen from the music.
+fn render_checked(music: &Arc<MusicBank>, song: &str, intensity: f32, secs: f32) -> Vec<f32> {
+    let mut r = Renderer::new();
+    r.mixer.load_music(music.clone());
+    r.at(0.0, Cmd::Apply(Box::new(music_state(song, intensity)), Listener::default()));
+    let s = r.render(secs);
+    let st = r.stats();
+    assert_eq!(st.bad_voices, 0, "{song}: a voice went non-finite");
+    assert!(st.rms.iter().all(|x| x.is_finite()), "{song}: bus levels {:?}", st.rms);
+    assert_eq!(st.stolen[1], 0, "{song}: music voices were stolen (peak {:?})", st.voices_peak);
+    s
+}
+
 #[test]
 fn every_song_renders_30s() {
     let music = common::music();
@@ -29,7 +43,7 @@ fn every_song_renders_30s() {
             let music = music.clone();
             sc.spawn(move || {
                 for n in chunk {
-                    let s = render_song(&music, n, 0.6, 30.0);
+                    let s = render_checked(&music, n, 0.6, 30.0);
                     let (r, p) = check(n, &s, -40.0);
                     println!("song {n:<20} rms {r:6.1} dB  peak {p:6.1} dB");
                 }
@@ -48,7 +62,7 @@ fn every_state_renders_30s_at_low_and_high_intensity() {
             sc.spawn(move || {
                 for n in chunk {
                     for i in [0.0, 1.0] {
-                        let s = render_song(&music, n, i, 30.0);
+                        let s = render_checked(&music, n, i, 30.0);
                         let (r, p) = check(&format!("state {n} @ {i}"), &s, -40.0);
                         println!("state {n:<12} @ {i}  rms {r:6.1} dB  peak {p:6.1} dB");
                     }

@@ -328,7 +328,7 @@ impl Env {
                     }
                 } else {
                     self.level *= self.rel_coef;
-                    if self.level < 2e-4 {
+                    if self.level < 1e-3 {
                         self.level = 0.0;
                         self.stage = DONE;
                     }

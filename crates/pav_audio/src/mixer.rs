@@ -65,6 +65,11 @@ pub struct Stats {
     pub limiter: f32,
     /// Voices playing now per pool (sfx, music, ambience, voice, ui).
     pub voices: [usize; 5],
+    /// Most voices playing at once, and voices stolen, per pool, since the reset.
+    pub voices_peak: [usize; 5],
+    pub stolen: [u32; 5],
+    /// Voices dropped because their output went non-finite (should stay 0).
+    pub bad_voices: u32,
 }
 
 impl Stats {
@@ -88,6 +93,9 @@ struct StatAcc {
     peak: [f32; 6],
     frames: u64,
     limiter: f32,
+    voices_peak: [usize; 5],
+    stolen: [u32; 5],
+    bad_voices: u32,
 }
 
 /// A message to the mixer (what [`crate::AudioOut`] sends to the audio callback).
@@ -304,6 +312,7 @@ impl Mixer {
                 return None;
             }
             voices[vi].kill(sr);
+            self.stats.stolen[p] += 1;
         }
         let slot = match voices.iter().position(|v| !v.active) {
             Some(i) => i,
@@ -381,6 +390,22 @@ impl Mixer {
         self.spawn_layers(&layers, &s, None, variant);
     }
 
+    /// True when a cue may play now (its `cooldown` has passed); records the play.
+    fn cooled(&mut self, name: &str, cue: &Cue) -> bool {
+        if cue.cooldown <= 0.0 {
+            return true;
+        }
+        let now = self.time;
+        let min = (cue.cooldown * self.sample_rate) as u64;
+        if let Some(&t) = self.cue_last.get(name) {
+            if now < t + min {
+                return false;
+            }
+        }
+        self.cue_last.insert(name.to_string(), now);
+        true
+    }
+
     /// Plays a cue from the sound bank at `pos` (unknown names: logged once, ignored; a music
     /// stinger of that name plays if there is one).
     pub fn play_cue(&mut self, name: &str, pos: Vec3, gain: f32, pitch: f32, listener: &Listener) -> bool {
@@ -393,15 +418,8 @@ impl Mixer {
             self.warn_once("cue", name);
             return false;
         };
-        if cue.cooldown > 0.0 {
-            let now = self.time;
-            let min = (cue.cooldown * self.sample_rate) as u64;
-            if let Some(&t) = self.cue_last.get(name) {
-                if now < t + min {
-                    return true;
-                }
-            }
-            self.cue_last.insert(name.to_string(), now);
+        if !self.cooled(name, cue) {
+            return true;
         }
         self.cue_spawn(cue, Some(pos), gain, pitch, None, Group::None, false);
         if let Some(st) = &cue.stinger {
@@ -467,7 +485,9 @@ impl Mixer {
         };
         if let Some(c) = &sp.cue {
             if let Some(cue) = bank.cue(c) {
-                self.cue_spawn(cue, None, sp.gain, 1.0, Some(Bus::Voice), Group::None, false);
+                if self.cooled(c, cue) {
+                    self.cue_spawn(cue, None, sp.gain, 1.0, Some(Bus::Voice), Group::None, false);
+                }
             }
             return;
         }
@@ -582,6 +602,9 @@ impl Mixer {
         for (i, p) in self.pools.iter().enumerate() {
             s.voices[i] = p.iter().filter(|v| v.active).count();
         }
+        s.voices_peak = self.stats.voices_peak;
+        s.stolen = self.stats.stolen;
+        s.bad_voices = self.stats.bad_voices;
         s
     }
     pub fn reset_stats(&mut self) {
@@ -620,6 +643,14 @@ impl Mixer {
         self.music.process(n, sr, &mut notes);
         if let Some(bank) = self.music.bank.clone() {
             for no in &notes {
+                if no.choke {
+                    let g = no.spawn.group;
+                    for v in self.pools[Pool::Music as usize].iter_mut() {
+                        if v.active && v.group == g && !v.waiting() && !v.released() {
+                            v.release();
+                        }
+                    }
+                }
                 let layers = bank.layers(no.inst);
                 self.spawn_layers(layers, &no.spawn, Some(Pool::Music), 0);
             }
@@ -758,6 +789,13 @@ impl Mixer {
                 if !alive {
                     v.active = false;
                 }
+                // A voice that blew up (NaN or runaway) is dropped, never heard.
+                let last = vl[n - 1] + if v.l.stereo { vr[n - 1] } else { 0.0 };
+                if !last.is_finite() || last.abs() > 64.0 {
+                    v.active = false;
+                    self.stats.bad_voices += 1;
+                    continue;
+                }
                 if v.waiting() {
                     continue;
                 }
@@ -836,6 +874,10 @@ impl Mixer {
         }
         self.voice_energy = voice_sq / n.max(1) as f32;
         self.stats.frames += n as u64;
+        for (i, p) in self.pools.iter().enumerate() {
+            let c = p.iter().filter(|v| v.active).count();
+            self.stats.voices_peak[i] = self.stats.voices_peak[i].max(c);
+        }
         self.stats.limiter = self.stats.limiter.min(self.limiter.reduction_peak);
         self.limiter.reduction_peak = 1.0;
         self.time += n as u64;

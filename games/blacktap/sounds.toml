@@ -2179,6 +2179,7 @@ gain = 0.06
 
 [cue.parrot_squawk]
 about = "Ballast the parrot: a harsh FM squawk"
+cooldown = 0.3
 bus = "voice"
 positional = false
 reverb = 0.12

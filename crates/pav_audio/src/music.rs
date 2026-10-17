@@ -444,6 +444,11 @@ pub fn syllable_sound(s: &str) -> (Formant, Formant, Consonant) {
         (Oo, Oo)
     } else if w == "the" || w == "a" || w == "of" {
         (Uh, Uh)
+    } else if w == "shall" || w == "and" || w == "an" {
+        (Ah, Ah)
+    } else if rest == "e" && w.len() <= 3 {
+        // we, he, me, she, be
+        (Ee, Ee)
     } else if rest.starts_with("ee") || rest.starts_with("ea") || rest.starts_with("ie") {
         (Ee, Ee)
     } else if rest.starts_with("ai") || rest.starts_with("ay") || rest.starts_with("ei") || rest.starts_with("ey") {
@@ -745,14 +750,27 @@ pub fn arrange(name: &str, spec: &SongSpec, song: Song) -> anyhow::Result<Arrang
                         match role {
                             "call" => match call {
                                 "rest" => {}
-                                "crew" => voices.push((Inst::Choir, m, p.pan, 0.98, 1.0)),
+                                "crew" => {
+                                    voices.push((Inst::Choir, m, p.pan - 0.15, 0.95, 0.72));
+                                    voices.push((Inst::Choir, m, p.pan + 0.15, 1.04, 0.72));
+                                }
                                 _ => voices.push((Inst::Solo, m, p.pan - 0.05, 1.0, 1.0)),
                             },
                             "chorus" => {
                                 for v in &chorus_voices {
                                     match v.as_str() {
-                                        "unison" => voices.push((Inst::Choir, m, p.pan, 0.98, 1.0)),
-                                        "octave" => voices.push((Inst::Choir, m - 12, p.pan - 0.3, 0.9, 0.8)),
+                                        "unison" => {
+                                            voices.push((Inst::Choir, m, p.pan - 0.15, 0.95, 0.72));
+                                            voices.push((Inst::Choir, m, p.pan + 0.15, 1.04, 0.72));
+                                        }
+                                        // The basses an octave down, but never below F2 (they double the tune there).
+                                        "octave" => voices.push((
+                                            Inst::Choir,
+                                            if m - 12 >= 41 { m - 12 } else { m },
+                                            p.pan - 0.3,
+                                            0.9,
+                                            0.8,
+                                        )),
                                         "fifth" => {
                                             voices.push((Inst::Choir, fifth_below(m, &chord, &key), p.pan + 0.3, 1.03, 0.62))
                                         }
@@ -764,16 +782,19 @@ pub fn arrange(name: &str, spec: &SongSpec, song: Song) -> anyhow::Result<Arrang
                                     }
                                 }
                             }
-                            _ => voices.push((Inst::Choir, m, p.pan, 0.98, 1.0)),
+                            _ => {
+                                voices.push((Inst::Choir, m, p.pan - 0.15, 0.95, 0.72));
+                                voices.push((Inst::Choir, m, p.pan + 0.15, 1.04, 0.72));
+                            }
                         }
                         let bar_start = song.bars.iter().find(|b| b.number == nt.bar).map(|b| b.start).unwrap_or(0.0);
-                        for (vi, (vin, vm, pan, shift, g)) in voices.into_iter().enumerate() {
+                        for (vin, vm, pan, shift, g) in voices {
                             let late = if vin == Inst::Choir { ctx.secs_to_beats(0.012) } else { 0.0 };
                             let j = ctx.jitter(h, if vin == Inst::Choir { 9.0 } else { 5.0 }) + late;
                             let vel = g * accent(nt.start, bar_start) * (1.0 + ctx.rng.bi() * 0.07 * h);
                             let mut e = ev(off + nt.start + j, nt.len * legato, vin, &[vm as f32], vel, pan);
                             e.vowel = (a, z);
-                            e.cons = if vi == 0 { cons } else { Consonant::None };
+                            e.cons = if vm == m { cons } else { Consonant::None };
                             e.shift = shift;
                             ctx.events.push(e);
                         }
@@ -818,7 +839,9 @@ pub fn arrange(name: &str, spec: &SongSpec, song: Song) -> anyhow::Result<Arrang
                             while k + held < n && steps[k + held] == '_' {
                                 held += 1;
                             }
-                            let len = step * held as f64 * legato;
+                            // Held hits (x___) sustain into the next one; single steps use the legato.
+                            let lg = if held > 1 && p.legato.is_none() { 1.0 } else { legato };
+                            let len = step * held as f64 * lg;
                             let chord = ctx.chord_at(t + 1e-6);
                             let acc = accent(base + k as f64 * step, base);
                             let j = ctx.jitter(h, if p.role == Role::Drums { 4.0 } else { 6.0 });
@@ -948,6 +971,8 @@ struct Track {
 pub struct NoteOn {
     pub inst: Inst,
     pub spawn: Spawn,
+    /// A drum struck again damps its previous stroke.
+    pub choke: bool,
 }
 
 /// Plays songs from a [`MusicBank`]: states with playlists, crossfades, stems and stingers.
@@ -1216,5 +1241,5 @@ fn note_on(e: &Ev, part: &PartRt, track: u32, delay: u32, gate: u32, song_time: 
     s.reverb = part.reverb;
     s.echo = part.echo;
     s.lfo_time = song_time;
-    NoteOn { inst: e.inst, spawn: s }
+    NoteOn { inst: e.inst, spawn: s, choke: part.role == Role::Drums }
 }

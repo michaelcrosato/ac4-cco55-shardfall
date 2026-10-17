@@ -162,7 +162,7 @@ impl Inst {
                     none,
                     none,
                 ],
-                gain: 0.25,
+                gain: 0.3,
                 ..note
             }],
             Inst::Squeeze => vec![Layer {
@@ -187,7 +187,7 @@ impl Inst {
                     none,
                     none,
                 ],
-                gain: 0.16,
+                gain: 0.2,
                 ..note
             }],
             Inst::Fiddle | Inst::Tremolo => {
@@ -284,7 +284,7 @@ impl Inst {
                 filter: Filter::Lp,
                 cutoff: 3600.0,
                 res: 0.15,
-                gain: 1.0,
+                gain: 0.8,
                 ..note
             }],
             Inst::Bass => vec![Layer {
@@ -301,7 +301,7 @@ impl Inst {
                 key_track: 0.5,
                 env_cutoff: 1.1,
                 res: 0.15,
-                gain: 0.5,
+                gain: 0.6,
                 ..note
             }],
             Inst::Stomp => vec![
@@ -321,10 +321,9 @@ impl Inst {
                     cutoff: 1100.0,
                     cutoff_end: Some(220.0),
                     decay: 0.08,
-                    gain: 0.55,
+                    gain: 0.58,
                     ..note
                 },
-                Layer { wave: Wave::Noise, filter: Filter::Bp, cutoff: 1900.0, q: Some(1.1), decay: 0.018, gain: 0.07, ..note },
             ],
             Inst::Bodhran => vec![
                 Layer {
@@ -355,11 +354,11 @@ impl Inst {
                     cutoff: 1250.0,
                     q: Some(0.9),
                     decay: 0.075,
-                    repeat: 4,
-                    repeat_gap: 0.007,
-                    delay_rand: 0.012,
+                    repeat: 2,
+                    repeat_gap: 0.011,
+                    delay_rand: 0.008,
                     gain_rand: 3.0,
-                    gain: 0.75,
+                    gain: 1.0,
                     ..note
                 },
                 Layer {
@@ -375,14 +374,14 @@ impl Inst {
             ],
             Inst::Choir => vec![Layer {
                 wave: Wave::Voice,
-                unison: 3,
+                unison: 2,
                 detune: 20.0,
                 drift: 7.0,
                 noise: 0.025,
                 attack: 0.075,
                 decay: 0.35,
                 sustain: 0.9,
-                release: 0.2,
+                release: 0.17,
                 pitch_curve: crate::bank::PitchCurve {
                     n: 2,
                     pts: [[0.0, -0.5], [0.09, 0.0], [0.0; 2], [0.0; 2], [0.0; 2], [0.0; 2]],
@@ -392,7 +391,7 @@ impl Inst {
                 filter: Filter::Lp,
                 cutoff: 4200.0,
                 lfo: [vib(4.8, 0.1, 0.35), wander(3.0, 0.08), none],
-                gain: 0.42,
+                gain: 0.38,
                 ..note
             }],
             Inst::Solo => vec![Layer {

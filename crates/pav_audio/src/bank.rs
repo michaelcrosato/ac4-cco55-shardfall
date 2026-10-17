@@ -297,9 +297,9 @@ impl Default for Layer {
 }
 
 impl Layer {
-    /// Seconds a one-shot lasts (to about -74 dB).
+    /// Seconds a one-shot lasts (to -60 dB).
     pub fn length(&self) -> f32 {
-        let tail = if self.curve == Curve::Exp { 1.4 } else { 1.0 };
+        let tail = if self.curve == Curve::Exp { 1.26 } else { 1.0 };
         let body = self.attack + self.decay + self.hold + self.release * tail;
         if self.wave == Wave::Pluck { body.max(self.pluck_decay.min(8.0)) } else { body }
     }
