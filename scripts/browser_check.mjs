@@ -63,6 +63,33 @@ function watchConsole(page, label) {
 
 const mode = (page) => page.evaluate(() => document.body.dataset.frontend || '');
 
+// Screenshots wait for a frame; software WebGPU frames can take seconds.
+async function shot(page, file) {
+  try {
+    await page.screenshot({ path: file, timeout: 180000 });
+  } catch (e) {
+    console.log(`  (screenshot ${file} failed: ${String(e).split('\n')[0]})`);
+  }
+}
+
+// Animation frames per second over `ms` (the page's own clock).
+async function fps(page, ms = 4000) {
+  return page.evaluate(
+    (ms) =>
+      new Promise((done) => {
+        let n = 0;
+        const t0 = performance.now();
+        const tick = () => {
+          n++;
+          if (performance.now() - t0 < ms) requestAnimationFrame(tick);
+          else done((n * 1000) / (performance.now() - t0));
+        };
+        requestAnimationFrame(tick);
+      }),
+    ms,
+  );
+}
+
 async function waitMode(page, want, timeoutMs) {
   const end = Date.now() + timeoutMs;
   let last = '';
@@ -82,21 +109,22 @@ async function waitMode(page, want, timeoutMs) {
   const m1 = await waitMode(page, ['title'], 180000);
   report('desktop boots to the title', m1 === 'title', `mode=${m1}`);
   await page.waitForTimeout(1500);
-  await page.screenshot({ path: `${outDir}/desktop_title.png` });
+  console.log(`  title fps on this machine: ${(await fps(page)).toFixed(2)}`);
+  await shot(page, `${outDir}/desktop_title.png`);
   // Untouched for 11 s (wall clock): attract.
   const idleStart = Date.now();
   const m2 = await waitMode(page, ['attract'], 60000);
   const idle = (Date.now() - idleStart) / 1000;
   report('11 s idle → attract (DEMO PLAY)', m2 === 'attract', `mode=${m2} after ${idle.toFixed(1)} s untouched`);
   await page.waitForTimeout(6000);
-  await page.screenshot({ path: `${outDir}/desktop_attract.png` });
+  await shot(page, `${outDir}/desktop_attract.png`);
   // Any input: straight back to the title.
   const before = Date.now();
   await page.keyboard.press('KeyK');
   const m3 = await waitMode(page, ['title'], 20000);
   report('a key in attract → title', m3 === 'title', `mode=${m3} after ${((Date.now() - before) / 1000).toFixed(1)} s`);
   await page.waitForTimeout(2500);
-  await page.screenshot({ path: `${outDir}/desktop_back_to_title.png` });
+  await shot(page, `${outDir}/desktop_back_to_title.png`);
   report('desktop: no console errors', errors.length === 0, errors.slice(0, 5).join(' | '));
   await page.close();
 }
@@ -110,7 +138,7 @@ async function waitMode(page, want, timeoutMs) {
   const m1 = await waitMode(page, ['attract'], 180000);
   report('phone boots into attract', m1 === 'attract', `mode=${m1}`);
   await page.waitForTimeout(6000);
-  await page.screenshot({ path: `${outDir}/phone_attract.png` });
+  await shot(page, `${outDir}/phone_attract.png`);
   // Touching the game does not leave attract.
   const cdp = await ctx.newCDPSession(page);
   const tap = async (x, y) => {
@@ -128,7 +156,7 @@ async function waitMode(page, want, timeoutMs) {
   const m3 = await waitMode(page, ['mobile_menu'], 20000);
   report('tap ☰ → the minimal overlay', m3 === 'mobile_menu', `mode=${m3} (tapped ${mx},${my})`);
   await page.waitForTimeout(3000);
-  await page.screenshot({ path: `${outDir}/phone_menu.png` });
+  await shot(page, `${outDir}/phone_menu.png`);
   report('phone: no console errors', errors.length === 0, errors.slice(0, 5).join(' | '));
   await ctx.close();
 }
