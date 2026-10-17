@@ -764,6 +764,7 @@ impl Game for BlackTap {
             "outcome": self.outcome,
             "time": round2(self.time),
             "body": self.body,
+            "difficulty": self.options.difficulty,
             "player": p,
             "traversal": sim
                 .state

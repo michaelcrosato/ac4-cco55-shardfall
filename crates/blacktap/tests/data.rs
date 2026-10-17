@@ -57,3 +57,35 @@ fn front_end_info_is_complete() {
     }
     assert!(!info.theme.is_empty() && !info.bindings.is_empty());
 }
+
+#[test]
+fn the_tab_holds_every_collectible() {
+    // PLAN §14 F: 4 shanty sheets, 5 bottles, 8 chests, 3 Keg Taps on the islands, 6 flotsam.
+    let text = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../../games/blacktap/tab1.toml")).unwrap();
+    let doc: toml::Value = toml::from_str(&text).unwrap();
+    let mut count = std::collections::BTreeMap::new();
+    for c in doc["collectible"].as_array().unwrap() {
+        *count.entry(c["kind"].as_str().unwrap().to_string()).or_insert(0) += 1;
+    }
+    let flotsam = doc["marker"].as_table().unwrap().keys().filter(|k| k.starts_with("flotsam_")).count();
+    assert_eq!(count.get("sheet"), Some(&4), "{count:?}");
+    assert_eq!(count.get("bottle"), Some(&5), "{count:?}");
+    assert_eq!(count.get("chest"), Some(&8), "{count:?}");
+    assert_eq!(count.get("keg_tap"), Some(&3), "{count:?}");
+    assert_eq!(flotsam, 6);
+}
+
+#[test]
+fn three_difficulties() {
+    let mut seen = Vec::new();
+    for name in ["Landlubber", "Sailor", "Captain"] {
+        let mut sim = common::sim("blacktap/round/2", 1);
+        if let Some(g) = sim.state.play.as_mut() {
+            g.restore(&serde_json::json!({ "settings": { "gameplay": { "difficulty": name } } }));
+        }
+        let d = common::status(&sim)["difficulty"].as_f64().unwrap();
+        assert!(!seen.contains(&d), "{name} repeats a difficulty");
+        seen.push(d);
+    }
+    assert!(seen[0] < seen[1] && seen[1] < seen[2], "{seen:?}");
+}
