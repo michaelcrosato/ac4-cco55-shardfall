@@ -595,6 +595,8 @@ pub fn leave_helm(g: &mut BlackTap, sim: &mut Sim) {
 /// The Tab is done: the results screen (the overlay handles the choice).
 pub fn tab_complete(g: &mut BlackTap, _sim: &mut Sim) {
     g.flags.insert("tab_complete".into());
+    g.best_round = 6;
+    g.save_for = 1.0;
     g.music = "results".into();
     g.set_atmosphere("dawn_after_storm", 8.0);
     g.results = Some(0);
@@ -677,10 +679,15 @@ pub fn progress(g: &BlackTap) -> serde_json::Value {
         "collectibles": g.stats.collectibles,
         "upgrades": g.flags.iter().filter(|f| f.starts_with("upgrade_")).collect::<Vec<_>>(),
         "reales": g.stats.reales,
+        "best_round": g.best_round,
+        // Where Continue takes the player (the app reads this key).
+        "continue_scene": if g.best_round >= 6 { "blacktap/freeroam".to_string() } else { format!("blacktap/round/{}", g.best_round + 1) },
     })
 }
 
 pub fn restore_progress(g: &mut BlackTap, p: &serde_json::Value) {
+    let best = p.get("best_round").and_then(|b| b.as_u64()).unwrap_or(0).min(6) as u8;
+    g.best_round = g.best_round.max(best);
     if let Some(ups) = p.get("upgrades").and_then(|u| u.as_array()) {
         for u in ups.iter().filter_map(|u| u.as_str()) {
             if let Some(name) = u.strip_prefix("upgrade_") {

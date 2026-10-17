@@ -82,6 +82,8 @@ pub(crate) struct PlayApp {
     wall_dt: f32,
     /// What the game's cues look like (`fx.toml`).
     fx_bank: Option<std::sync::Arc<pav_view::cue_fx::FxBank>>,
+    /// The next scene load is a Continue (the game's progress names the scene).
+    continue_next: bool,
 }
 
 /// `MobileMenu` → `mobile_menu`.
@@ -285,6 +287,7 @@ impl PlayApp {
             published: String::new(),
             wall_dt: 0.0,
             fx_bank,
+            continue_next: false,
         })
     }
 
@@ -313,7 +316,11 @@ impl PlayApp {
 
     fn save_progress(&mut self, p: &serde_json::Value) {
         use pav_core::persist::Store;
+        if self.progress.as_ref() == Some(p) {
+            return;
+        }
         self.progress = Some(p.clone());
+        self.fe.set_has_progress(true);
         self.store.set(&format!("{}_progress", self.save_key), &p.to_string());
     }
 
@@ -418,6 +425,10 @@ impl App {
     fn play_load(&mut self, scene: &str, seed: u64, autopilot: bool) {
         let Some(host) = &self.host else { return };
         let Some(p) = self.play.as_mut() else { return };
+        let continued = std::mem::take(&mut p.continue_next)
+            .then(|| p.progress.as_ref().and_then(|v| v.get("continue_scene")).and_then(|s| s.as_str()).map(String::from))
+            .flatten();
+        let scene = continued.as_deref().unwrap_or(scene);
         let payload = p.restore_payload(autopilot);
         let scene_name = scene.to_string();
         host.exec(move |sim| match Sim::new(&scene_name, seed) {
@@ -841,7 +852,20 @@ impl App {
                     p.save_settings();
                 }
             }
-            Command::StartGame | Command::NewGame => {}
+            Command::StartGame => {
+                // The next scene the front end loads is a Continue: the game says where to.
+                if let Some(p) = self.play.as_mut() {
+                    p.continue_next = true;
+                }
+            }
+            Command::NewGame => {
+                use pav_core::persist::Store;
+                if let Some(p) = self.play.as_mut() {
+                    p.progress = None;
+                    p.store.remove(&format!("{}_progress", p.save_key));
+                    p.fe.set_has_progress(false);
+                }
+            }
         }
     }
 }

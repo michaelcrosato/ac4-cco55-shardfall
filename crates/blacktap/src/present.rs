@@ -236,6 +236,9 @@ pub fn ui(g: &BlackTap, sim: &Sim) -> UiModel {
         fade: g.spilled.map(|t| (1.0 - t / 2.5).clamp(0.0, 1.0)).unwrap_or(0.0).max((g.stealth.tunnel_fade / 0.6).min(1.0)),
         white: crate::stealth::white(g),
     };
+    if g.save_for > 0.0 && ui.request.is_none() {
+        ui.request = Some(pav_core::play::UiRequest::Save);
+    }
     dedupe_markers(&mut ui.markers);
     ui.map = Some(crate::map::map(g));
     ui.map_icons = crate::map::icons(g, sim);

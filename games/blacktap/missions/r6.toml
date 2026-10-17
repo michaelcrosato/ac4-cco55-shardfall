@@ -1,8 +1,8 @@
 # Last Orders — Tapped Out (~7 min, fort infiltration → storm escape).
 id = "r6"
 title = "Last Orders — Tapped Out"
-setup = [{ game = "player_at:r6_start" }, { atmosphere = "sunset" }, { game = "has_key" }]
-on_start = [{ music = "stealth" }, { line = "r6_intro" }, { atmosphere = "sunset" }, { game = "spawn_fort_guards" }, { game = "drye_balcony" }]
+setup = [{ game = "player_at:r6_start" }, { atmosphere = "sunset" }]
+on_start = [{ music = "stealth" }, { line = "r6_intro" }, { atmosphere = "sunset" }, { game = "has_key" }, { game = "spawn_fort_guards" }, { game = "drye_balcony" }]
 
 [[step]]
 id = "infiltrate"

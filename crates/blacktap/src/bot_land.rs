@@ -90,7 +90,7 @@ pub fn follow(g: &BlackTap, sim: &Sim, name: &str) -> Option<InputFrame> {
     if h.points.is_empty() {
         return None;
     }
-    let pts: Vec<Vec3> = h.points.iter().map(|q| Vec3::from(*q)).collect();
+    let pts: Vec<Vec3> = h.points.iter().map(|q| if q[1] == 0.0 { Vec3::new(q[0], p.y, q[2]) } else { Vec3::from(*q) }).collect();
     // The route segment the player is nearest to (3D, so climbs count height) → aim for its
     // end; before the route starts, its first point.
     let mut best = (pts[0].distance(p), 0usize);
@@ -104,6 +104,7 @@ pub fn follow(g: &BlackTap, sim: &Sim, name: &str) -> Option<InputFrame> {
         }
     }
     let mut k = best.1;
+    // A point at height 0 is "on the ground, whatever its height" (roads over hills).
     let reached = |q: Vec3| flat(q - p).length() < 1.4 && (q.y - p.y).abs() < 2.5;
     while k + 1 < pts.len() && reached(pts[k]) {
         k += 1;

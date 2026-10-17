@@ -155,6 +155,11 @@ pub struct BlackTap {
     /// The world seed: runs on different seeds differ a little (wind, gun timing).
     #[serde(default)]
     pub seed: u64,
+    /// The highest Round completed (saved progress), and seconds the "save" request shows.
+    #[serde(default)]
+    pub best_round: u8,
+    #[serde(default)]
+    pub save_for: f32,
     /// Where the showcase last counted travel as progress.
     #[serde(default)]
     pub showcase_anchor: Vec3,
@@ -261,6 +266,8 @@ pub fn build(sim: &mut Sim, rest: Option<&str>) -> Result<()> {
         seed: sim.state.seed,
         level: level.to_string(),
         showcase_anchor: Vec3::ZERO,
+        best_round: 0,
+        save_for: 0.0,
         dock: crate::drydock::Dock::default(),
         pending_events: Vec::new(),
         tool_press: 0,
@@ -438,6 +445,10 @@ impl BlackTap {
                 MissionEvent::OptionalFailed(_) => {}
                 MissionEvent::Complete => {
                     self.stats.rounds_done += 1;
+                    if self.demo.is_none() {
+                        self.best_round = self.best_round.max(self.round);
+                        self.save_for = 1.0;
+                    }
                     self.stats.round_times.push(self.time - self.round_start);
                     if let Some(d) = c.missions.get(self.round as usize - 1) {
                         self.stats.optional_total += d.optional.len() as u32;
@@ -629,6 +640,7 @@ impl Game for BlackTap {
     fn post(&mut self, sim: &mut Sim, dt: f32, events: &mut Vec<SimEvent>) {
         self.time += dt;
         self.stats.time = self.time;
+        self.save_for = (self.save_for - dt).max(0.0);
         events.append(&mut self.pending_events);
         // Wakes: foam astern of every ship under way (a view-only cue).
         if sim.state.tick.is_multiple_of(5) {
