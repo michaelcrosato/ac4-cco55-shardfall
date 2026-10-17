@@ -653,6 +653,8 @@ pub struct ViewBuilder {
     /// Procedural materials in this view: stable rows, attached to every built scene. Shared
     /// while a frame is built, so assets drawn from game code (`assets::emit_asset`) use it too.
     materials: Arc<Mutex<MaterialTable>>,
+    /// A hook game's draw list (meshes it made, decals).
+    play: crate::play_view::PlayView,
 }
 
 /// Shortest-arc interpolation of object poses between two frames (both sorted by id).
@@ -991,7 +993,22 @@ impl ViewBuilder {
             if prev.live_edit_ticket != curr.live_edit_ticket || prev.studio_mode() != curr.studio_mode() { 1.0 } else { alpha };
         // Interpolated simulation time: animations and particles move smoothly between ticks.
         let time = (prev.time + (curr.time - prev.time) * alpha as f64) as f32;
-        let mut scene = Scene { camera: rig.data(aspect), time, ..Default::default() };
+        // A hook game that owns its camera (`Game::camera`) places the eye itself.
+        let hint = curr.play.as_ref().and_then(|p| p.camera.as_ref());
+        let camera = match hint {
+            Some(h) => {
+                let prev_hint = prev.play.as_ref().and_then(|p| p.camera.as_ref());
+                crate::play_view::hint_camera(prev_hint, h, alpha, aspect)
+            }
+            None => rig.data(aspect),
+        };
+        let mut scene = Scene { camera, time, ..Default::default() };
+        if let (Some(h), Some(p)) = (hint, &curr.play) {
+            let off = crate::play_view::shake_offset(p.effects.shake, time);
+            if off != Vec3::ZERO {
+                scene.camera = crate::play_view::camera_data(h.eye + off, h.target + off * 0.5, h.fov, h.far, aspect);
+            }
+        }
         let _frame = crate::assets::FrameScope::new(settings.style, self.materials.clone());
         // Screen shake (the game's big hits).
         if let Some(g) = &curr.game {
@@ -1108,13 +1125,18 @@ impl ViewBuilder {
             .unwrap_or(focus);
         scene.cutaway = rs::Cutaway {
             focus: feet + Vec3::Y * 0.9,
-            height_cut: c.height_cut && curr.focus_is_player,
+            height_cut: c.height_cut && curr.focus_is_player && hint.is_none(),
             cut_height: feet.y + c.cut_above,
             cut_radius: c.cut_radius,
-            fade: c.fade && curr.focus_is_player,
+            fade: c.fade && curr.focus_is_player && hint.is_none_or(|h| h.fade_occluders),
             fade_radius: c.fade_radius,
             // Low cameras look through walls: cut away everything in front of the player.
-            front_cut: if c.front_cut && curr.focus_is_player && rig.current().tilt < c.front_cut_below { 0.9 } else { 0.0 },
+            // A game's own camera keeps its view (its spring arm keeps the eye clear).
+            front_cut: if c.front_cut && curr.focus_is_player && hint.is_none() && rig.current().tilt < c.front_cut_below {
+                0.9
+            } else {
+                0.0
+            },
         };
         // The haze lies on the ground the player stands on.
         scene.post.haze_base = feet.y;
@@ -1349,6 +1371,11 @@ impl ViewBuilder {
             end: settings.fog_end,
             color: scene.clear_color,
         };
+        // A hook game's atmosphere replaces the level's light, sky colour and fog.
+        if let Some(a) = curr.play.as_ref().and_then(|p| p.atmosphere.as_ref()) {
+            let target = hint.map(|h| h.target).unwrap_or(rig.target);
+            crate::play_view::apply_basic_atmosphere(a, &mut scene, target);
+        }
 
         // Dynamic objects.
         let cam_fwd = scene.camera.forward;
@@ -1445,6 +1472,20 @@ impl ViewBuilder {
             scene.sdfs.push(sd);
         }
         self.emit_effects(&mut scene);
+        if let Some(p) = &curr.play {
+            self.play.emit(&mut scene, prev.play.as_deref(), p, alpha);
+            if let Some((kind, t)) = &p.effects.transition {
+                scene.filter.transition = t.clamp(0.0, 1.0);
+                scene.filter.transition_kind = match kind.as_str() {
+                    "iris" => rs::Transition::Iris,
+                    "diamonds" => rs::Transition::Diamonds,
+                    "dissolve" => rs::Transition::Dissolve,
+                    "mosaic" => rs::Transition::Mosaic,
+                    "blinds" => rs::Transition::Blinds,
+                    _ => rs::Transition::Fade,
+                };
+            }
+        }
         scenery.sort_unstable();
         mark_objects(&mut scene, env_end, &scenery);
         if settings.style == StyleOverride::PerObject {

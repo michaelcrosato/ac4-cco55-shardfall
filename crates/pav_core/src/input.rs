@@ -65,7 +65,8 @@ pub mod buttons {
     ];
 
     pub fn from_name(n: &str) -> Option<u32> {
-        if let Some((_, v)) = GAME_NAMES.lock().unwrap_or_else(|p| p.into_inner()).iter().find(|(k, _)| k.eq_ignore_ascii_case(n)) {
+        if let Some((_, v)) = GAME_NAMES.lock().unwrap_or_else(|p| p.into_inner()).iter().find(|(k, _)| k.eq_ignore_ascii_case(n))
+        {
             return Some(*v);
         }
         NAMES.iter().find(|(k, _)| k.eq_ignore_ascii_case(n)).map(|(_, v)| *v).or_else(|| {

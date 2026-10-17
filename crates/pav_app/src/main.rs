@@ -39,6 +39,8 @@ fn fatal(msg: &str) -> ! {
 }
 
 fn main() {
+    // The games in their own crates (Assassin's Keg: Black Tap).
+    blacktap::register();
     platform::attach_console();
     let d = boot::init();
     boot::install_panic_hook();

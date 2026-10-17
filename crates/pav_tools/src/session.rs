@@ -71,6 +71,8 @@ impl Tunable for ParamsRoot<'_> {
 
 impl Session {
     pub fn new(scene: &str, seed: u64) -> Result<Self> {
+        // The games in their own crates (Assassin's Keg: Black Tap) are scenes too.
+        blacktap::register();
         // Materials first: props compile against them.
         #[cfg(not(target_arch = "wasm32"))]
         if let Err(error) = crate::material_tools::initialize_authored() {

@@ -95,7 +95,8 @@ impl SeaState {
         let mut waves = [Wave { dir: Vec2::X, wavelength: 1.0, amplitude: 0.0, steepness: 0.0, phase: 0.0 }; 6];
         for (i, (len, off, phase)) in SLOTS.iter().enumerate() {
             let a = (wind_dir_deg + off).to_radians();
-            waves[i] = Wave { dir: Vec2::new(a.cos(), a.sin()), wavelength: *len, amplitude: amps[i], steepness: steep, phase: *phase };
+            waves[i] =
+                Wave { dir: Vec2::new(a.cos(), a.sin()), wavelength: *len, amplitude: amps[i], steepness: steep, phase: *phase };
         }
         Self { waves, detail, foam }
     }

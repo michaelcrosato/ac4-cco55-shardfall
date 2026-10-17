@@ -111,6 +111,8 @@ pub static TOOLS: &[Tool] = &[
             arg("hold", "string", "held buttons, comma separated: jump,crouch,crawl,use,focus,interact,sprint,primary"),
             arg("press", "string", "buttons pressed on the first tick"),
             arg("aim", "array", "[x, y, z] aim point (bomb throws)"),
+            arg("look", "array", "[yaw, pitch] camera turn per tick, degrees (games owning the camera)"),
+            arg("triggers", "array", "[L2, R2] analog triggers 0..1"),
             arg("ticks", "integer", "ticks to run (default 1)"),
         ],
         run: t_input,
@@ -1359,6 +1361,10 @@ fn t_input(s: &mut Session, a: &Args) -> Result<Output> {
     let held = buttons_arg(a, "hold")?;
     let press = buttons_arg(a, "press")?;
     let aim = vec_arg(a, "aim")?.filter(|v| v.len() == 3).map(|v| glam::Vec3::new(v[0], v[1], v[2]));
+    let look = vec_arg(a, "look")?.unwrap_or_default();
+    let look = glam::Vec2::new(look.first().copied().unwrap_or(0.0), look.get(1).copied().unwrap_or(0.0));
+    let trig = vec_arg(a, "triggers")?.unwrap_or_default();
+    let triggers = [trig.first().copied().unwrap_or(0.0).clamp(0.0, 1.0), trig.get(1).copied().unwrap_or(0.0).clamp(0.0, 1.0)];
     let n = get_u64(a, "ticks", 1)?.max(1);
     for i in 0..n {
         let f = pav_core::InputFrame {
@@ -1368,6 +1374,8 @@ fn t_input(s: &mut Session, a: &Args) -> Result<Output> {
             held: held | if i == 0 { press } else { 0 },
             pressed: if i == 0 { press } else { 0 },
             cmd: None,
+            look,
+            triggers,
         };
         s.sim.step(&f);
         s.sync_camera();

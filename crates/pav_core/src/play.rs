@@ -265,14 +265,27 @@ pub struct ScreenFx {
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Overlay {
     /// Two to four big tiles (plunder, upgrades, results' choices).
-    Tiles { title: String, subtitle: String, tiles: Vec<Tile>, focus: usize },
+    Tiles {
+        title: String,
+        subtitle: String,
+        tiles: Vec<Tile>,
+        focus: usize,
+    },
     /// The tool wheel.
-    Wheel { slots: Vec<Tile>, selected: usize },
+    Wheel {
+        slots: Vec<Tile>,
+        selected: usize,
+    },
     Results(Results),
     /// The full-screen map (the app also opens it from the pause menu).
-    Map { cursor: Vec2, zoom: f32 },
+    Map {
+        cursor: Vec2,
+        zoom: f32,
+    },
     /// A line of a cinematic scene ("Hold ◯ to skip").
-    Cinematic { skip: f32 },
+    Cinematic {
+        skip: f32,
+    },
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -370,8 +383,9 @@ pub enum DrawItem {
     /// A mesh made by game code (ship hulls, terrain decals), placed by a transform. The view
     /// uploads it once per `Mesh::id` and reuses it.
     Mesh { mesh: Arc<Mesh>, pos: Vec3, rot: Quat, scale: Vec3, color: Color, emissive: f32 },
-    /// A mesh in world space rebuilt every frame (sails, flags).
-    Dynamic { mesh: Mesh, color: Color, two_sided: bool },
+    /// A mesh rebuilt every frame (sails, flags), placed by a transform so it moves smoothly
+    /// with what carries it.
+    Dynamic { mesh: Mesh, pos: Vec3, rot: Quat, color: Color, two_sided: bool },
     /// A flat ring or disc on the ground or sea (telegraphs, waypoints): `ring` 0 = full disc,
     /// 0.9 = thin ring.
     Decal { center: Vec3, radius: f32, ring: f32, color: Color, alpha: f32 },
@@ -573,7 +587,13 @@ impl Atmosphere {
             shadow_radius: f(a.shadow_radius, b.shadow_radius),
             sea: match (&a.sea, &b.sea) {
                 (Some(x), Some(y)) => Some(SeaState::blend(x, y, t)),
-                (x, y) => if t < 0.5 { *x } else { *y },
+                (x, y) => {
+                    if t < 0.5 {
+                        *x
+                    } else {
+                        *y
+                    }
+                }
             },
             sea_time: f(a.sea_time, b.sea_time),
             seabed: if t < 0.5 { a.seabed.clone() } else { b.seabed.clone() },

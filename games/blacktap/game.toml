@@ -1,0 +1,27 @@
+# Front-end identity and scene keys (crates/blacktap/src/lib.rs `front_end`).
+title = "Assassin's Keg"
+tagline = "Black Tap"
+id = "AssassinsKegBlackTap-W9"
+save_key = "blacktap"
+title_scene = "blacktap/title"
+new_game_scene = "blacktap/round/1"
+training_scene = "blacktap/drydock"
+
+[[chapter]]
+label = "First Round — Fair Winds"
+scene = "blacktap/round/1"
+[[chapter]]
+label = "Second Round — Broadside"
+scene = "blacktap/round/2"
+[[chapter]]
+label = "Third Round — Batteries Not Included"
+scene = "blacktap/round/3"
+[[chapter]]
+label = "Fourth Round — Ashore"
+scene = "blacktap/round/4"
+[[chapter]]
+label = "Fifth Round — Under the Influence"
+scene = "blacktap/round/5"
+[[chapter]]
+label = "Last Orders — Tapped Out"
+scene = "blacktap/round/6"

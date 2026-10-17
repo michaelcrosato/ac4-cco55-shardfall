@@ -2277,6 +2277,7 @@ name = "pav_app"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "blacktap",
  "egui",
  "egui-wgpu",
  "egui-winit",
@@ -2358,12 +2359,14 @@ name = "pav_tools"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "blacktap",
  "glam 0.33.11",
  "libm",
  "log",
  "miniz_oxide 0.8.9",
  "pav_audio",
  "pav_core",
+ "pav_kit",
  "pav_render",
  "pav_view",
  "png",

@@ -1,0 +1,28 @@
+# Credits & About (the front end's pages). The Source Information block is required (PLAN.md §1).
+[[block]]
+heading = "Assassin's Keg: Black Tap"
+body = "[AssassinsKegBlackTap-W9] — an original spiritual successor to Assassin's Creed IV: Black Flag. Nothing is watered down; everything is on tap."
+
+[[block]]
+heading = "Source Information"
+body = """Initial Date: 2026-10-17
+SOURCE: Assassin's Creed IV: Black Flag (Ubisoft Montreal, 2013).
+GAME ENGINE: Pavilion (shardfall @ 0098196, github.com/michaelcrosato/shardfall), Rust, wgpu (WebGPU), rapier3d, egui — vendored and extended.
+Environment: Claude Code in an Anthropic-managed cloud container (Ubuntu 24.04, 4 vCPUs, no GPU: Mesa lavapipe; headless Chromium for browser checks).
+Model and Effort Level: Anthropic Claude Opus 5.5 (claude-opus-5-5), effort xhigh (confirmed from session metadata)."""
+
+[[block]]
+heading = "Made with"
+body = "Engine: Pavilion from shardfall (see ENGINE_UPSTREAM.md). Everything you see and hear is procedural: code and readable data, synthesized at run time — no image, model or audio files."
+
+[[block]]
+heading = "Music"
+body = "Traditional sea shanties (public domain), arranged and synthesized in the game, plus an original title theme, \"The Black Tap\"."
+
+[[block]]
+heading = "Fonts"
+body = "Pirata One by Rodrigo Fuenzalida and Nicolás Massi; Alegreya Sans by Huerta Tipográfica. Both under the SIL Open Font License 1.1 (assets/fonts)."
+
+[[block]]
+heading = "A note"
+body = "A parody built by an AI agent. No real organisation, product or trademark is depicted; alcohol is a running joke, never the point."
