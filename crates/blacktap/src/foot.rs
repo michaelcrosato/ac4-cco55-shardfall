@@ -193,7 +193,9 @@ impl Land {
 
 /// The static world for every scene (islands, town, fort — Phase 2 generators).
 pub fn build_world(sim: &mut Sim, world: &World, content: &Content) -> anyhow::Result<()> {
-    crate::island::build(sim, world, content)
+    crate::island::build(sim, world, content)?;
+    crate::paths::build(sim, &world.geometry);
+    Ok(())
 }
 
 /// A kinematic deck slab that walkers can stand on (no visual: the ship mesh is drawn).

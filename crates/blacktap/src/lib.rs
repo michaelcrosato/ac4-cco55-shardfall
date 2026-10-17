@@ -13,6 +13,7 @@ pub mod game;
 pub mod island;
 pub mod looks;
 pub mod map;
+pub mod paths;
 pub mod present;
 pub mod rounds;
 pub mod sea;

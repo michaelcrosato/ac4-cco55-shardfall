@@ -153,7 +153,7 @@ fn every_terrain_chunk_has_its_own_render_mesh() {
     let mut keys = std::collections::BTreeMap::new();
     for (region, chunk) in &sim.state.statics.chunks {
         if let Some(t) = &chunk.terrain {
-            let key = blacktap::drydock::terrain_render_key(t.cx, t.cz, chunk.version);
+            let key = pav_core::terrain::render_key(t.cx, t.cz, chunk.version);
             if let Some(other) = keys.insert(key, *region) {
                 panic!("{other:?} and {region:?} share a terrain render key");
             }

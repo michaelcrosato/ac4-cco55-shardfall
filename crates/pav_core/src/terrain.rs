@@ -381,6 +381,19 @@ impl HeightGrid {
     }
 }
 
+/// The render-mesh key of terrain chunk (`cx`, `cz`) at a statics `version`: one-to-one in the
+/// chunk for any version (the chunk is packed whole, then mixed by a bijection), so no two
+/// chunks of a level ever share a mesh.
+pub fn render_key(cx: i32, cz: i32, version: u64) -> u64 {
+    fn mix(mut z: u64) -> u64 {
+        z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+        z ^ (z >> 31)
+    }
+    let chunk = (cx as u32 as u64) << 32 | cz as u32 as u64;
+    mix(chunk ^ mix(version.wrapping_add(0x7e44_a1c0_9e37_79b9)))
+}
+
 /// One chunk of terrain surface: render mesh data and the collision shape.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct TerrainPatch {

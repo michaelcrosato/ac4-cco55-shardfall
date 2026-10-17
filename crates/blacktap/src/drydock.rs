@@ -356,36 +356,6 @@ pub fn setup(g: &mut BlackTap, sim: &mut Sim) {
     for group in GROUPS {
         spawn_group(g, sim, group);
     }
-    untangle_terrain_keys(sim);
-}
-
-/// The key the view gives a terrain chunk's render mesh (`pav_view::build`, kept in step).
-pub fn terrain_render_key(cx: i32, cz: i32, version: u64) -> u64 {
-    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-    for x in [cx as i64 as u64, cz as i64 as u64, version] {
-        h = (h ^ x).wrapping_mul(0x0100_0000_01b3);
-    }
-    h
-}
-
-/// The view keys each terrain chunk's mesh by a hash of (cx, cz, version) that collides for
-/// some pairs of chunks (the Drydock had four land chunks east of x = 64 drawing open-sea
-/// meshes instead, so their land showed as surf). A chunk whose key is taken gets a fresh one:
-/// re-setting its palette bumps its version. Deterministic (chunk order).
-pub fn untangle_terrain_keys(sim: &mut Sim) {
-    let mut taken = std::collections::BTreeSet::new();
-    let regions: Vec<pav_core::statics::RegionKey> = sim.state.statics.chunks.keys().copied().collect();
-    for region in regions {
-        for _ in 0..64 {
-            let Some(chunk) = sim.state.statics.chunks.get(&region) else { break };
-            let Some(t) = &chunk.terrain else { break };
-            if taken.insert(terrain_render_key(t.cx, t.cz, chunk.version)) {
-                break;
-            }
-            let palette = chunk.palette.clone();
-            sim.state.statics.set_palette(region, palette);
-        }
-    }
 }
 
 /// The Black Tap at her mooring west of the pier, bow to the lagoon's mouth, anchored.

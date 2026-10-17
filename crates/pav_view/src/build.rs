@@ -1342,10 +1342,7 @@ impl ViewBuilder {
                     })
                     .collect();
                 let terrain = chunk.terrain.as_ref().map(|t| {
-                    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-                    for x in [t.cx as i64 as u64, t.cz as i64 as u64, chunk.version] {
-                        h = (h ^ x).wrapping_mul(0x0100_0000_01b3);
-                    }
+                    let h = pav_core::terrain::render_key(t.cx, t.cz, chunk.version);
                     (MeshKey::Custom(h), Arc::new(terrain_mesh(t)))
                 });
                 self.static_cache.insert(

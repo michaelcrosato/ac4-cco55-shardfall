@@ -72,6 +72,13 @@ pub struct Npc {
     pub dead: bool,
     /// Fighters only: engaged in melee (not idle).
     pub fighter: bool,
+    /// The walking path being followed (`paths::walk`), its goal and seconds to a fresh one.
+    #[serde(default)]
+    pub path: Vec<Vec3>,
+    #[serde(default)]
+    pub path_to: Option<Vec3>,
+    #[serde(default)]
+    pub path_t: f32,
 }
 
 impl Npc {
@@ -244,6 +251,9 @@ fn spawn(g: &mut BlackTap, sim: &mut Sim, s: &crate::world::NpcSpawn, offset: Ve
             shot_cd: 2.0,
             dead: false,
             fighter,
+            path: Vec::new(),
+            path_to: None,
+            path_t: 0.0,
         },
     );
     id
@@ -587,7 +597,7 @@ fn perceive(g: &mut BlackTap, sim: &Sim, dt: f32, events: &mut Vec<SimEvent>) {
 }
 
 /// Movement for one person who isn't fighting.
-fn walk_to(feet: Vec3, to: Vec3, speed: f32) -> (Vec2, Option<f32>) {
+pub(crate) fn walk_to(feet: Vec3, to: Vec3, speed: f32) -> (Vec2, Option<f32>) {
     let d = flat(to - feet);
     let l = d.length();
     if l < 0.4 {
@@ -684,7 +694,7 @@ fn brains(g: &mut BlackTap, sim: &mut Sim, dt: f32, events: &mut Vec<SimEvent>) 
             // Drye runs for the bell tower when alarmed.
             if n.kind == "drye" && g.stealth.alarm <= 0.0 {
                 if let Some(bell) = g.world().marker("bell_tower") {
-                    let (m, f) = walk_to(feet, bell, 1.0);
+                    let (m, f) = crate::paths::walk(&g.world().geometry, &mut n, feet, bell, 1.0, dt);
                     inp.move_dir = m;
                     face = f;
                     if let Some(fi) = g.land.fighters.get_mut(&id) {
@@ -706,7 +716,7 @@ fn brains(g: &mut BlackTap, sim: &mut Sim, dt: f32, events: &mut Vec<SimEvent>) 
                 }
                 Awareness::Investigating => {
                     if let Some(t) = n.mind.noise.or(n.mind.last_known) {
-                        let (m, f) = walk_to(feet, t, 0.32);
+                        let (m, f) = crate::paths::walk(&g.world().geometry, &mut n, feet, t, 0.32, dt);
                         inp.move_dir = m;
                         face = f;
                     }
@@ -721,7 +731,7 @@ fn brains(g: &mut BlackTap, sim: &mut Sim, dt: f32, events: &mut Vec<SimEvent>) 
                         n.search_t = 4.0;
                     }
                     if let Some(t) = n.search {
-                        let (m, f) = walk_to(feet, t, 0.28);
+                        let (m, f) = crate::paths::walk(&g.world().geometry, &mut n, feet, t, 0.28, dt);
                         inp.move_dir = m;
                         face = f.or(Some(n.home_facing + time.sin()));
                     }
@@ -779,7 +789,8 @@ fn brains(g: &mut BlackTap, sim: &mut Sim, dt: f32, events: &mut Vec<SimEvent>) 
                             face = f;
                         }
                         Role::Gossip | Role::Post | Role::Stocks => {
-                            let (m, f) = walk_to(feet, n.home, 0.25);
+                            let home = n.home;
+                            let (m, f) = crate::paths::walk(&g.world().geometry, &mut n, feet, home, 0.25, dt);
                             inp.move_dir = m;
                             face = f.or(Some(n.home_facing));
                             if n.role == Role::Stocks && g.mission.flag("molasses_freed") {
