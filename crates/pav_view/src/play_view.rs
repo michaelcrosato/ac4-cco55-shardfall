@@ -164,13 +164,19 @@ impl PlayView {
                 if !scene.custom_meshes.iter().any(|(k, _)| *k == key) {
                     scene.custom_meshes.push((key, data));
                 }
+                let cull = match mesh.cull {
+                    pav_core::play::Cull::Always => 0,
+                    pav_core::play::Cull::Small => rflags::CULL_SMALL,
+                    pav_core::play::Cull::Vegetation => rflags::CULL_VEGETATION | rflags::SWAY,
+                    pav_core::play::Cull::Structure => rflags::CULL_STRUCTURE,
+                };
                 scene.meshes.push(MeshInstance {
                     mesh: key,
                     transform: Mat4::from_scale_rotation_translation(*scale, rot, pos),
                     color: v3(*color),
                     emissive: *emissive,
                     style: Style::Lit,
-                    flags: rflags::OBJECT,
+                    flags: rflags::OBJECT | cull,
                     group: 3 + (mesh.id as u32 & 0xffff),
                     material: 0,
                     ext: Vec3::ZERO,
@@ -265,6 +271,38 @@ impl PlayView {
                 });
             }
         }
+    }
+}
+
+/// Gull Sight: the entities a [`DrawItem::Highlight`] names are drawn through walls in its
+/// colour (their instances carry the entity's outline group, `id + 2`).
+pub fn highlights(scene: &mut Scene, play: &PlayFrame) {
+    let marks: Vec<(u32, Vec3)> = play
+        .draw
+        .items
+        .iter()
+        .filter_map(|i| match i {
+            DrawItem::Highlight { entity, color } => Some((entity.0 + 2, v3(*color))),
+            _ => None,
+        })
+        .collect();
+    if marks.is_empty() {
+        return;
+    }
+    let tint = |group: u32, flags: &mut u32, color: &mut Vec3| {
+        if let Some((_, c)) = marks.iter().find(|(g, _)| *g == group) {
+            *flags |= rflags::XRAY | rflags::NO_CUT;
+            *color = color.lerp(*c, 0.7);
+        }
+    };
+    for m in &mut scene.meshes {
+        tint(m.group, &mut m.flags, &mut m.color);
+    }
+    for s in &mut scene.sdfs {
+        tint(s.group, &mut s.flags, &mut s.color);
+    }
+    for d in &mut scene.dynamic {
+        tint(d.group, &mut d.flags, &mut d.color);
     }
 }
 

@@ -499,7 +499,8 @@ impl App {
         let in_play = matches!(p.fe.mode(), Mode::Play);
         for &code in &p.key_taps {
             if code == KeyCode::Escape {
-                ui.nav.push(if in_play { Nav::Start } else { Nav::Back });
+                // The front end acts on the first that changes the screen (pause or back).
+                ui.nav.extend([Nav::Back, Nav::Start]);
             } else if let Some((_, n)) = NAV_KEYS.iter().find(|(k, _)| *k == code) {
                 ui.nav.push(*n);
             }

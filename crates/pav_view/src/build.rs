@@ -396,6 +396,11 @@ pub struct ViewSettings {
     pub fog: bool,
     pub fog_start: f32,
     pub fog_end: f32,
+    /// Hook games: distances (m) past which small props, vegetation and structures are not
+    /// drawn (the quality presets lower them).
+    pub cull_small: f32,
+    pub cull_vegetation: f32,
+    pub cull_structure: f32,
     pub light: LightSettings,
     pub cutaway: CutawaySettings,
     pub filter: FilterSettings,
@@ -442,6 +447,9 @@ impl Default for ViewSettings {
             fog: true,
             fog_start: 48.0,
             fog_end: 80.0,
+            cull_small: 120.0,
+            cull_vegetation: 180.0,
+            cull_structure: 600.0,
             light: LightSettings::default(),
             cutaway: CutawaySettings::default(),
             filter: FilterSettings::default(),
@@ -529,6 +537,9 @@ impl Tunable for ViewSettings {
         v.bool("fog", &mut self.fog, "Distance fog (hides streaming edges)");
         v.float("fog_start", &mut self.fog_start, 5.0, 300.0, "Fog starts at this distance from the camera target (m)");
         v.float("fog_end", &mut self.fog_end, 10.0, 400.0, "Fog is complete at this distance (m)");
+        v.float("cull_small", &mut self.cull_small, 0.0, 2000.0, "Hook games: small props stop drawing (m)");
+        v.float("cull_vegetation", &mut self.cull_vegetation, 0.0, 2000.0, "Hook games: plants stop drawing (m)");
+        v.float("cull_structure", &mut self.cull_structure, 0.0, 4000.0, "Hook games: buildings stop drawing (m)");
         self.material_detail.visit_choice(
             v,
             "material_detail",
@@ -1375,6 +1386,16 @@ impl ViewBuilder {
         if let Some(a) = curr.play.as_ref().and_then(|p| p.atmosphere.as_ref()) {
             let target = hint.map(|h| h.target).unwrap_or(rig.target);
             crate::play_view::apply_basic_atmosphere(a, &mut scene, target);
+            let eye = scene.camera.eye;
+            crate::atmos::apply(a, eye, target, &mut scene);
+        }
+        if curr.play.is_some() {
+            // Hook games draw a whole archipelago: props, plants and buildings stop at their
+            // own distances, the islands and ships never.
+            scene.frustum_cull = true;
+            scene.cull_small = settings.cull_small;
+            scene.cull_vegetation = settings.cull_vegetation;
+            scene.cull_structure = settings.cull_structure;
         }
 
         // Dynamic objects.
@@ -1474,6 +1495,7 @@ impl ViewBuilder {
         self.emit_effects(&mut scene);
         if let Some(p) = &curr.play {
             self.play.emit(&mut scene, prev.play.as_deref(), p, alpha);
+            crate::play_view::highlights(&mut scene, p);
             if let Some((kind, t)) = &p.effects.transition {
                 scene.filter.transition = t.clamp(0.0, 1.0);
                 scene.filter.transition_kind = match kind.as_str() {

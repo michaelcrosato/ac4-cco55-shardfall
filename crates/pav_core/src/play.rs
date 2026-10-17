@@ -409,6 +409,19 @@ pub struct Mesh {
     pub normals: Vec<[f32; 3]>,
     pub colors: Vec<[f32; 3]>,
     pub indices: Vec<u32>,
+    /// How far away the view stops drawing it (see [`Cull`]).
+    pub cull: Cull,
+}
+
+/// Distance class of a [`Mesh`]: the view culls small props, vegetation and structures at
+/// their own distances (`ViewSettings`), and never culls `Always` (ships, terrain, the hero).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Cull {
+    #[default]
+    Always,
+    Small,
+    Vegetation,
+    Structure,
 }
 
 impl Mesh {
@@ -439,8 +452,8 @@ impl Mesh {
     /// Recomputes smooth normals from the triangles.
     pub fn smooth_normals(&mut self) {
         let mut acc = vec![Vec3::ZERO; self.positions.len()];
-        for t in self.indices.chunks_exact(3) {
-            let [a, b, c] = [t[0], t[1], t[2]].map(|i| Vec3::from(self.positions[i as usize]));
+        for t in self.indices.as_chunks::<3>().0 {
+            let [a, b, c] = t.map(|i| Vec3::from(self.positions[i as usize]));
             let n = (b - a).cross(c - a);
             for &i in t {
                 acc[i as usize] += n;
