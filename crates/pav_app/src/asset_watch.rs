@@ -44,6 +44,8 @@ pub struct AssetWatcher {
 pub struct AssetWatcher;
 
 impl AssetWatcher {
+    // On the web the watcher is a unit struct; natively it has state.
+    #[allow(clippy::default_constructed_unit_structs)]
     pub fn new() -> Self {
         Self::default()
     }

@@ -274,6 +274,9 @@ pub struct Sun {
     /// Shadows are computed in a square region around this point.
     pub shadow_center: Vec3,
     pub shadow_radius: f32,
+    /// Shadow map texels a side (0 = `renderer::SHADOW_SIZE`; the quality presets pick 1024 to
+    /// 4096).
+    pub shadow_map: u32,
 }
 
 impl Default for Sun {
@@ -284,6 +287,7 @@ impl Default for Sun {
             shadows: true,
             shadow_center: Vec3::ZERO,
             shadow_radius: 30.0,
+            shadow_map: 0,
         }
     }
 }
@@ -887,6 +891,9 @@ pub struct Scene {
     pub cull_small: f32,
     pub cull_vegetation: f32,
     pub cull_structure: f32,
+    /// Instances flagged with a `CULL_*` class narrower than this on screen (pixels across) are
+    /// not drawn (0 = no limit): distant details drop out while what holds them stays.
+    pub cull_pixels: f32,
     /// Gull Sight: greys and darkens everything except `XRAY` instances (0..1).
     pub gull: f32,
 }
@@ -923,6 +930,7 @@ impl Default for Scene {
             cull_small: 0.0,
             cull_vegetation: 0.0,
             cull_structure: 0.0,
+            cull_pixels: 0.0,
             gull: 0.0,
         }
     }

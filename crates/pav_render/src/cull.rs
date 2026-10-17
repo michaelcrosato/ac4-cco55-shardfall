@@ -1,5 +1,6 @@
-//! CPU culling of mesh and SDF instances by bounding sphere: outside the view frustum, or past
-//! the distance limit of their category (`flags::CULL_*`). Shadow casters are tested against
+//! CPU culling of mesh and SDF instances by bounding sphere: outside the view frustum, past
+//! the distance limit of their category (`flags::CULL_*`), or (categorised instances only)
+//! smaller on screen than `Scene::cull_pixels`. Shadow casters are tested against
 //! the volumes that receive shadows instead (the sun's shadow box, the shadowed lamps' reach),
 //! so a caster just off screen still throws its shadow into view.
 
@@ -49,6 +50,10 @@ pub struct Culler {
     limits: [(u32, f32); 3],
     /// Extra reach of swaying instances: a fraction of their radius and metres.
     sway: (f32, f32),
+    /// Categorised instances whose diameter on screen is under `min_px` pixels are not drawn;
+    /// `px` is the pixels a 1 m radius spans at 1 m (0 = off).
+    min_px: f32,
+    px: f32,
 }
 
 impl Culler {
@@ -68,7 +73,20 @@ impl Culler {
                 (flags::CULL_STRUCTURE, scene.cull_structure),
             ],
             sway: (0.25 * w, 0.5 * w),
+            min_px: 0.0,
+            px: 0.0,
         }
+    }
+
+    /// Culls categorised instances smaller than `scene.cull_pixels` on a perspective view
+    /// drawn `height` pixels tall.
+    pub fn with_pixels(mut self, scene: &Scene, height: u32) -> Self {
+        let cam = &scene.camera;
+        if scene.cull_pixels > 0.0 && !cam.ortho {
+            self.min_px = scene.cull_pixels;
+            self.px = cam.proj.y_axis.y.abs() * height as f32;
+        }
+        self
     }
 
     /// The bounding sphere of a mesh instance whose mesh has the local sphere (`c`, `r`).
@@ -86,6 +104,12 @@ impl Culler {
         let r = if f & (flags::SWAY | flags::GRASS) != 0 { r * (1.0 + self.sway.0) + self.sway.1 } else { r };
         let limit = self.limits.iter().filter(|(bit, d)| f & bit != 0 && *d > 0.0).map(|(_, d)| *d).fold(f32::INFINITY, f32::min);
         if limit.is_finite() && c.distance(self.eye) - r > limit {
+            return Verdict { draw: false, shadow: false, far: true };
+        }
+        if self.px > 0.0
+            && f & (flags::CULL_SMALL | flags::CULL_VEGETATION | flags::CULL_STRUCTURE) != 0
+            && r * self.px < self.min_px * c.distance(self.eye)
+        {
             return Verdict { draw: false, shadow: false, far: true };
         }
         let draw = self.view.as_ref().is_none_or(|p| p.sphere(c, r));
@@ -122,5 +146,17 @@ mod tests {
         assert!(c.test(far, 0.5, flags::CULL_SMALL).far);
         assert!(!c.test(far, 0.5, 0).far);
         assert!(!c.test(far, 0.5, flags::CULL_VEGETATION).far, "vegetation has no limit here");
+    }
+
+    #[test]
+    fn tiny_categorised_instances_are_dropped_by_screen_size() {
+        let scene = Scene { cull_pixels: 2.0, ..Default::default() };
+        let cam = scene.camera;
+        let c = Culler::new(&scene, cam.proj * cam.view, None, Vec::new()).with_pixels(&scene, 1080);
+        let at = Vec3::new(0.0, 0.0, -300.0);
+        assert!(c.test(at, 0.05, flags::CULL_SMALL).far, "a 10 cm thing 300 m away");
+        assert!(!c.test(at, 0.05, 0).far, "uncategorised instances (characters, ships) stay");
+        assert!(!c.test(Vec3::ZERO, 0.05, flags::CULL_SMALL).far, "near the target it stays");
+        assert!(!c.test(at, 4.0, flags::CULL_STRUCTURE).far, "a house at 300 m stays");
     }
 }

@@ -58,10 +58,46 @@ pub enum Quality {
     High,
 }
 
+/// The picture's look (PLAN §9.17): the game's own, or one of the selectable looks
+/// (`pav_view`'s looks.toml by [`VisualStyle::look_name`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum VisualStyle {
+    #[default]
+    Classic,
+    PaintedSeas,
+    MemoryMist,
+    Storm,
+}
+
+impl VisualStyle {
+    pub const ALL: [VisualStyle; 4] =
+        [VisualStyle::Classic, VisualStyle::PaintedSeas, VisualStyle::MemoryMist, VisualStyle::Storm];
+
+    /// The name shown in the menu.
+    pub fn label(self) -> &'static str {
+        match self {
+            VisualStyle::Classic => "Classic",
+            VisualStyle::PaintedSeas => "Painted Seas",
+            VisualStyle::MemoryMist => "Memory Mist",
+            VisualStyle::Storm => "Storm",
+        }
+    }
+
+    /// The look drawn (a `[[look]]` name in pav_view's looks.toml); None: the game's own.
+    pub fn look_name(self) -> Option<&'static str> {
+        match self {
+            VisualStyle::Classic => None,
+            s => Some(s.label()),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Display {
     pub quality: Quality,
+    /// The look the picture is drawn in.
+    pub style: VisualStyle,
     /// 0.5..1.5 (1 = neutral).
     pub brightness: f32,
     /// Camera shake, 0..1.
@@ -72,7 +108,7 @@ pub struct Display {
 
 impl Default for Display {
     fn default() -> Self {
-        Self { quality: Quality::Medium, brightness: 1.0, shake: 1.0, motion: 1.0 }
+        Self { quality: Quality::Medium, style: VisualStyle::Classic, brightness: 1.0, shake: 1.0, motion: 1.0 }
     }
 }
 
@@ -302,6 +338,7 @@ pub enum Row {
     Voice,
     UiVolume,
     Quality,
+    Style,
     Brightness,
     Subtitles,
     SubtitleSize,
@@ -326,7 +363,7 @@ pub const TABS: &[(&str, &[Row])] = &[
     ),
     ("Camera", &[Row::Sensitivity, Row::InvertX, Row::InvertY, Row::Shake, Row::Motion, Row::Defaults]),
     ("Audio", &[Row::Master, Row::Music, Row::Sfx, Row::Ambience, Row::Voice, Row::UiVolume, Row::Defaults]),
-    ("Display", &[Row::Quality, Row::Brightness, Row::Defaults]),
+    ("Display", &[Row::Quality, Row::Style, Row::Brightness, Row::Defaults]),
     (
         "Accessibility",
         &[
@@ -384,6 +421,7 @@ impl Row {
             Row::Voice => "Voices",
             Row::UiVolume => "Menu Sounds",
             Row::Quality => "Graphics Quality",
+            Row::Style => "Visual Style",
             Row::Brightness => "Brightness",
             Row::Subtitles => "Subtitles",
             Row::SubtitleSize => "Subtitle Size",
@@ -421,6 +459,7 @@ impl Row {
             Row::Voice => "The crew, Old Bung and every scoundrel ashore.",
             Row::UiVolume => "The clicks and chimes of these menus.",
             Row::Quality => "Lower it for a smoother frame rate; raise it for longer views.",
+            Row::Style => "Classic, Painted Seas (a painted world, crisp heroes), Memory Mist or Storm.",
             Row::Brightness => "Raise it until the left lantern is just visible in the dark.",
             Row::Subtitles => "Show spoken lines as text at the bottom of the screen.",
             Row::SubtitleSize => "How big subtitle text is.",
@@ -471,6 +510,7 @@ impl Row {
             Row::Voice => pct(s.audio.voice),
             Row::UiVolume => pct(s.audio.ui),
             Row::Quality => RowValue::Choice(format!("{:?}", s.display.quality)),
+            Row::Style => RowValue::Choice(s.display.style.label().into()),
             Row::Brightness => {
                 let v = s.display.brightness;
                 RowValue::Slider(v - 0.5, format!("{}%", (v * 100.0).round() as i32))
@@ -542,6 +582,7 @@ impl Row {
             Row::Voice => slide(&mut s.audio.voice, dir, 0.1, 0.0, 1.0),
             Row::UiVolume => slide(&mut s.audio.ui, dir, 0.1, 0.0, 1.0),
             Row::Quality => cycle(&mut s.display.quality, &[Quality::Low, Quality::Medium, Quality::High], dir),
+            Row::Style => cycle(&mut s.display.style, &VisualStyle::ALL, dir),
             Row::Brightness => slide(&mut s.display.brightness, dir, 0.05, 0.5, 1.5),
             Row::Subtitles => flip(&mut s.accessibility.subtitles),
             Row::SubtitleSize => {
@@ -588,6 +629,7 @@ impl Row {
             Row::Voice => s.audio.voice = d.audio.voice,
             Row::UiVolume => s.audio.ui = d.audio.ui,
             Row::Quality => s.display.quality = d.display.quality,
+            Row::Style => s.display.style = d.display.style,
             Row::Brightness => s.display.brightness = d.display.brightness,
             Row::Subtitles => s.accessibility.subtitles = d.accessibility.subtitles,
             Row::SubtitleSize => s.accessibility.subtitle_size = d.accessibility.subtitle_size,

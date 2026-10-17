@@ -3,6 +3,7 @@
 pub mod arpg;
 pub mod assets;
 pub mod atmos;
+pub mod batch;
 pub mod build;
 pub mod camera;
 pub mod creatures;
@@ -11,6 +12,7 @@ pub mod fx;
 pub mod look;
 pub mod materials;
 pub mod play_view;
+pub mod quality;
 pub mod vehicles;
 pub mod water;
 

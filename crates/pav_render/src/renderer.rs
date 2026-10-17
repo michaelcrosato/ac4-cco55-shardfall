@@ -19,6 +19,7 @@ use crate::scene::{CameraData, Scene, Tonemap};
 pub const HDR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 pub const NORMAL_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
+/// The sun's shadow map size (texels a side) when the scene asks for none (`Sun::shadow_map`).
 pub const SHADOW_SIZE: u32 = 2048;
 pub const SAMPLES: u32 = 4;
 const MAX_POINT_LIGHTS: usize = 64;
@@ -193,6 +194,9 @@ pub struct RenderStats {
     pub xray_instances: usize,
     /// Vertices of the ocean grid (0 without an ocean).
     pub ocean_vertices: usize,
+    /// Mesh and SDF instances drawn in the main pass by distance class: small props,
+    /// vegetation, structures, and the rest (characters, ships, terrain, effects).
+    pub drawn_by_class: [usize; 4],
 }
 
 pub struct Renderer {
@@ -206,6 +210,8 @@ pub struct Renderer {
     globals_bg: wgpu::BindGroup,
     shadow_bg: wgpu::BindGroup,
     shadow_view: wgpu::TextureView,
+    /// Texels a side of `shadow_view` (follows `Sun::shadow_map`).
+    shadow_size: u32,
     shadow_sampler: wgpu::Sampler,
     mesh_shadow_pipeline: wgpu::RenderPipeline,
     sdf_shadow_pipeline: wgpu::RenderPipeline,
@@ -658,17 +664,7 @@ impl Renderer {
             (std::mem::size_of::<GpuPointLight>() * MAX_POINT_LIGHTS) as u64,
         );
 
-        let shadow_tex = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("shadow map"),
-            size: wgpu::Extent3d { width: SHADOW_SIZE, height: SHADOW_SIZE, depth_or_array_layers: 1 },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: DEPTH_FORMAT,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
-            view_formats: &[],
-        });
-        let shadow_view = shadow_tex.create_view(&Default::default());
+        let shadow_view = Self::shadow_map(device, SHADOW_SIZE);
         let shadow_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("shadow sampler"),
             mag_filter: wgpu::FilterMode::Linear,
@@ -933,6 +929,7 @@ impl Renderer {
             globals_bg,
             shadow_bg,
             shadow_view,
+            shadow_size: SHADOW_SIZE,
             shadow_sampler,
             mesh_shadow_pipeline,
             sdf_shadow_pipeline,
@@ -966,6 +963,52 @@ impl Renderer {
             render_scale: 1.0,
             max_shadow_lights: crate::shadows::MAX_SHADOW_LIGHTS,
             materials,
+        }
+    }
+
+    /// The sun's shadow map: `size` texels a side.
+    fn shadow_map(device: &wgpu::Device, size: u32) -> wgpu::TextureView {
+        device
+            .create_texture(&wgpu::TextureDescriptor {
+                label: Some("shadow map"),
+                size: wgpu::Extent3d { width: size, height: size, depth_or_array_layers: 1 },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: DEPTH_FORMAT,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
+            })
+            .create_view(&Default::default())
+    }
+
+    /// Texels a side of the sun's shadow map now.
+    pub fn shadow_size(&self) -> u32 {
+        self.shadow_size
+    }
+
+    /// Resizes the sun's shadow map to what the scene asks for (`Sun::shadow_map`: the quality
+    /// presets) and rebinds it.
+    fn ensure_shadow_size(&mut self, scene: &Scene) {
+        let max = self.device.limits().max_texture_dimension_2d.min(8192);
+        let want = if scene.sun.shadow_map == 0 { SHADOW_SIZE } else { scene.sun.shadow_map.clamp(256, max) };
+        if want == self.shadow_size {
+            return;
+        }
+        self.shadow_size = want;
+        self.shadow_view = Self::shadow_map(&self.device, want);
+        self.globals_bg = Self::make_globals_bg(
+            &self.device,
+            &self.globals_layout,
+            &self.globals_buf,
+            &self.lights.buf,
+            &self.shadow_view,
+            &self.shadow_sampler,
+            &self.point_shadows,
+        );
+        if let Some(t) = &self.targets {
+            let bg = self.make_post_bg(&t.hdr, &t.depth_ms, &t.normal_ms);
+            self.targets.as_mut().unwrap().post_bg = bg;
         }
     }
 
@@ -1115,13 +1158,13 @@ impl Renderer {
     }
 
     /// Light view-projection for the sun, snapped to shadow texels to avoid shimmering.
-    fn light_matrix(scene: &Scene) -> (Mat4, f32) {
+    fn light_matrix(scene: &Scene, shadow_size: u32) -> (Mat4, f32) {
         let dir = scene.sun.direction.normalize_or(Vec3::NEG_Y);
         let r = scene.sun.shadow_radius.max(1.0);
         let up = if dir.y.abs() > 0.99 { Vec3::Z } else { Vec3::Y };
         let right = dir.cross(up).normalize();
         let up2 = right.cross(dir);
-        let texel = 2.0 * r / SHADOW_SIZE as f32;
+        let texel = 2.0 * r / shadow_size.max(1) as f32;
         let c = scene.sun.shadow_center;
         let (cx, cy) = (c.dot(right), c.dot(up2));
         let snapped = c + right * ((cx / texel).round() * texel - cx) + up2 * ((cy / texel).round() * texel - cy);
@@ -1183,7 +1226,8 @@ impl Renderer {
         let cam = &scene.camera;
         let rcam = if reversed { CameraData { proj: reversed_z(cam.proj), ..*cam } } else { *cam };
         let view_proj = rcam.proj * cam.view;
-        let (light_vp, texel) = Self::light_matrix(scene);
+        self.ensure_shadow_size(scene);
+        let (light_vp, texel) = Self::light_matrix(scene, self.shadow_size);
         let sun_dir = scene.sun.direction.normalize_or(Vec3::NEG_Y);
         // The lights nearest the point of interest, if there are too many.
         let mut light_order: Vec<usize> = (0..scene.point_lights.len()).collect();
@@ -1293,13 +1337,27 @@ impl Renderer {
 
         // Culling: what the camera sees is drawn; what shadows the visible area casts.
         let lamps = casters.iter().map(|&i| (scene.point_lights[i].position, scene.point_lights[i].radius)).collect();
-        let culler = Culler::new(scene, cam.proj * cam.view, scene.sun.shadows.then_some(light_vp), lamps);
+        let culler =
+            Culler::new(scene, cam.proj * cam.view, scene.sun.shadows.then_some(light_vp), lamps).with_pixels(scene, size.1);
         let (mut culled_frustum, mut culled_distance) = (0, 0);
-        let mut tally = |v: Verdict| {
+        let mut drawn_by_class = [0usize; 4];
+        let mut tally = |v: Verdict, f: u32| {
+            use crate::scene::flags;
             if v.far {
                 culled_distance += 1;
             } else if !v.draw {
                 culled_frustum += 1;
+            } else {
+                let class = if f & flags::CULL_SMALL != 0 {
+                    0
+                } else if f & flags::CULL_VEGETATION != 0 {
+                    1
+                } else if f & flags::CULL_STRUCTURE != 0 {
+                    2
+                } else {
+                    3
+                };
+                drawn_by_class[class] += 1;
             }
         };
 
@@ -1310,7 +1368,7 @@ impl Renderer {
             let Some(gm) = self.meshes.get(&m.mesh) else { continue };
             let (c, r) = Culler::mesh_sphere(&m.transform, gm.bounds.0, gm.bounds.1);
             let v = culler.test(c, r, m.flags);
-            tally(v);
+            tally(v, m.flags);
             if v.draw || v.shadow {
                 order.push((i, v));
             }
@@ -1392,7 +1450,7 @@ impl Renderer {
         let mut sdf_xray: Vec<GpuSdfInstance> = Vec::new();
         for s in &scene.sdfs {
             let v = culler.test((s.a + s.b) * 0.5, (s.b - s.a).length() * 0.5 + s.ra.max(s.rb), s.flags);
-            tally(v);
+            tally(v, s.flags);
             let inst = GpuSdfInstance {
                 a: [s.a.x, s.a.y, s.a.z, s.ra],
                 b: [s.b.x, s.b.y, s.b.z, s.rb],
@@ -1732,6 +1790,7 @@ impl Renderer {
             shadow_instances: shadow_meshes + (sdf_shadow_end - sdf_count) as usize,
             xray_instances: xray_meshes + (sdf_xray_end - sdf_shadow_end) as usize,
             ocean_vertices: self.sea.ocean_vertices(),
+            drawn_by_class,
         };
     }
 }

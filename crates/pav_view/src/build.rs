@@ -401,6 +401,23 @@ pub struct ViewSettings {
     pub cull_small: f32,
     pub cull_vegetation: f32,
     pub cull_structure: f32,
+    /// Hook games: past `cull_vegetation` a sparse far forest (trees, no grass) still draws out
+    /// to here, so islands seen from the sea keep their palms (m; 0 = none).
+    pub vegetation_far: f32,
+    /// Hook games: the graphics quality preset (`quality::QualityChoice`; Medium and Low lower
+    /// the settings below and the effects above, High draws them as they are).
+    pub quality: crate::quality::QualityChoice,
+    /// Hook games: the sun's shadow map (texels a side) and its reach (times the game's
+    /// shadow radius), the ocean grid's cells per LOD ring, and the share of plants drawn.
+    pub shadow_map: i32,
+    pub shadow_reach: f32,
+    pub ocean_grid: i32,
+    pub vegetation: f32,
+    /// Terrain chunks farther than this from the eye draw a half-resolution mesh (m; 0 = never).
+    pub terrain_lod: f32,
+    /// Hook games: props, plants and building parts narrower than this on screen (pixels) are
+    /// not drawn (0 = all are).
+    pub cull_pixels: f32,
     pub light: LightSettings,
     pub cutaway: CutawaySettings,
     pub filter: FilterSettings,
@@ -450,6 +467,14 @@ impl Default for ViewSettings {
             cull_small: 120.0,
             cull_vegetation: 180.0,
             cull_structure: 600.0,
+            vegetation_far: 700.0,
+            quality: crate::quality::QualityChoice::High,
+            shadow_map: 4096,
+            shadow_reach: 1.4,
+            ocean_grid: 128,
+            vegetation: 1.0,
+            terrain_lod: 160.0,
+            cull_pixels: 3.0,
             light: LightSettings::default(),
             cutaway: CutawaySettings::default(),
             filter: FilterSettings::default(),
@@ -540,6 +565,26 @@ impl Tunable for ViewSettings {
         v.float("cull_small", &mut self.cull_small, 0.0, 2000.0, "Hook games: small props stop drawing (m)");
         v.float("cull_vegetation", &mut self.cull_vegetation, 0.0, 2000.0, "Hook games: plants stop drawing (m)");
         v.float("cull_structure", &mut self.cull_structure, 0.0, 4000.0, "Hook games: buildings stop drawing (m)");
+        v.float("vegetation_far", &mut self.vegetation_far, 0.0, 4000.0, "Hook games: a sparse far forest draws out to here (m)");
+        self.quality.visit_choice(v, "quality", "Hook games: graphics quality preset (low, medium, high)");
+        v.int("shadow_map", &mut self.shadow_map, 512, 8192, "Hook games: sun shadow map size (texels)");
+        v.float("shadow_reach", &mut self.shadow_reach, 0.25, 3.0, "Hook games: shadowed area, times the game's radius");
+        v.int("ocean_grid", &mut self.ocean_grid, 16, 256, "Hook games: ocean grid cells per LOD ring (128 = 80k vertices)");
+        v.float("vegetation", &mut self.vegetation, 0.0, 1.0, "Hook games: share of plants drawn");
+        v.float(
+            "terrain_lod",
+            &mut self.terrain_lod,
+            0.0,
+            2000.0,
+            "Terrain chunks past this draw at half resolution (m, 0 = never)",
+        );
+        v.float(
+            "cull_pixels",
+            &mut self.cull_pixels,
+            0.0,
+            16.0,
+            "Hook games: scenery narrower than this on screen is not drawn (px)",
+        );
         self.material_detail.visit_choice(
             v,
             "material_detail",
@@ -632,15 +677,67 @@ struct RegionCache {
     /// the hash of the place's palette (its blocks' material roles).
     materials: u64,
     palette: u64,
+    /// Built for a hook game: plain static pieces merged (`batch`).
+    batched: bool,
     meshes: Vec<MeshInstance>,
     sdfs: Vec<SdfInstance>,
+    /// Plants and fine details apart (hook games thin plants with distance and quality and
+    /// draw details only near the eye): each piece's instances are a run of these.
+    veg_meshes: Vec<MeshInstance>,
+    veg_sdfs: Vec<SdfInstance>,
+    plants: Vec<Plant>,
     lights: Vec<rs::PointLight>,
     terrain: Option<(MeshKey, Arc<MeshData>)>,
+    /// The terrain's half-resolution mesh (far away) and its box.
+    terrain_lod: Option<(MeshKey, Arc<MeshData>)>,
+    terrain_box: (Vec3, Vec3),
     /// Generated meshes its baked props draw (every scene carries them).
     custom: Vec<(u64, Arc<MeshData>)>,
     /// Its baked props' own lights, made each frame since they flicker and pulse: the light,
     /// where it is, its phase.
     prop_lights: Vec<(LightDef, Vec3, f32)>,
+}
+
+/// What a set-apart piece of a region is.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum PieceKind {
+    Plant,
+    Grass,
+    /// A thin bar, rail or trim of a building: drawn within half the small-prop distance.
+    Detail,
+}
+
+/// One plant or detail of a region: its thinning key, where it stands, what it is, and its
+/// runs of `veg_meshes` and `veg_sdfs`.
+struct Plant {
+    key: u64,
+    at: Vec3,
+    kind: PieceKind,
+    meshes: std::ops::Range<usize>,
+    sdfs: std::ops::Range<usize>,
+}
+
+impl Plant {
+    /// Whether a hook game draws it, seen from `eye` (`share`: the quality's plants).
+    fn shown(&self, eye: Vec3, share: f32, settings: &ViewSettings) -> bool {
+        let d = self.at.distance(eye);
+        match self.kind {
+            PieceKind::Detail => settings.cull_small <= 0.0 || d < 0.5 * settings.cull_small,
+            kind => {
+                let falloff =
+                    crate::quality::plant_falloff(d, settings.cull_vegetation, settings.vegetation_far, kind == PieceKind::Grass);
+                crate::quality::keep_plant(self.key, share * falloff)
+            }
+        }
+    }
+}
+
+/// Fine detail: a stick or a speck (its second-largest half extent under 8 cm).
+fn is_detail(shape: &Shape) -> bool {
+    let h = shape.half_extents().abs();
+    let mut e = [h.x, h.y, h.z];
+    e.sort_by(f32::total_cmp);
+    e[1] < 0.08
 }
 
 /// Keeps per-region instance caches and short-lived visual effects between frames.
@@ -1045,6 +1142,14 @@ impl ViewBuilder {
     ) -> Scene {
         let alpha =
             if prev.live_edit_ticket != curr.live_edit_ticket || prev.studio_mode() != curr.studio_mode() { 1.0 } else { alpha };
+        // A hook game draws at its quality preset (High: the settings as they are).
+        let at_quality;
+        let settings = if curr.play.is_some() && settings.quality != crate::quality::QualityChoice::High {
+            at_quality = settings.at_quality();
+            &at_quality
+        } else {
+            settings
+        };
         // Interpolated simulation time: animations and particles move smoothly between ticks.
         let time = (prev.time + (curr.time - prev.time) * alpha as f64) as f32;
         // A hook game that owns its camera (`Game::camera`) places the eye itself.
@@ -1219,8 +1324,13 @@ impl ViewBuilder {
             palette_map.into_iter().flatten().map(|(role, hex)| (role.as_str(), hex.as_str())).collect();
         let palette = palette_hash(&roles);
         for (key, chunk) in &curr.statics.chunks {
+            let batched = curr.play.is_some();
             let fresh = self.static_cache.get(key).is_some_and(|c| {
-                c.version == chunk.version && c.style == settings.style && c.materials == materials && c.palette == palette
+                c.version == chunk.version
+                    && c.style == settings.style
+                    && c.materials == materials
+                    && c.palette == palette
+                    && c.batched == batched
             });
             if !fresh {
                 let mut table = lock(&self.materials);
@@ -1245,16 +1355,23 @@ impl ViewBuilder {
                         color: if b.has(block_flags::CRACKED) { v3(b.color) * 0.55 } else { v3(b.color) },
                         emissive: 0.0,
                         style: style_of(b.look, settings.style),
-                        flags: 0,
+                        // Hook games stop drawing level geometry at the structure distance.
+                        flags: rs::flags::CULL_STRUCTURE,
                         group: 1,
                         material,
                         ext,
                     });
                 }
+                let (mut veg_meshes, mut veg_sdfs, mut plants) = (Vec::new(), Vec::new(), Vec::new());
+                let ladders_from = list.len();
                 for l in &chunk.ladders {
                     emit_ladder(&mut list, l, style_of(Look::Cel, settings.style));
                 }
+                for m in &mut list[ladders_from..] {
+                    m.flags |= rs::flags::CULL_STRUCTURE;
+                }
                 for d in &chunk.decor {
+                    let (decor_meshes, decor_sdfs) = (list.len(), sdfs.len());
                     let style = style_of(d.look, settings.style);
                     let material = d.material.as_deref().map_or(0, |name| {
                         let map = if matches!(d.shape, Shape::Cylinder { .. } | Shape::Capsule { .. }) {
@@ -1287,6 +1404,28 @@ impl ViewBuilder {
                             );
                         }
                     }
+                    let class = match d.sway {
+                        Sway::Grass | Sway::Leaves => rs::flags::CULL_VEGETATION,
+                        _ => size_class(d.shape.half_extents().length()),
+                    };
+                    tag(&mut list[decor_meshes..], &mut sdfs[decor_sdfs..], class);
+                    let kind = match d.sway {
+                        Sway::Grass => Some(PieceKind::Grass),
+                        Sway::Leaves => Some(PieceKind::Plant),
+                        Sway::None => is_detail(&d.shape).then_some(PieceKind::Detail),
+                    };
+                    if let Some(kind) = kind {
+                        let (m0, s0) = (veg_meshes.len(), veg_sdfs.len());
+                        veg_meshes.extend(list.drain(decor_meshes..));
+                        veg_sdfs.extend(sdfs.drain(decor_sdfs..));
+                        plants.push(Plant {
+                            key: crate::quality::plant_key(1, d.pos),
+                            at: d.pos,
+                            kind,
+                            meshes: m0..veg_meshes.len(),
+                            sdfs: s0..veg_sdfs.len(),
+                        });
+                    }
                 }
                 for z in &chunk.zones {
                     emit_zone(&mut list, z, settings.style);
@@ -1298,6 +1437,7 @@ impl ViewBuilder {
                 for (index, p) in chunk.props.iter().enumerate() {
                     let Some(parts) = p.parts() else { continue };
                     let id = baked_id(*key, index);
+                    let (prop_meshes, prop_sdfs) = (baked.meshes.len(), baked.sdfs.len());
                     let o = RenderObject {
                         id: pav_core::EntityId(id),
                         pos: p.pos,
@@ -1328,12 +1468,36 @@ impl ViewBuilder {
                         };
                         prop_lights.push((def, p.pos + p.rot * (light.pos * p.scale), id as f32 * 1.7 + i as f32));
                     }
+                    // Plants (anything that sways) go at the vegetation distance, the rest by size.
+                    let class = if parts.parts.iter().any(|part| part.sway != Sway::None) {
+                        rs::flags::CULL_VEGETATION
+                    } else {
+                        let b = parts.bounds_at(p.scale);
+                        size_class((b.max - b.min).length() * 0.5)
+                    };
+                    tag(&mut baked.meshes[prop_meshes..], &mut baked.sdfs[prop_sdfs..], class);
+                    if class == rs::flags::CULL_VEGETATION {
+                        let (m0, s0) = (veg_meshes.len(), veg_sdfs.len());
+                        veg_meshes.extend(baked.meshes.drain(prop_meshes..));
+                        veg_sdfs.extend(baked.sdfs.drain(prop_sdfs..));
+                        plants.push(Plant {
+                            key: id as u64,
+                            at: p.pos,
+                            kind: if parts.parts.iter().all(|part| part.sway == Sway::Grass) {
+                                PieceKind::Grass
+                            } else {
+                                PieceKind::Plant
+                            },
+                            meshes: m0..veg_meshes.len(),
+                            sdfs: s0..veg_sdfs.len(),
+                        });
+                    }
                 }
                 self.generated.built = generated.built;
                 list.append(&mut baked.meshes);
                 sdfs.append(&mut baked.sdfs);
                 lights.append(&mut baked.point_lights);
-                let custom = baked
+                let mut custom: Vec<(u64, Arc<MeshData>)> = baked
                     .custom_meshes
                     .into_iter()
                     .filter_map(|(mesh, data)| match mesh {
@@ -1341,10 +1505,21 @@ impl ViewBuilder {
                         _ => None,
                     })
                     .collect();
+                if batched {
+                    // Hook games: plain static pieces merge into a few meshes per region.
+                    let merged = crate::batch::merge_statics(&mut list, &custom, region_salt(*key, chunk.version));
+                    custom.extend(merged);
+                }
                 let terrain = chunk.terrain.as_ref().map(|t| {
                     let h = pav_core::terrain::render_key(t.cx, t.cz, chunk.version);
                     (MeshKey::Custom(h), Arc::new(terrain_mesh(t)))
                 });
+                // Far away the chunk draws half its grid (keyed apart: the version's complement).
+                let terrain_lod = chunk.terrain.as_ref().and_then(|t| {
+                    let h = pav_core::terrain::render_key(t.cx, t.cz, !chunk.version);
+                    crate::quality::terrain_half_mesh(t).map(|m| (MeshKey::Custom(h), m))
+                });
+                let terrain_box = chunk.terrain.as_ref().map_or((Vec3::ZERO, Vec3::ZERO), |t| (t.min, t.max));
                 self.static_cache.insert(
                     *key,
                     RegionCache {
@@ -1352,10 +1527,16 @@ impl ViewBuilder {
                         style: settings.style,
                         materials,
                         palette,
+                        batched,
                         meshes: list,
                         sdfs,
+                        veg_meshes,
+                        veg_sdfs,
+                        plants,
                         lights,
                         terrain,
+                        terrain_lod,
+                        terrain_box,
                         custom,
                         prop_lights,
                     },
@@ -1387,6 +1568,18 @@ impl ViewBuilder {
             let c = &self.static_cache[key];
             scene.meshes.extend_from_slice(&c.meshes);
             scene.sdfs.extend_from_slice(&c.sdfs);
+            // Hook games thin plants out with distance (grass goes first) and draw the quality's
+            // share of them, a plant's parts together; fine details draw near the eye only.
+            let thin = curr.play.is_some().then(|| (scene.camera.eye, settings.vegetation.clamp(0.0, 1.0)));
+            for p in &c.plants {
+                if let Some((eye, share)) = thin
+                    && !p.shown(eye, share, settings)
+                {
+                    continue;
+                }
+                scene.meshes.extend_from_slice(&c.veg_meshes[p.meshes.clone()]);
+                scene.sdfs.extend_from_slice(&c.veg_sdfs[p.sdfs.clone()]);
+            }
             scene.point_lights.extend_from_slice(&c.lights);
             for (mesh, data) in &c.custom {
                 if self.generated.sent.insert(*mesh) {
@@ -1396,7 +1589,11 @@ impl ViewBuilder {
             for (def, pos, phase) in &c.prop_lights {
                 scene.point_lights.push(crate::fx::light(def, *pos, time, *phase));
             }
-            if let Some((mk, data)) = &c.terrain {
+            // Past `terrain_lod` the half-resolution mesh (its skirts hide the seams).
+            let far = settings.terrain_lod > 0.0
+                && crate::quality::box_distance(scene.camera.eye, c.terrain_box.0, c.terrain_box.1) > settings.terrain_lod;
+            let terrain = if far { c.terrain_lod.as_ref().or(c.terrain.as_ref()) } else { c.terrain.as_ref() };
+            if let Some((mk, data)) = terrain {
                 scene.custom_meshes.push((*mk, data.clone()));
                 scene.meshes.push(MeshInstance {
                     mesh: *mk,
@@ -1425,17 +1622,38 @@ impl ViewBuilder {
         // A hook game's atmosphere replaces the level's light, sky colour and fog.
         if let Some(a) = curr.play.as_ref().and_then(|p| p.atmosphere.as_ref()) {
             let target = hint.map(|h| h.target).unwrap_or(rig.target);
+            // The view's own grade (a look: Memory Mist, Storm...) goes on top of the game's.
+            let grade = (scene.post.bloom, scene.post.exposure, scene.post.saturation, scene.filter.contrast);
             crate::play_view::apply_basic_atmosphere(a, &mut scene, target);
             let eye = scene.camera.eye;
             crate::atmos::apply(a, eye, target, &mut scene);
+            if grade.0 <= 0.0 {
+                scene.post.bloom = 0.0;
+            } else if settings.bloom > 0.35 + 1e-3 {
+                scene.post.bloom = scene.post.bloom.max(grade.0);
+            }
+            scene.post.exposure *= grade.1;
+            scene.post.saturation *= grade.2;
+            scene.filter.contrast *= grade.3;
+            // The shadow square follows the camera: centred ahead of its target, where most of
+            // what it sees is, at the quality's reach.
+            crate::atmos::fit_shadow(&mut scene, eye, target, settings.shadow_reach);
+            if let Some(o) = &mut scene.ocean {
+                o.cells = settings.ocean_grid.clamp(16, 256) as u32;
+            }
         }
         if curr.play.is_some() {
             // Hook games draw a whole archipelago: props, plants and buildings stop at their
             // own distances, the islands and ships never.
             scene.frustum_cull = true;
             scene.cull_small = settings.cull_small;
-            scene.cull_vegetation = settings.cull_vegetation;
+            scene.cull_vegetation = match (settings.cull_vegetation, settings.vegetation_far) {
+                (near, _) if near <= 0.0 => 0.0,
+                (near, far) => near.max(far),
+            };
             scene.cull_structure = settings.cull_structure;
+            scene.cull_pixels = settings.cull_pixels;
+            scene.sun.shadow_map = settings.shadow_map.max(0) as u32;
         }
 
         // Dynamic objects.
@@ -1826,6 +2044,9 @@ fn emit_puppet(scene: &mut Scene, def: &PuppetDef, o: &RenderObject, p: &PuppetF
         held_asset(scene, &def.weapon.asset, hand, tip, o.id.0);
     }
     for part in parts {
+        // Details (eyes, buttons, buckles, fingers) count as small props: hook games stop
+        // drawing them when they shrink under a couple of pixels.
+        let detail = part.ra.max(part.rb) < 0.06 && part.a.distance(part.b) < 0.25;
         scene.sdfs.push(SdfInstance {
             a: part.a,
             b: part.b,
@@ -1834,7 +2055,7 @@ fn emit_puppet(scene: &mut Scene, def: &PuppetDef, o: &RenderObject, p: &PuppetF
             color: v3(part.color).lerp(tint, wash),
             emissive: part.glow + wash * 0.6,
             style,
-            flags,
+            flags: if detail { flags | rs::flags::CULL_SMALL } else { flags },
             group: o.id.0 + 2,
             material: 0,
         });
@@ -1995,6 +2216,16 @@ fn baked_id(key: ChunkKey, index: usize) -> u32 {
         h = (h ^ x).wrapping_mul(0x0100_0000_01b3);
     }
     0x4000_0000 | ((h ^ (h >> 32)) as u32 & 0x3fff_ffff)
+}
+
+/// A region and version's own 64-bit seed (keys of its merged meshes).
+fn region_salt(key: ChunkKey, version: u64) -> u64 {
+    let (kind, a, b) = match key {
+        ChunkKey::Chunk(x, z) => (0u64, x as u32 as u64, z as u32 as u64),
+        ChunkKey::Room(id) => (1, id as u64, 0),
+        ChunkKey::Hub => (2, 0, 0),
+    };
+    crate::batch::mix(crate::batch::mix(kind << 62 ^ a << 32 ^ b) ^ version.wrapping_mul(0x9e37_79b9_7f4a_7c15) ^ 0xba7c_0000)
 }
 
 /// The view's material table, also after a panic elsewhere left it poisoned.
@@ -2239,6 +2470,22 @@ pub fn emit_shape(
     }
     if emissive > 0.5 {
         lights.push(rs::PointLight { position: pos, color: color * emissive, radius: 4.0 + emissive * 2.0, shadows: false });
+    }
+}
+
+/// The distance class of a static piece by its size (half its box diagonal, m): small props
+/// go at `cull_small`, bigger ones with the buildings.
+fn size_class(radius: f32) -> u32 {
+    if radius < 1.6 { rs::flags::CULL_SMALL } else { rs::flags::CULL_STRUCTURE }
+}
+
+/// Adds a distance class to instances.
+fn tag(meshes: &mut [MeshInstance], sdfs: &mut [SdfInstance], class: u32) {
+    for m in meshes {
+        m.flags |= class;
+    }
+    for s in sdfs {
+        s.flags |= class;
     }
 }
 

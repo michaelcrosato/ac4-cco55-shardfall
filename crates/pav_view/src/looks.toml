@@ -734,3 +734,49 @@ halos = 1.8
 "filter.temperature" = -0.25
 "filter.brightness" = 0.9
 "filter.grade_on" = "all"
+
+# ---------------------------------------------------------------- Black Tap (PLAN §9.17)
+# Selectable in the game's Settings (Display → Visual Style); Gull Sight is the game's own.
+
+[[look]]
+name = "Painted Seas"
+about = "A low-radius paint filter on the sea, sky and islands; ships, crews and props stay crisp and inked."
+[look.set]
+"filter.stylize" = "paint"
+"filter.stylize_on" = "environment"
+"filter.stylize_size" = 3.5
+"filter.stylize_color" = 1.0
+outlines = true
+outlines_on = "objects"
+outline_px = 1.5
+outline_darken = 0.2
+
+[[look]]
+name = "Memory Mist"
+about = "Last Words: a pale, dreamy haze; colours drained toward silver, a soft glow, a vignette."
+[look.set]
+"filter.grade_on" = "all"
+"filter.saturation" = 0.5
+"filter.temperature" = -0.12
+"filter.brightness" = 1.0
+"filter.contrast" = 0.85
+"filter.vignette" = 0.45
+bloom = 0.6
+bloom_threshold = 0.8
+haze = 0.35
+haze_height = 14.0
+shafts = 0.6
+halos = 0.6
+
+[[look]]
+name = "Storm"
+about = "Heavy weather: cold, dark and contrasty, with film grain and darkened corners."
+[look.set]
+"filter.grade_on" = "all"
+"filter.temperature" = -0.28
+"filter.saturation" = 0.72
+"filter.contrast" = 1.2
+"filter.brightness" = 0.86
+"filter.grain_on" = "all"
+"filter.grain" = 0.1
+"filter.vignette" = 0.35

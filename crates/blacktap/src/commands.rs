@@ -4,7 +4,7 @@
 
 use std::collections::BTreeSet;
 
-use glam::Vec2;
+use glam::{Vec2, Vec3};
 use pav_core::sim::Sim;
 use pav_kit::mission::Act;
 use serde_json::{Value, json};
@@ -299,34 +299,71 @@ pub fn level_check(g: &BlackTap) -> Value {
     json!({ "checked": checked, "problems": problems, "ok": problems.is_empty() })
 }
 
-/// The canonical vistas (PLAN §9.17 tour sheet): a list, or one shot set up (`shot=N`).
+/// The canonical vistas (PLAN §9.17 tour sheet, §9.18 viewpoints): a list, one shot set up
+/// (`shot=N`), or the shot made ready after its ticks (`shot=N frame=true`: its atmosphere
+/// settled, whatever a Round's script did meanwhile, and the camera framed on what moves).
+/// The first six are the performance viewpoints (`pav tour stats=true`). Shots without
+/// `eye`/`look` use the game's own camera.
 fn tour(g: &mut BlackTap, _sim: &mut Sim, a: &Value) -> Result<Value, String> {
     let w = g.world();
     let m = |n: &str| w.marker(n).unwrap_or_default();
-    let fort = m("fort_gate");
     let town = m("town_square");
-    let chapel = m("chapel_perch");
-    let ship = g.sea.my_ship().map(|s| glam::Vec3::new(s.pos.x, 0.0, s.pos.y)).unwrap_or_default();
+    let stocks = m("stocks");
     let shots = vec![
-        json!({ "name": "Black Tap at golden hour", "scene": "blacktap/round/1", "atmosphere": "golden_hour",
-                "eye": [ship.x - 28.0, 9.0, ship.z + 30.0], "look": [ship.x, 6.0, ship.z] }),
-        json!({ "name": "Isla Templanza from the sea", "scene": "blacktap/freeroam", "atmosphere": "afternoon",
+        json!({ "name": "Helm at sea", "scene": "blacktap/round/2", "atmosphere": "golden_hour", "ticks": 240 }),
+        json!({ "name": "Dryport street", "scene": "blacktap/round/5", "atmosphere": "afternoon", "ticks": 240,
+                "eye": [town.x + 24.0, 6.5, town.z + 6.0], "look": [town.x, 3.0, town.z] }),
+        json!({ "name": "Rooftops of Dryport", "scene": "blacktap/round/5", "atmosphere": "golden_hour", "ticks": 240,
+                "eye": [town.x + 66.0, 14.0, town.z - 10.0], "look": [town.x, 2.0, town.z] }),
+        json!({ "name": "Fort Abstinence courtyard", "scene": "blacktap/round/6", "atmosphere": "afternoon", "ticks": 240,
+                "eye": [338.0, 19.5, -178.0], "look": [348.0, 17.0, -214.0] }),
+        json!({ "name": "The jungle", "scene": "blacktap/round/6", "atmosphere": "afternoon", "ticks": 240,
+                "eye": [206.0, 33.0, -52.0], "look": [236.0, 31.0, -92.0] }),
+        json!({ "name": "The storm", "scene": "blacktap/round/6@escape", "atmosphere": "storm", "ticks": 240 }),
+        json!({ "name": "Ships of the line", "scene": "blacktap/round/2", "atmosphere": "afternoon", "ticks": 120,
+                "frame": "ships" }),
+        json!({ "name": "Cask, guards and townsfolk", "scene": "blacktap/round/5", "atmosphere": "afternoon", "ticks": 240,
+                "eye": [stocks.x + 7.0, stocks.y + 1.8, stocks.z + 7.0], "look": [stocks.x - 1.0, stocks.y, stocks.z - 2.0],
+                "fov": 50.0 }),
+        json!({ "name": "Isla Templanza from the sea", "scene": "blacktap/freeroam", "atmosphere": "golden_hour",
                 "eye": [town.x - 260.0, 40.0, town.z + 160.0], "look": [town.x, 20.0, town.z] }),
-        json!({ "name": "Fort Abstinence", "scene": "blacktap/round/3", "atmosphere": "afternoon",
-                "eye": [fort.x - 120.0, 45.0, fort.z + 140.0], "look": [fort.x, 15.0, fort.z] }),
-        json!({ "name": "Port Prudence streets", "scene": "blacktap/round/5", "atmosphere": "sunset",
-                "eye": [town.x + 18.0, 12.0, town.z + 22.0], "look": [town.x, 3.0, town.z] }),
-        json!({ "name": "Chapel perch", "scene": "blacktap/round/4", "atmosphere": "golden_hour",
-                "eye": [chapel.x + 14.0, chapel.y + 6.0, chapel.z + 14.0], "look": [chapel.x, chapel.y, chapel.z] }),
-        json!({ "name": "The storm", "scene": "blacktap/round/6@escape", "atmosphere": "storm",
-                "eye": [ship.x - 40.0, 14.0, ship.z + 40.0], "look": [ship.x, 4.0, ship.z] }),
     ];
     if let Some(i) = a.get("shot").and_then(|v| v.as_u64()) {
         let s = shots.get(i as usize).ok_or("no such shot")?;
+        if a.get("frame").and_then(|v| v.as_bool()) == Some(true) {
+            if let Some(at) = s["atmosphere"].as_str() {
+                g.atmos_from = at.to_string();
+                g.atmos_to = at.to_string();
+                g.atmos_t = 1.0;
+            }
+            return Ok(match s["frame"].as_str() {
+                Some("ships") => frame_ships(g),
+                _ => json!({}),
+            });
+        }
         if let Some(at) = s["atmosphere"].as_str() {
             g.set_atmosphere(at, 0.01);
         }
         return Ok(json!({ "atmosphere": s["atmosphere"] }));
     }
     Ok(json!({ "shots": shots }))
+}
+
+/// A camera on the nearest other ship: abeam and a little aft of it, 45 m off, on the side
+/// away from ours.
+fn frame_ships(g: &BlackTap) -> Value {
+    let Some(me) = g.sea.my_ship() else { return json!({}) };
+    let Some(them) = g
+        .sea
+        .ships
+        .iter()
+        .filter(|s| s.id != me.id && s.alive())
+        .min_by(|a, b| a.pos.distance(me.pos).total_cmp(&b.pos.distance(me.pos)))
+    else {
+        return json!({});
+    };
+    let side = if them.right().dot(me.pos - them.pos) > 0.0 { -1.0 } else { 1.0 };
+    let eye = them.pos + them.right() * (45.0 * side) - them.forward() * 14.0;
+    let look = them.world(Vec3::new(0.0, 7.0, 0.0));
+    json!({ "eye": [eye.x, 9.0, eye.y], "look": [look.x, look.y, look.z] })
 }

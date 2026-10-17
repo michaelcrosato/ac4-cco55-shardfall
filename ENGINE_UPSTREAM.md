@@ -51,6 +51,8 @@ game-agnostic. `git diff 79061e4 -- crates/pav_* scripts web` shows the exact ch
 | Frustum culling and distance culling classes (small 120 m, vegetation 180 m, structures 600 m; tunable). | `pav_render/src/cull.rs`, `pav_view/src/build.rs` |
 | FX bank: cue names → particle bursts, shockwaves, water dents, flashes from data (`fx.toml`). | `pav_view/src/cue_fx.rs`, `src/fx.rs`, `pav_render/src/fx.rs` |
 | Terrain chunk meshes keyed by `pav_core::terrain::render_key`. | `pav_view/src/build.rs` |
+| **Performance and quality** (PLAN §9.18): hook-game quality presets Low/Medium/High (`view.quality`: render scale, shadow map size `Sun::shadow_map` and reach, ocean grid, plant share, terrain LOD, effects); half-resolution terrain LOD past 160 m with skirts; camera-fitted sun shadows; distance classes on statics and puppet details; plants thinned with distance plus a sparse far forest; screen-size culling (`Scene::cull_pixels`); static batching of plain pieces per region; per-class render stats (`capture stats`, `tour stats=true`). | `pav_render/src/{renderer,scene,cull}.rs`, `pav_view/src/{quality,batch,build,atmos}.rs`, `pav_view/tests/quality.rs` |
+| Looks *Painted Seas* (low-radius Kuwahara on the environment, characters crisp), *Memory Mist*, *Storm*; a look's grade stacks on the game's atmosphere; Settings → Display → Visual Style. | `pav_view/src/looks.toml`, `pav_view/src/atmos.rs`, `pav_ui/src/settings.rs`, `pav_app/src/app/play.rs` |
 
 ## `pav_audio`
 
