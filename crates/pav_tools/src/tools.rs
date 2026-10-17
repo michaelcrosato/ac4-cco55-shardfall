@@ -93,106 +93,67 @@ pub static TOOLS: &[Tool] = &[
             arg("width", "integer", "default 960"),
             arg("height", "integer", "default 540"),
             arg("stats", "string", "true adds render cost; only returns it without an image"),
-            arg("ui", "boolean", "true draws the game's HUD over the frame"),
-            arg("family", "string", "prompt glyphs: playstation, xbox or keyboard"),
+            arg("ui", "boolean", "the game's HUD over it"),
+            arg("family", "string", "glyphs: playstation, xbox, keyboard"),
         ],
         run: t_capture,
     },
     Tool {
         name: "ui",
-        help: "Render a front-end screen or the HUD to PNG; nav= scripts the focus.",
+        help: "A front-end screen or the HUD as a PNG.",
         args: &[
-            arg("screen", "string", "hud, title, menu, settings, paused, attract, mobile_menu..."),
-            arg("nav", "string", "presses first: down,down,confirm"),
+            arg("screen", "string", "hud, title, menu, settings, paused..."),
+            arg("nav", "string", "presses first: down,confirm"),
             arg("family", "string", "playstation, xbox or keyboard"),
-            arg("sample", "boolean", "sample HUD data instead of the live game"),
-            arg("backdrop", "boolean", "draw over the live frame (default with a game)"),
+            arg("sample", "boolean", "sample data, not the game"),
+            arg("backdrop", "boolean", "over the live frame"),
             arg("width", "integer", "default 1920"),
             arg("height", "integer", "default 1080"),
-            arg("out", "string", "output path"),
+            arg("out", "string", "path"),
         ],
         run: crate::kit_tools::t_ui,
     },
     Tool {
         name: "attract",
-        help: "Run the attract playlist headless: segments, showcase events, stalls, exits.",
+        help: "Attract mode headless: segments, events, stalls, exits.",
         args: &[
-            arg("minutes", "number", "attract time to simulate (default 6)"),
-            arg("step", "number", "seconds per front-end update (default 0.5)"),
-            arg("exit_every", "number", "press a key every N s to check the exit"),
-            arg("game", "string", "game key (default the running one)"),
+            arg("minutes", "number", "default 6"),
+            arg("step", "number", "s per update (0.5)"),
+            arg("exit_every", "number", "test the exit every N s"),
+            arg("game", "string", "game key"),
         ],
         run: crate::kit_tools::t_attract,
-    },
-    Tool {
-        name: "ship",
-        help: "The player's ship: status, or do=sail|steer|fire|board|brace|repair.",
-        args: &[
-            arg("do", "string", "sail, steer, fire, board, brace, repair"),
-            arg("level", "integer", "sail level 0-3"),
-            arg("deg", "number", "steer to this heading"),
-            arg("side", "string", "port, starboard, ahead"),
-        ],
-        run: crate::kit_tools::t_ship,
-    },
-    Tool {
-        name: "mission",
-        help: "Mission state; goto=round/3[@step] jumps; complete=<step> finishes one.",
-        args: &[arg("goto", "string", "round/N or round/N@step"), arg("complete", "string", "step id to complete")],
-        run: crate::kit_tools::t_mission,
-    },
-    Tool {
-        name: "perception",
-        help: "Per-NPC awareness: state, meter, who sees the player, heat.",
-        args: &[arg("name", "string", "only NPCs whose kind or name contains this")],
-        run: crate::kit_tools::t_perception,
-    },
-    Tool {
-        name: "fighters",
-        help: "Melee state: the hero's hp and swing, each fighter's hp, target, swing, stagger.",
-        args: &[],
-        run: crate::kit_tools::t_fighters,
     },
     Tool {
         name: "ocean",
         help: "Sample the sea at a point, or set it (preset=storm, wind=deg).",
         args: &[
-            arg("at", "array", "[x, z] point (default the focus)"),
-            arg("preset", "string", "flat, calm, breezy, rough, storm"),
-            arg("wind", "number", "wind direction, degrees"),
+            arg("at", "array", "[x, z] (default the focus)"),
+            arg("preset", "string", "calm, rough, storm..."),
+            arg("wind", "number", "degrees"),
         ],
         run: crate::kit_tools::t_ocean,
     },
     Tool {
-        name: "level_check",
-        help: "Check every data reference of the running game's level.",
-        args: &[],
-        run: crate::kit_tools::t_level_check,
+        name: "gcmd",
+        help: "Ask the running game (or call by name): ship, mission, perception, fighters, ocean, level_check, markers.",
+        args: &[arg("cmd", "string", "command; its args go along")],
+        run: crate::kit_tools::t_gcmd,
     },
     Tool {
         name: "ray",
-        help: "What a ray hits: point, normal, entity, static block and its flags.",
-        args: &[
-            arg("from", "array", "[x, y, z] start"),
-            arg("dir", "array", "[x, y, z] direction (default down)"),
-            arg("max", "number", "length (default 50)"),
-        ],
+        help: "What a ray hits: point, normal, entity, block.",
+        args: &[arg("from", "array", "[x, y, z]"), arg("dir", "array", "default down"), arg("max", "number", "default 50")],
         run: crate::kit_tools::t_ray,
     },
     Tool {
-        name: "markers",
-        help: "The running game's named world markers (name= filters).",
-        args: &[arg("name", "string", "only markers whose name contains this")],
-        run: crate::kit_tools::t_markers,
-    },
-    Tool {
         name: "tour",
-        help: "The game's canonical vistas in one contact sheet PNG.",
+        help: "The game's vistas in one contact sheet PNG.",
         args: &[
-            arg("width", "integer", "per shot, default 640"),
-            arg("height", "integer", "per shot, default 360"),
-            arg("out", "string", "default out/tour.png"),
-            arg("stats", "boolean", "adds each shot's render stats"),
+            arg("width", "integer", "per shot (640)"),
+            arg("height", "integer", "per shot (360)"),
+            arg("out", "string", "path"),
+            arg("stats", "boolean", "render stats"),
         ],
         run: crate::kit_tools::t_tour,
     },
@@ -1019,10 +980,14 @@ pub fn find(name: &str) -> Option<&'static Tool> {
 }
 
 pub fn call(session: &mut Session, name: &str, args: &Args) -> Result<Output> {
-    let original = find(name).ok_or_else(|| {
+    let Some(original) = find(name) else {
+        // A command of the running game (`ship`, `level_check`...), called by its own name.
+        if let Some(out) = crate::kit_tools::try_game_command(session, name, args) {
+            return out;
+        }
         let fix = pav_core::issue::suggestion(name, TOOLS.iter().map(|t| t.name)).unwrap_or_else(|| "try `help`".into());
-        anyhow!("unknown tool \"{name}\" — {fix}")
-    })?;
+        bail!("unknown tool \"{name}\" — {fix}");
+    };
     let generic = KIND_ROUTES.iter().any(|(tool, _, _)| *tool == name);
     let kind = if generic { crate::preview_tools::opt_text(args, "kind")?.unwrap_or("prop") } else { "prop" };
     let target = if generic {

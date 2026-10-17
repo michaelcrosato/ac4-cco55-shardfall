@@ -389,20 +389,23 @@ fn game_command(s: &mut Session, name: &str, a: &Args) -> Result<Value> {
     Ok(v)
 }
 
-pub fn t_ship(s: &mut Session, a: &Args) -> Result<Output> {
-    Ok(Output::Json(game_command(s, "ship", a)?))
+/// `gcmd cmd=<name> ...`: one of the running game's commands (`Game::command`).
+pub fn t_gcmd(s: &mut Session, a: &Args) -> Result<Output> {
+    let name = get_str(a, "cmd")
+        .ok_or_else(|| anyhow!("cmd=<name>: ship, mission, perception, fighters, ocean, level_check, markers"))?
+        .to_string();
+    let mut rest = a.clone();
+    rest.remove("cmd");
+    Ok(Output::Json(game_command(s, &name, &rest)?))
 }
 
-pub fn t_mission(s: &mut Session, a: &Args) -> Result<Output> {
-    Ok(Output::Json(game_command(s, "mission", a)?))
-}
-
-pub fn t_fighters(s: &mut Session, a: &Args) -> Result<Output> {
-    Ok(Output::Json(game_command(s, "fighters", a)?))
-}
-
-pub fn t_perception(s: &mut Session, a: &Args) -> Result<Output> {
-    Ok(Output::Json(game_command(s, "perception", a)?))
+/// A game command called by its own name (`pav ship do=sail`); None when the game has none.
+pub fn try_game_command(s: &mut Session, name: &str, a: &Args) -> Option<Result<Output>> {
+    s.sim.play()?;
+    let reply = s.sim.game_command(name, &Value::Object(a.clone()))?;
+    s.keep_events();
+    s.sync_camera();
+    Some(reply.map(Output::Json).map_err(|e| anyhow!(e)))
 }
 
 /// `ray`: what a ray from a point hits (tools for laying out levels and bot routes).
@@ -431,18 +434,6 @@ pub fn t_ray(s: &mut Session, a: &Args) -> Result<Output> {
             "block": b.map(|b| json!({ "min": [r(b.min.x), r(b.min.y), r(b.min.z)], "max": [r(b.max.x), r(b.max.y), r(b.max.z)], "flags": b.flags, "material": b.material })),
         }),
     }))
-}
-
-pub fn t_markers(s: &mut Session, a: &Args) -> Result<Output> {
-    Ok(Output::Json(game_command(s, "markers", a)?))
-}
-
-pub fn t_level_check(s: &mut Session, a: &Args) -> Result<Output> {
-    if s.sim.play().is_none() {
-        let mut fresh = Session::new("blacktap/title", 1)?;
-        return Ok(Output::Json(game_command(&mut fresh, "level_check", a)?));
-    }
-    Ok(Output::Json(game_command(s, "level_check", a)?))
 }
 
 /// `ocean`: the sea under a point (`at=[x, z]`), or the game sets the sea (`preset=storm`).
