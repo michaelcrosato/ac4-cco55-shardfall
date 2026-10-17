@@ -446,7 +446,11 @@ fn update_concealment(g: &mut BlackTap, sim: &Sim) {
     let high = speed > 5.5 || !grounded;
     let w = g.world();
     let spot = w.hide_at(feet).map(|h| h.kind.clone());
+    let was_hidden = g.stealth.hidden;
     g.stealth.hidden = matches!(spot.as_deref(), Some("hay" | "haystack" | "cart")) && grounded;
+    if g.stealth.hidden && !was_hidden {
+        g.show("hide");
+    }
     let in_grass = spot.as_deref() == Some("grass") && !high;
     // A gossip group carries a concealing volume.
     let crowd = !high
