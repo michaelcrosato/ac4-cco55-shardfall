@@ -674,6 +674,8 @@ pub struct ViewBuilder {
     play: crate::play_view::PlayView,
     /// What `SimEvent::Cue`s look like (the game's `fx.toml`).
     pub fx_bank: Option<Arc<crate::cue_fx::FxBank>>,
+    /// The hook game's wind (m/s, x and z) at the last built scene: cue smoke drifts with it.
+    wind: glam::Vec2,
 }
 
 /// Shortest-arc interpolation of object poses between two frames (both sorted by id).
@@ -743,7 +745,7 @@ impl ViewBuilder {
         for e in events {
             crate::fx::event_bursts(e, &mut self.pending_particles);
             if let (SimEvent::Cue { cue, pos, gain, .. }, Some(bank)) = (e, &self.fx_bank) {
-                self.pending_particles.extend(bank.bursts(cue, *pos, *gain));
+                self.pending_particles.extend(bank.bursts_in_wind(cue, *pos, *gain, self.wind));
                 if let Some(fx) = bank.cue.get(cue) {
                     if fx.shock > 0.0 {
                         self.shocks.push((*pos, fx.shock, self.last_time.unwrap_or(0.0)));
@@ -1424,6 +1426,7 @@ impl ViewBuilder {
         };
         // A hook game's atmosphere replaces the level's light, sky colour and fog.
         if let Some(a) = curr.play.as_ref().and_then(|p| p.atmosphere.as_ref()) {
+            self.wind = a.wind;
             let target = hint.map(|h| h.target).unwrap_or(rig.target);
             crate::play_view::apply_basic_atmosphere(a, &mut scene, target);
             let eye = scene.camera.eye;
@@ -1534,7 +1537,7 @@ impl ViewBuilder {
         }
         self.emit_effects(&mut scene);
         if let Some(p) = &curr.play {
-            self.play.emit(&mut scene, prev.play.as_deref(), p, alpha);
+            self.play.emit(&mut scene, prev.play.as_deref(), p, alpha, dt, settings.particles);
             crate::play_view::highlights(&mut scene, p);
             if let Some((kind, t)) = &p.effects.transition {
                 scene.filter.transition = t.clamp(0.0, 1.0);

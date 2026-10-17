@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::color::Color;
 use crate::entity::EntityId;
+use crate::fxdef::{DistortDef, EmitterDef};
 use crate::ocean::{SeaState, Seabed};
 use crate::shape::{Look, Shape};
 
@@ -397,6 +398,13 @@ pub enum DrawItem {
     Light { pos: Vec3, color: Color, intensity: f32, radius: f32 },
     /// Text in the world (signs).
     Text { pos: Vec3, text: String, size: f32, color: Color, yaw: f32 },
+    /// A particle emitter that lives while the game draws it (deck fires, torches, spray,
+    /// fireflies). `key` names it from frame to frame (the view carries its fractional
+    /// particles and starts a new key in full swing); `drift` (m/s) is added to every
+    /// particle's launch velocity, so smoke leans downwind.
+    Emitter { key: u64, def: EmitterDef, pos: Vec3, drift: Vec3 },
+    /// A screen distortion (heat haze over a fire, the swirl of a waterspout).
+    Distortion { def: DistortDef, pos: Vec3 },
 }
 
 /// Vertex data for [`DrawItem::Mesh`] and [`DrawItem::Dynamic`]. Counter-clockwise winding seen
@@ -652,7 +660,9 @@ pub struct FrameEffects {
     pub tints: Vec<(EntityId, [f32; 3], f32)>,
     /// Screen transition: (kind name: "fade", "iris", "dissolve"..., coverage 0..1).
     pub transition: Option<(String, f32)>,
-    /// Controller rumble to start this frame.
+    /// Controller rumble started by the tick this frame shows: a game empties its list at the
+    /// start of every tick, and the app's simulation host collects each tick's cues once (so
+    /// none is lost or doubled however fast the window draws).
     pub rumble: Vec<RumbleCue>,
 }
 
