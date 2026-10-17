@@ -407,7 +407,7 @@ kind = "presentation"
 at = [52.0, 0.0, 18.0]
 facing = 0.0
 radius = 6.0
-learn = "Each atmosphere preset with its sky, light and sea. Squall adds waterspouts."
+learn = "Each atmosphere preset with its sky, light and sea. Squall adds waterspouts and lightning; dusk lights the torches."
 pads = [
   { at = [44.2, 0.0, 15.0], effect = "atmos:golden_hour", label = "Golden hour" },
   { at = [46.8, 0.0, 15.0], effect = "atmos:afternoon", label = "Afternoon" },
@@ -416,6 +416,7 @@ pads = [
   { at = [54.6, 0.0, 15.0], effect = "atmos:dawn_after_storm", label = "Dawn" },
   { at = [57.2, 0.0, 15.0], effect = "atmos:memory_mist", label = "Mist" },
   { at = [59.8, 0.0, 15.0], effect = "weather:squall", label = "Squall" },
+  { at = [62.4, 0.0, 15.0], effect = "atmos:dusk", label = "Dusk" },
 ]
 
 [[station]]

@@ -58,7 +58,9 @@ pub fn pre(
             g.stealth.leap = None;
             sim.set_position(pid, l.to + Vec3::Y * 0.1);
             g.mission.set_flag("leaped");
-            events.push(SimEvent::cue("hay_land", l.to));
+            // Into deep water a splash, else a burst of hay.
+            let wet = g.world().ground(Vec2::new(l.to.x, l.to.z)) < -0.8 && l.to.y < 1.0;
+            events.push(SimEvent::cue(if wet { "water_dive" } else { "hay_land" }, l.to));
             g.show("leap_of_spirits");
             g.learned("leap");
         } else {

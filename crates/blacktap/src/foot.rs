@@ -918,6 +918,8 @@ pub fn post(g: &mut BlackTap, sim: &mut Sim, dt: f32, events: &mut [SimEvent]) {
                 let dmg = if soft { 0.0 } else { combat::fall_damage(*speed, rolled, g.land.hero.vitals.max) };
                 if *speed > 9.0 && !soft {
                     g.pending_events.push(SimEvent::cue("land_hard", feet));
+                    let k = ((*speed - 9.0) / 8.0).clamp(0.0, 1.0);
+                    g.shake(0.15 + 0.25 * k, (0.5 + 0.5 * k, 0.3, 110 + (100.0 * k) as u32));
                 }
                 if dmg > 0.0 {
                     g.land.hero.vitals.hurt(dmg);

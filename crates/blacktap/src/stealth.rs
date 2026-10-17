@@ -1103,6 +1103,12 @@ fn use_tool(g: &mut BlackTap, sim: &mut Sim, aiming: bool, events: &mut Vec<SimE
                 }
             }
             events.push(SimEvent::cue("dart_throw", at + Vec3::Y * 1.4));
+            // Its trail: wisps along the flight from the hand to the mark.
+            let (from, to) = (eye - Vec3::Y * 0.2 + aim * 0.5, at + Vec3::Y * 1.4);
+            let n = (from.distance(to) / 1.2).clamp(2.0, 20.0) as usize;
+            for k in 1..n {
+                events.push(SimEvent::cue("dart_trail", from.lerp(to, k as f32 / n as f32)));
+            }
             g.show(if tool == Tool::Nightcap { "nightcap_dart" } else { "grog_dart" });
         }
         Tool::Smoke => {
@@ -1460,16 +1466,34 @@ pub fn draw(g: &BlackTap, sim: &Sim, out: &mut DrawList) {
             }
         }
     }
-    for s in &g.land.hero.tools.smoke {
+    // Smoke Kegs: a billowing cloud (particles round a few slow-turning puffs at its heart,
+    // which shrink as it thins).
+    for (n, s) in g.land.hero.tools.smoke.iter().enumerate() {
         let k = (s.left / 6.0).clamp(0.0, 1.0);
-        for i in 0..6 {
-            let a = i as f32 * 1.05 + g.time * 0.3;
-            let p = s.at + Vec3::new(a.cos() * s.radius * 0.5, 0.8 + (i % 3) as f32 * 0.6, a.sin() * s.radius * 0.5);
+        out.push(DrawItem::Emitter {
+            key: (20 << 40) | n as u64,
+            def: pav_core::fxdef::EmitterDef {
+                preset: "smoke".into(),
+                rate: 45.0 * k,
+                color: "#e6e2da".into(),
+                size: 6.5,
+                speed: 0.6,
+                life: 0.9,
+                area: Vec3::new(s.radius * 0.7, 0.8, s.radius * 0.7),
+                offset: Vec3::Y * 0.6,
+                ground: None,
+            },
+            pos: s.at,
+            drift: Vec3::ZERO,
+        });
+        for i in 0..5 {
+            let a = i as f32 * 1.26 + g.time * 0.3;
+            let p = s.at + Vec3::new(a.cos() * s.radius * 0.4, 0.7 + (i % 3) as f32 * 0.5, a.sin() * s.radius * 0.4);
             out.push(DrawItem::Prim {
-                shape: Shape::Sphere { radius: s.radius * 0.55 * (0.6 + 0.4 * k) },
+                shape: Shape::Sphere { radius: s.radius * 0.33 * (0.4 + 0.6 * k) },
                 pos: p,
                 rot: Quat::IDENTITY,
-                color: Color::hex("#d8d4cc"),
+                color: Color::hex("#dedad2"),
                 emissive: 0.1,
                 look: pav_core::Look::Lit,
             });

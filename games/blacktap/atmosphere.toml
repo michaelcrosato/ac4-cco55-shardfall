@@ -59,6 +59,29 @@ bloom = 0.5
 saturation = 1.1
 sea = "breezy"
 
+# After the sun has gone: blue dusk, torches lit on the fort and in the town, fireflies over
+# the grass (crates/blacktap/src/vfx.rs lights them whenever the sun is low).
+[dusk]
+sun_azimuth = 272.0
+sun_elevation = 1.5
+sun_color = "#ff8a5a"
+sun_intensity = 0.55
+ambient_sky = "#6a74a8"
+ambient_ground = "#3a3040"
+ambient = 0.5
+sky_zenith = "#1d2a5a"
+sky_horizon = "#c87a6a"
+fog_color = "#6a6488"
+fog_start = 150.0
+fog_end = 1100.0
+cloud_cover = 0.35
+cloud_color = "#c8889a"
+wind = [4.0, -2.0]
+bloom = 0.6
+saturation = 1.0
+exposure = 1.05
+sea = "calm"
+
 [storm]
 sun_azimuth = 120.0
 sun_elevation = 25.0

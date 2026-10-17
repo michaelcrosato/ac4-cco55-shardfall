@@ -639,6 +639,7 @@ pub fn draw(g: &BlackTap, sim: &Sim, out: &mut DrawList) {
     if g.mode == crate::game::Mode::Drydock {
         crate::drydock::draw(g, sim, out);
     }
+    crate::vfx::draw(g, sim, out);
 }
 
 pub fn atmosphere(g: &BlackTap) -> Atmosphere {
@@ -651,12 +652,9 @@ pub fn atmosphere(g: &BlackTap) -> Atmosphere {
     a.seabed = Some(g.world().seabed.clone());
     a.wind = g.sea.wind;
     a.gull = if g.gull { 1.0 } else { 0.0 };
-    // Lightning in the storm: brief flashes from the game's clock (deterministic).
-    if a.rain > 0.5 {
-        let t = g.time * 0.37;
-        let f = (t.sin() * 43_758.547).fract().abs();
-        a.lightning = if f > 0.985 { 1.0 } else { 0.0 };
-    }
+    // Lightning in the storm: strikes on the game's clock (deterministic; `vfx::lightning`,
+    // whose timing doesn't depend on where the bolt lands).
+    a.lightning = crate::vfx::lightning(g.seed, a.rain, Vec3::ZERO, 0.0, g.time).map(|s| s.brightness).unwrap_or(0.0);
     a
 }
 

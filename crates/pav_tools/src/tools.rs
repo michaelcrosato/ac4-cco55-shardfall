@@ -126,9 +126,9 @@ pub static TOOLS: &[Tool] = &[
     },
     Tool {
         name: "ship",
-        help: "The player's ship: status, or do=sail|steer|fire|board|brace|repair.",
+        help: "The player's ship: status, or do=sail|steer|fire|board|brace|repair (ignite|sink: the nearest other ship).",
         args: &[
-            arg("do", "string", "sail, steer, fire, board, brace, repair"),
+            arg("do", "string", "sail, steer, fire, board, brace, repair, ignite, sink"),
             arg("level", "integer", "sail level 0-3"),
             arg("deg", "number", "steer to this heading"),
             arg("side", "string", "port, starboard, ahead"),
