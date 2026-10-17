@@ -7,8 +7,6 @@ The game is an *Assassin's Creed IV: Black Flag*-style level: a 1.2 km sea with 
 sailing and naval combat, boarding, free-running and climbing, stealth and assassinations, a
 town, a fort, six Rounds, a front end with an attract mode, and a single-file browser build.
 
-<!-- SECTIONS FILLED IN BELOW -->
-
 ## What I used (and how much it carried)
 
 | Engine part | Carried | Notes |
@@ -20,7 +18,7 @@ town, a fort, six Rounds, a front end with an attract mode, and a single-file br
 | Puppets, gear, moves, clips | **Much** | Every person is a biped puppet with generated gear; hats, coats, bracer and firearms were added as gear parts. |
 | Renderer (`pav_render`: lit style, shadows, bloom, filters/looks, particles, outlines) and `pav_view` | **Much** | Extended with sea and sky passes, atmosphere, culling classes, LOD, x-ray highlights. |
 | `pav_audio` (synth, voices) | **Much** | Grown into a data-driven bank, sequencer (ABC shanties), ambience and voice blips. |
-| `pav_tools` (`pav` CLI/REPL, captures on lavapipe, `play bot=true`, snapshots, replays) | **A lot** | Every check in this repository goes through it; nine game tools were added (`ui`, `attract`, `ship`, `mission`, `perception`, `ocean`, `level_check`, `tour`, `markers`, `ray`). |
+| `pav_tools` (`pav` CLI/REPL, captures on lavapipe, `play bot=true`, snapshots, replays) | **A lot** | Every check in this repository goes through it; kit tools were added (`ui`, `attract`, `tour`, `ray`, `ocean`, and the game's own commands through `gcmd`: `ship`, `mission`, `perception`, `fighters`, `level_check`, `markers`). |
 | Single-file web build (`scripts/pack_single_html.py`) | **All of it** | The `dist/` HTML is this packer's output. |
 | Zones, params/tunables, looks (`looks.toml`), persistence hooks | Some | Gull Sight and Painted Seas are looks; tunables reach `pav set`. |
 
@@ -64,9 +62,13 @@ Ranked by how much output each saved (the files are in [`ENGINE_UPSTREAM.md`](..
 7. **`nav25`**: a layered walkable grid with A*, flow fields, ladder links and gates.
 8. **Cue banks**: `SimEvent::Cue` resolved by data into sounds (`pav_audio`) and FX
    (`pav_view::cue_fx`).
-9. Runtime game registration, checkpoints outside `SimState`, a key-value persistence API
-   (native file + localStorage), `InputFrame.look/triggers`, data-driven bindings, haptics,
-   culling/LOD/far plane, map contours from heightfields.
+9. **Rendering scale**: frustum and distance culling by category, two terrain LODs, an ocean LOD,
+   camera-fitted shadows, quality presets, static batching — the town at High fits in 2,461
+   instances.
+10. Runtime game registration, checkpoints outside `SimState`, a key-value persistence API
+    (native file + localStorage), `InputFrame.look/triggers`, data-driven bindings, haptics
+    (gilrs and the browser Gamepad API), draw-list particle emitters, map contours from
+    heightfields.
 
 ## Engine source I had to read, and why
 
@@ -91,6 +93,15 @@ Ranked by how much output each saved (the files are in [`ENGINE_UPSTREAM.md`](..
   that probe a freshly loaded scene must step first. Undocumented.
 - **A copied `target/` keeps stale `build.rs` output** (embedded data, material goldens): a fresh
   checkout that reuses another checkout's target dir reads old data until `build.rs` is touched.
+- **Any drawn primitive with emissive above 0.5 spawns a point light** (`pav_view` `emit_shape`):
+  undocumented; effect particles and glints must stay at 0.45 or they flood the scene with lights.
+- **`pav repl`'s `load` keeps the previous session's camera settings**: a bot run that passes as a
+  one-shot `pav play` can stall after a REPL `load`.
+- **The `tools/list` size budget** (48,000 chars, `pav_tools/tests/asset_errors.rs`) leaves no room
+  for a game's tools; a game's commands now share one advertised tool (`gcmd`) and still answer
+  by name, and the budget was raised to 51,500 with the trade recorded.
+- **The store index goes stale silently** when a core asset is added (`pav assets reindex=store`);
+  the test that catches it says so, but nothing reminds the author at the time.
 - `docs/MAKE_A_GAME.md` assumes a game's level is one room file: there is no guidance for large
   outdoor levels, streaming, terrain or water.
 - The engine had no frustum culling or LOD, a ~300 m far plane and shadows ≤ 120 m: fine for
