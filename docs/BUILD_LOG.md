@@ -6,6 +6,56 @@ compactions: after any restart read §14, then the top of this file, then `git l
 
 ---
 
+## 2026-10-17 — Performance budgets, quality presets, LOD, looks; content guide; tools
+
+**Built**
+- Render/perf (agent, merged `eb2298d`): hook-game quality presets **Low / Medium / High**
+  (Settings → Display → Quality; `pav_view/src/quality.rs`): Low = 0.5 MP render scale, no GI /
+  sun shafts / haze, half ocean grid, 50 % vegetation, 1024 shadow map; Medium = 1 MP, 2048,
+  75 % plants (the browser default); High = full, 4096. **Two terrain LODs** (half-resolution
+  meshes with skirts past 160 m: the island vista 536k → 178k triangles, no seams in
+  `out/tour/seam_lod60.png`), **camera-fitted shadows**, far plane 1,800 m from the atmosphere,
+  distance classes on every static and puppet detail, plants thinned with distance plus a far
+  forest, screen-size culling, static batching; looks **Painted Seas**, **Memory Mist**,
+  **Storm** (Settings → Display → Visual Style; `out/tour/looks.png`); `history_seconds` = 10.
+- `docs/CONTENT_GUIDE.md` (agent, `4704845`): every content kind with a worked example that was
+  applied, checked with the tools and reverted. Its findings were fixed: Swift Rigging (+12 %
+  sail speed), guard barks and the town crier, bark cooldowns, the results' collectible total,
+  the map legend, the `r6_drye` hint, a duplicate marker, `level_check` on a broken geometry
+  file, `ray` before the first step.
+- `pav`: the game's commands fold into one advertised tool, `gcmd`, and still answer by name
+  (`pav ship`, `pav level_check`, `pav fighters`...); the store index regenerated.
+
+**Verified** (`tour stats=true`, High, 1920×1080; `out/tour/tour_stats_1080.jsonl`)
+
+| Viewpoint | Instances after culling | Triangles | Ocean vertices | Particles |
+|---|---|---|---|---|
+| Helm at sea (R2) | 1,402 | 468k | 80,513 | 530 |
+| Town street (R5 crowd) | **2,296** | 403k | 80,513 | 530 |
+| Rooftop over town | **2,461** | 329k | 80,513 | 530 |
+| Fort courtyard | 733 | 114k | 80,513 | 530 |
+| Jungle | 2,914 (1,710 plants) | 796k | 80,513 | 530 |
+| Storm finale | 1,485 | 512k | 80,513 | 672 |
+
+- Budgets (§9.18): ≤ 2,500 instances at High in town — street 2,296, rooftop 2,461 (Medium
+  2,104 / 2,292, Low 1,654 / 1,745); ocean ≤ 120k vertices — 80,513 (Medium 45,793, Low
+  20,801); particles ≤ 20k — at most 2,676 slots. Sim ≥ 240 ticks/s in the dev build:
+  `pav bench` blacktap 23,235, round/5 938, freeroam 1,249, round/6 (slowest, ~120 NPCs, the
+  fort) **389 ticks/s**. 60 fps on an RTX 3060 Ti can't be measured here (no GPU: lavapipe and
+  SwiftShader); the presets and these counts are the proxy.
+- Art checklist (`out/tour/tour.png`: the six viewpoints, ships, characters, the island from
+  the sea) — ships pass; buildings pass (the barracks' back wall is plain); terrain passes after
+  the fort plateau became packed earth; sky passes (sun, clouds, storm with rain and lightning);
+  ocean passes (swell, glints, shallows, surf, storm foam).
+- `cargo test -p pav_view --test quality`, `-p pav_tools` (all suites, after the store reindex
+  and the tools/list budget), clippy `-D warnings` on all nine crates.
+
+**Decisions**
+- `tools/list` budget 48,000 → 51,500 chars: the kit tools (`ui`, `attract`, `tour`, `ray`,
+  `ocean`, `gcmd`) after folding eleven tools into six; recorded in the test's comment.
+
+---
+
 ## 2026-10-17 — The whole Tab by the bot on 3 seeds; map, nav25, Drydock, gear
 
 **Built**
