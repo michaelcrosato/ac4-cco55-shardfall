@@ -478,6 +478,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut r = Renderer::new(&gpu.device, &gpu.queue);
     let bed = seabed();
     let t = 37.0;
+    if std::env::var_os("SEA_SKY_PROFILE").is_some() {
+        return profile(&mut r, &bed, t);
+    }
     let mut sheet = Vec::new();
     let mut times = Vec::new();
     let mut render = |r: &mut Renderer, name: &str, scene: &Scene| -> Result<Vec<u8>, Box<dyn std::error::Error>> {
@@ -525,8 +528,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let pa = render(&mut r, "snap_a", &a)?;
     let pb = render(&mut r, "snap_b", &b)?;
-    let diff: f64 = pa.iter().zip(&pb).map(|(x, y)| (*x as f64 - *y as f64).abs()).sum::<f64>() / pa.len() as f64;
-    println!("grid snap: mean channel difference across a 32 m step {diff:.2}");
+    let mean_diff =
+        |a: &[u8], b: &[u8]| a.iter().zip(b).map(|(x, y)| (*x as f64 - *y as f64).abs()).sum::<f64>() / a.len() as f64;
+    // The same 0.2 m move away from a step, for comparison (the camera moving is a change too).
+    let (mut c, mut d) = (a.clone(), b.clone());
+    for (s, x) in [(&mut c, 5.9f32), (&mut d, 6.1)] {
+        let eye = Vec3::new(x, 30.0, 0.0);
+        s.camera = camera(eye, eye + s.camera.forward * 100.0);
+    }
+    let pc = capture::render_to_rgba(&mut r, &c, W, H)?;
+    let pd = capture::render_to_rgba(&mut r, &d, W, H)?;
+    println!(
+        "grid snap: mean channel difference for a 0.2 m move across a 32 m step {:.2}, and within a step {:.2}",
+        mean_diff(&pa, &pb),
+        mean_diff(&pc, &pd)
+    );
     extra.push(pa);
     extra.push(render(&mut r, "shore", &shore_shot(&preset("golden_hour", t, &bed)))?);
     let (w, h, px) = capture::tile_frames(&extra, W, H, 3);
@@ -534,5 +550,58 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mean = times.iter().sum::<f64>() / times.len() as f64;
     println!("mean frame (render + readback) at {W}x{H}: {mean:.0} ms over {} captures", times.len());
     println!("wrote {}", out.display());
+    Ok(())
+}
+
+/// `SEA_SKY_PROFILE=1`: what each part costs (best of five captures, render and readback).
+fn profile(r: &mut Renderer, bed: &Arc<Seabed>, t: f32) -> Result<(), Box<dyn std::error::Error>> {
+    let full = horizon_shot(&preset("storm", t, bed), 12.0, 4.0);
+    let variants: [(&str, Box<dyn Fn(&mut Scene)>); 7] = [
+        ("full storm frame", Box::new(|_| {})),
+        ("no rain", Box::new(|s| s.rain = None)),
+        (
+            "no rain, no sky (clear colour)",
+            Box::new(|s| {
+                s.rain = None;
+                s.sky = None;
+            }),
+        ),
+        (
+            "no rain, no ocean",
+            Box::new(|s| {
+                s.rain = None;
+                s.ocean = None;
+            }),
+        ),
+        (
+            "no rain, low ocean grid (64 cells)",
+            Box::new(|s| {
+                s.rain = None;
+                if let Some(o) = &mut s.ocean {
+                    o.cells = 64;
+                }
+            }),
+        ),
+        (
+            "nothing but the objects",
+            Box::new(|s| {
+                s.rain = None;
+                s.sky = None;
+                s.ocean = None;
+            }),
+        ),
+        ("no shadows", Box::new(|s| s.sun.shadows = false)),
+    ];
+    for (name, change) in &variants {
+        let mut scene = full.clone();
+        change(&mut scene);
+        let mut best = f64::MAX;
+        for _ in 0..5 {
+            let start = Instant::now();
+            let _ = capture::render_to_rgba(r, &scene, W, H)?;
+            best = best.min(start.elapsed().as_secs_f64() * 1000.0);
+        }
+        println!("{name}: {best:.0} ms");
+    }
     Ok(())
 }

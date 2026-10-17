@@ -317,6 +317,20 @@ fn seabed_at(xz: vec2<f32>) -> f32 {
     return bed;
 }
 
+// The sun's shadow on the water: one filtered tap is enough on a moving surface.
+fn water_shadow(p: vec3<f32>) -> f32 {
+    if (g.sun_dir.w < 0.5) {
+        return 1.0;
+    }
+    let lp = g.light_view_proj * vec4<f32>(p, 1.0);
+    let ndc = lp.xyz / lp.w;
+    let uv = vec2<f32>(ndc.x * 0.5 + 0.5, -ndc.y * 0.5 + 0.5);
+    if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0 || ndc.z > 1.0 || ndc.z < 0.0) {
+        return 1.0;
+    }
+    return textureSampleCompareLevel(shadow_map, shadow_sampler, uv, ndc.z - 0.001);
+}
+
 @fragment
 fn fs_ocean(in: OceanOut) -> SeaFsOut {
     let p = in.world;
@@ -377,7 +391,7 @@ fn fs_ocean(in: OceanOut) -> SeaFsOut {
         let ring = exp(-x * x) * (1.0 - age) * rain;
         bump += dv / max(dd, 1e-3) * (ring * 2.5);
     }
-    n = normalize(n - vec3<f32>(bump.x, 0.0, bump.y) * (0.22 * max(ripple, rain)));
+    n = normalize(n - vec3<f32>(bump.x, 0.0, bump.y) * (0.3 * max(ripple, rain)));
 
     // Depth under the moving surface (surf follows the waves) and under the mean level (the
     // colour of the shallows does not, or storm troughs would paint sandbanks).
@@ -385,7 +399,7 @@ fn fs_ocean(in: OceanOut) -> SeaFsOut {
     let depth = p.y - bed;
     let still = sea.center.z - bed;
     let l = -g.sun_dir.xyz;
-    let sh = shadow_factor(p, vec3<f32>(0.0, 1.0, 0.0));
+    let sh = water_shadow(p);
     let ndv = max(dot(n, v), 0.0);
     let ndl = max(dot(n, l), 0.0);
 

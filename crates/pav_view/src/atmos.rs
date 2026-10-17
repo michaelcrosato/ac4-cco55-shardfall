@@ -73,16 +73,42 @@ pub fn seabed_map(bed: &Arc<Seabed>) -> Arc<rs::SeabedMap> {
     map
 }
 
+/// The far plane of a camera's projection (m; read back from f32 matrix entries, so within
+/// about 1% when it is thousands of times the near plane).
+pub fn far_plane(cam: &rs::CameraData) -> f32 {
+    let p = &cam.proj;
+    let near = p.w_axis.z / p.z_axis.z;
+    if cam.ortho { near - 1.0 / p.z_axis.z } else { p.w_axis.z / (p.z_axis.z + 1.0) }
+}
+
+/// Moves a camera's far plane (a right-handed, depth 0..1 projection as glam's `directx`
+/// builders make), keeping its field of view and near plane.
+pub fn set_far_plane(cam: &mut rs::CameraData, far: f32) {
+    let p = &mut cam.proj;
+    let near = p.w_axis.z / p.z_axis.z;
+    let far = far.max(near * 2.0);
+    if cam.ortho {
+        p.z_axis.z = 1.0 / (near - far);
+        p.w_axis.z = near / (near - far);
+    } else {
+        p.z_axis.z = far / (near - far);
+        p.w_axis.z = near * far / (near - far);
+    }
+}
+
 /// How stormy `a` is (0..1): rain under a heavy sky.
 pub fn storminess(a: &Atmosphere) -> f32 {
     ((a.rain * 1.4).min(1.0) * smoothstep(0.45, 0.9, a.cloud_cover)).clamp(0.0, 1.0)
 }
 
 /// Sets everything `a` describes on `scene`, for a camera at `eye` looking at `target` (the
-/// sun's shadow square is centred on the target). The camera itself (its far plane) is the
-/// camera rig's job.
+/// sun's shadow square is centred on the target). The camera's far plane is pushed out to
+/// `a.far` when it is nearer (never pulled in): the islands on the horizon stay drawn.
 pub fn apply(a: &Atmosphere, eye: Vec3, target: Vec3, scene: &mut Scene) {
     let _ = eye;
+    if a.far > far_plane(&scene.camera) * 1.02 {
+        set_far_plane(&mut scene.camera, a.far);
+    }
     let flash = a.lightning.clamp(0.0, 1.0);
     let storm = storminess(a);
     let cover = a.cloud_cover.clamp(0.0, 1.0);

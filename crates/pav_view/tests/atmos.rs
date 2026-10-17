@@ -153,6 +153,30 @@ fn the_atmosphere_reaches_the_scene() {
 }
 
 #[test]
+fn the_far_plane_reaches_the_horizon() {
+    let mut scene = Scene::default();
+    scene.camera.proj = glam::camera::rh::proj::directx::perspective(0.8, 1.5, 0.1, 300.0);
+    assert!((atmos::far_plane(&scene.camera) - 300.0).abs() < 0.5);
+    let a = Atmosphere { far: 1800.0, ..Default::default() };
+    atmos::apply(&a, Vec3::ZERO, Vec3::NEG_Z, &mut scene);
+    let want = glam::camera::rh::proj::directx::perspective(0.8, 1.5, 0.1, 1800.0);
+    assert!(scene.camera.proj.abs_diff_eq(want, 1e-4), "{:?}", scene.camera.proj);
+    // Never pulled in.
+    scene.camera.proj = glam::camera::rh::proj::directx::perspective(0.8, 1.5, 0.1, 3000.0);
+    atmos::apply(&a, Vec3::ZERO, Vec3::NEG_Z, &mut scene);
+    assert!((atmos::far_plane(&scene.camera) / 3000.0 - 1.0).abs() < 0.01);
+    // Orthographic cameras too.
+    let mut ortho = pav_render::scene::CameraData {
+        proj: glam::camera::rh::proj::directx::orthographic(-5.0, 5.0, -3.0, 3.0, 0.05, 300.0),
+        ortho: true,
+        ..Default::default()
+    };
+    atmos::set_far_plane(&mut ortho, 900.0);
+    let want = glam::camera::rh::proj::directx::orthographic(-5.0, 5.0, -3.0, 3.0, 0.05, 900.0);
+    assert!(ortho.proj.abs_diff_eq(want, 1e-5));
+}
+
+#[test]
 fn no_sea_no_ocean_and_dry_weather_no_rain() {
     let s = applied(&Atmosphere::default());
     assert!(s.ocean.is_none() && s.rain.is_none());
