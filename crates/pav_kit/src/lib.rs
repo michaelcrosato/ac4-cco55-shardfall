@@ -5,5 +5,9 @@
 //! Nothing here names a particular game: vessels, objectives, archetypes and playlists are
 //! data the game loads.
 
+pub mod ballistics;
 pub mod camera;
 pub mod demo;
+pub mod dialog;
+pub mod mission;
+pub mod naval;
