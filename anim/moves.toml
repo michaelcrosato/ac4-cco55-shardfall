@@ -503,3 +503,44 @@ lunge = 0
 crouch = 0
 lean = 0.05
 trail = false
+
+# --- firearms -------------------------------------------------------------------------------------
+# Held poses for a pistol or musket (`weapon.kind`): the game holds the progress inside `active`
+# while the character aims, then lets it run on through the recovery after the shot.
+
+[[move]]
+name = "aim"
+about = "a pistol levelled: the right arm straight out ahead at shoulder height, the body square"
+from = 0
+to = 0
+height = [-0.06, -0.06]
+reach = 0.97
+wind = 0.12
+active = 0.7
+recover = 0.2
+hold = 0.6
+hit = 0.5
+lunge = 0
+crouch = 0.04
+lean = 0
+twist = 0
+trail = false
+
+[[move]]
+name = "aim_musket"
+about = "a musket shouldered: both hands on the stock, the barrel level ahead at shoulder height"
+hand = "both"
+from = 0
+to = 0
+height = [-0.08, -0.08]
+reach = 0.72
+wind = 0.18
+active = 0.7
+recover = 0.25
+hold = 0.6
+hit = 0.5
+lunge = 0
+crouch = 0.08
+lean = 0.1
+twist = 0
+trail = false
