@@ -454,7 +454,7 @@ fn cloth(m: &mut Mesh, nu: usize, nv: usize, pos: impl Fn(f32, f32) -> Vec3, col
     }
     // Normals from the triangles of this cloth only.
     let mut acc = vec![Vec3::ZERO; (nu + 1) * (nv + 1)];
-    for t in m.indices[first..].chunks_exact(3) {
+    for t in m.indices[first..].as_chunks::<3>().0 {
         let [a, b, c] = [t[0], t[1], t[2]].map(|i| Vec3::from(m.positions[i as usize]));
         let n = (b - a).cross(c - a);
         for &i in t {

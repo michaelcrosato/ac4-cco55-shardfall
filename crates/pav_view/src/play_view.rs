@@ -78,9 +78,7 @@ fn ring_mesh(inner: f32) -> MeshData {
         let (i0, i1) = (o0 * inner, o1 * inner);
         m.quad(i0, i1, o1, o0, [1.0; 3]);
     }
-    for n in &mut m.normals {
-        *n = [0.0, 1.0, 0.0];
-    }
+    m.normals.fill([0.0, 1.0, 0.0]);
     mesh_data(&m)
 }
 
@@ -201,7 +199,7 @@ impl PlayView {
             }
             DrawItem::Decal { radius, ring, color, alpha, .. } => {
                 let q = (ring.clamp(0.0, 0.98) * 50.0).round() as u32;
-                let key = MeshKey::Custom(0x5ec_a1_0000 + q as u64);
+                let key = MeshKey::Custom(0x5_eca1_0000 + q as u64);
                 let data = self.rings.entry(q).or_insert_with(|| Arc::new(ring_mesh(q as f32 / 50.0))).clone();
                 if !scene.custom_meshes.iter().any(|(k, _)| *k == key) {
                     scene.custom_meshes.push((key, data));
