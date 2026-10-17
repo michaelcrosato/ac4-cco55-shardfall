@@ -268,3 +268,44 @@ fn glyph_sheet() {
     assert!(raster::coverage(&ui) > 0.9);
     save("glyphs", size, &ui, false);
 }
+
+/// Counts pixels that differ from both vertical neighbours by more than 2 levels: a 1-px seam
+/// (double blending or a gap) inside a smooth area.
+fn seams(rgba: &[u8], w: usize, area: egui::Rect) -> usize {
+    let px = |x: usize, y: usize| rgba[(y * w + x) * 4] as i32;
+    let mut n = 0;
+    for y in area.top() as usize..area.bottom() as usize {
+        for x in area.left() as usize..area.right() as usize {
+            let (a, b, c) = (px(x, y - 1), px(x, y), px(x, y + 1));
+            if (b < a - 2 && b < c - 2) || (b > a + 2 && b > c + 2) {
+                n += 1;
+            }
+        }
+    }
+    n
+}
+
+#[test]
+fn parchment_and_glows_have_no_seams() {
+    let theme = common::theme();
+    let panel = egui::Rect::from_min_max(egui::pos2(96.0, 174.0), egui::pos2(1824.0, 936.0));
+    let rgba = raster::render(
+        [1920, 1080],
+        1.0,
+        |ctx| pav_ui::theme::install(ctx, &theme),
+        |ctx| {
+            let p = ctx.layer_painter(egui::LayerId::background());
+            p.rect_filled(ctx.viewport_rect(), 0.0, theme.ink);
+            for seed in [0xc4ed, 0x9e5, 0x5e7] {
+                pav_ui::paint::parchment(&p, panel, &theme, seed);
+            }
+            for (i, h) in [40.0f32, 80.0, 120.0, 200.0].iter().enumerate() {
+                let r = egui::Rect::from_center_size(egui::pos2(300.0 + i as f32 * 400.0, 560.0), egui::vec2(h * 2.5, *h));
+                pav_ui::paint::glow(&p, r, 30.0, 60.0, pav_ui::theme::alpha(theme.amber, 0.5));
+                pav_ui::paint::blob(&p, r.center() + egui::vec2(0.0, 200.0), *h, pav_ui::theme::alpha(theme.rope_dark, 0.4));
+            }
+        },
+    );
+    let inner = panel.shrink2(egui::vec2(100.0, 90.0));
+    assert_eq!(seams(&rgba, 1920, inner), 0);
+}

@@ -594,6 +594,11 @@ impl FrontEnd {
             self.device = Some(input.device);
         }
         self.audio_locked = input.audio_locked;
+        if self.mode == Mode::Boot {
+            // A boot card shown with `show(Mode::Boot)`: the first update moves on to the start.
+            self.mode = if self.platform.mobile || self.platform.kiosk { Mode::Attract } else { Mode::Title };
+            self.started = false;
+        }
         if !self.started {
             // The starting screen's scene; the first frame's input still counts below.
             self.started = true;

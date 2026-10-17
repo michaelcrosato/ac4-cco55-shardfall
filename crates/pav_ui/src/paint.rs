@@ -242,27 +242,58 @@ pub fn hgradient(p: &Painter, rect: Rect, left: Color32, right: Color32) {
     p.add(Shape::mesh(mesh));
 }
 
+/// The largest corner radius epaint can blur cleanly: it adds half the blur to the corner,
+/// and once that reaches half the rectangle's size its feathered mesh folds over itself.
+fn blur_corner(rect: Rect, corner: f32, blur: f32) -> f32 {
+    let max = rect.size().min_elem() * 0.32 - blur * 0.5;
+    corner.min(max).clamp(0.0, 255.0)
+}
+
 /// A soft glow (a blurred rounded rectangle).
 pub fn glow(p: &Painter, rect: Rect, corner: f32, blur: f32, color: Color32) {
-    let s = Shadow { offset: [0, 0], blur: blur.clamp(0.0, 255.0) as u8, spread: 0, color };
-    p.add(s.as_shape(rect, corner.clamp(0.0, 255.0)));
+    let blur = blur.clamp(0.0, 255.0).min(rect.size().min_elem() - 2.0).max(0.0);
+    let s = Shadow { offset: [0, 0], blur: blur as u8, spread: 0, color };
+    p.add(s.as_shape(rect, blur_corner(rect, corner, blur)));
 }
 
 /// A drop shadow under a rectangle.
 pub fn drop_shadow(p: &Painter, rect: Rect, corner: f32, offset: Vec2, blur: f32, strength: f32) {
+    let blur = blur.clamp(0.0, 255.0).min(rect.size().min_elem() - 2.0).max(0.0);
     let s = Shadow {
         offset: [offset.x.clamp(-127.0, 127.0) as i8, offset.y.clamp(-127.0, 127.0) as i8],
-        blur: blur.clamp(0.0, 255.0) as u8,
+        blur: blur as u8,
         spread: 0,
         color: alpha(Color32::BLACK, strength),
     };
-    p.add(s.as_shape(rect, corner.clamp(0.0, 255.0)));
+    p.add(s.as_shape(rect, blur_corner(rect, corner, blur)));
 }
 
-/// A soft round blob (stains, light pools).
+/// A soft round blob (stains, light pools): a radial gradient mesh, solid in the middle and
+/// fading out at `radius`.
 pub fn blob(p: &Painter, center: Pos2, radius: f32, color: Color32) {
-    let r = Rect::from_center_size(center, Vec2::splat(radius * 1.2));
-    glow(p, r, radius * 0.6, radius * 0.8, color);
+    let n = 40;
+    let mut mesh = Mesh::default();
+    mesh.colored_vertex(center, color);
+    let rings = [(0.45f32, 0.8f32), (0.75, 0.35), (1.0, 0.0)];
+    for (r, a) in rings {
+        for k in 0..n {
+            let ang = k as f32 / n as f32 * TAU;
+            mesh.colored_vertex(polar(center, radius * r, ang), alpha(color, a));
+        }
+    }
+    let n32 = n as u32;
+    for k in 0..n32 {
+        mesh.add_triangle(0, 1 + k, 1 + (k + 1) % n32);
+    }
+    for ring in 0..2u32 {
+        let (i0, o0) = (1 + ring * n32, 1 + (ring + 1) * n32);
+        for k in 0..n32 {
+            let k1 = (k + 1) % n32;
+            mesh.add_triangle(i0 + k, o0 + k, o0 + k1);
+            mesh.add_triangle(i0 + k, o0 + k1, i0 + k1);
+        }
+    }
+    p.add(Shape::mesh(mesh));
 }
 
 /// A radial vignette: transparent inside an ellipse, `edge` at the screen border.

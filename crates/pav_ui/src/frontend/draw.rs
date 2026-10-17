@@ -11,7 +11,7 @@ use super::{
 };
 use crate::bindings::{Bindings, PadButton};
 use crate::glyph::{self, Glyph, GlyphFamily, Piece};
-use crate::hud::{self, Hint, HudEnv, nav_hints};
+use crate::hud::{self, HudEnv, nav_hints};
 use crate::input::Nav;
 use crate::map;
 use crate::paint::{self, LogoStyle, quantize};
@@ -21,7 +21,7 @@ use crate::theme::{Theme, alpha, mix};
 /// Where the mobile ☰ button sits on a screen.
 pub(crate) fn hamburger_center(scr: Rect, safe_area: f32) -> Pos2 {
     let m = vec2(scr.width() * safe_area, scr.height() * safe_area);
-    pos2(scr.right() - m.x - 64.0, scr.top() + m.y + 64.0)
+    pos2(scr.right() - m.x - 66.0, scr.top() + m.y + 66.0)
 }
 
 struct D<'a> {
@@ -652,24 +652,16 @@ impl FrontEnd {
             d.theme,
             None,
         );
-        let pan = if d.family == GlyphFamily::Keyboard { vec![Glyph::key("WASD")] } else { vec![Glyph::LeftStick] };
-        let zoom = if d.family == GlyphFamily::Keyboard {
-            vec![Glyph::MouseWheel]
-        } else {
-            vec![Glyph::Pad(PadButton::LeftTrigger2), Glyph::Pad(PadButton::RightTrigger2)]
-        };
-        let hints = vec![
-            Hint::new(pan, "Pan"),
-            Hint::new(zoom, "Zoom"),
-            Hint::nav(Nav::Context, if self.map_view.legend { "Hide Legend" } else { "Legend" }, d.family),
-            Hint::nav(Nav::Back, "Back", d.family),
-        ];
+        let hints = hud::map_hints(d.family, self.map_view.legend, "Back");
         hud::hint_bar(&d.p, d.scr, d.safe, &hints, d.family, d.theme);
     }
 
     fn draw_objectives(&mut self, d: &D, frame: Option<&PlayFrame>) {
         let t = d.theme;
-        let panel = Rect::from_center_size(d.scr.center() - vec2(0.0, 30.0), vec2(1240.0, 800.0));
+        let rows = frame.and_then(|f| f.ui.objective.as_ref()).map(|o| o.optional.len().min(6)).unwrap_or(0);
+        let h =
+            if rows == 0 && frame.and_then(|f| f.ui.objective.as_ref()).is_none() { 420.0 } else { 560.0 + rows as f32 * 56.0 };
+        let panel = Rect::from_center_size(d.scr.center() - vec2(0.0, 30.0), vec2(1240.0, h));
         paint::panel(&d.p, panel, t, 0x0b1);
         let inner = panel.shrink2(vec2(90.0, 70.0));
         let obj = frame.and_then(|f| f.ui.objective.as_ref());
@@ -730,7 +722,7 @@ impl FrontEnd {
         let bar = 132.0;
         if let Some(f) = frame {
             if self.attract.loaded {
-                let inner = d.scr.shrink2(vec2(0.0, bar - d.scr.height() * d.theme.safe_area + 8.0));
+                let inner = d.scr.shrink2(vec2(0.0, bar - 10.0));
                 hud::draw_on(&d.p, inner, &f.ui, env);
             }
         }
@@ -843,7 +835,7 @@ impl FrontEnd {
         paint::medallion(&d.p, pos2(d.safe.left() + 44.0, d.safe.bottom() - 44.0), 40.0, t);
         let c = hamburger_center(d.scr, t.safe_area);
         self.hamburger = Some(c);
-        let r = Rect::from_center_size(c, Vec2::splat(116.0));
+        let r = Rect::from_center_size(c, Vec2::splat(132.0));
         if matches!(self.mode, Mode::Attract | Mode::AttractCard) {
             d.p.rect_filled(r, 28.0, alpha(t.ink, 0.6));
             d.p.rect_stroke(r, 28.0, Stroke::new(2.5, alpha(t.parchment, 0.5)), egui::StrokeKind::Inside);
@@ -888,24 +880,24 @@ impl FrontEnd {
             self.hit(panel, Target::Panel);
             paint::panel(&d.p, panel, t, 0xab0);
             let inner = panel.shrink2(vec2(90.0, 70.0));
-            let pages = measure_pages(d, &self.info.credits, inner.width(), inner.height() - 170.0, 52.0, 36.0);
+            let pages = measure_pages(d, &self.info.credits, inner.width(), inner.height() - 110.0, 56.0, 40.0);
             self.about_layout = Some(pages.clone());
             let page = self.about_page.min(pages.len().saturating_sub(1));
             let mut y = inner.top();
             for &i in pages.get(page).map(|v| v.as_slice()).unwrap_or(&[]) {
                 let (h, b) = &self.info.credits[i];
-                let hr = d.p.text(pos2(inner.left(), y), Align2::LEFT_TOP, h, t.display(52.0), t.ink);
+                let hr = d.p.text(pos2(inner.left(), y), Align2::LEFT_TOP, h, t.display(56.0), t.ink);
                 let br =
-                    paint::text_wrapped(&d.p, pos2(inner.left(), hr.bottom() + 8.0), inner.width(), b, t.body(36.0), t.ink_soft);
+                    paint::text_wrapped(&d.p, pos2(inner.left(), hr.bottom() + 14.0), inner.width(), b, t.body(40.0), t.ink_soft);
                 y = br.bottom() + 26.0;
             }
             let by = panel.bottom() - 100.0;
             let close = Rect::from_center_size(pos2(panel.right() - 260.0, by), vec2(380.0, 120.0));
-            hud::button(&d.p, close, "Close", true, t, 1);
+            hud::button_sized(&d.p, close, "Close", true, t, 52.0);
             self.hit(close, Target::Item(0));
             if pages.len() > 1 {
                 let next = Rect::from_center_size(pos2(panel.left() + 260.0, by), vec2(380.0, 120.0));
-                hud::button(&d.p, next, &format!("Next {}/{}", page + 1, pages.len()), false, t, 2);
+                hud::button_sized(&d.p, next, &format!("Next {}/{}", page + 1, pages.len()), false, t, 52.0);
                 self.hit(next, Target::PageNext);
             }
         }

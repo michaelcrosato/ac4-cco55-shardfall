@@ -53,8 +53,28 @@
 //! `FrontEnd::draw` must follow `update` each frame: it lays out the focusable items whose
 //! rectangles the next `update` uses for hover and click.
 //!
-//! The first `update` emits the `LoadScene` for the starting screen (the title backdrop, or
-//! the first attract segment): the app needn't load anything by itself.
+//! Contract details:
+//! - The first `update` emits the `LoadScene` for the starting screen (the title backdrop, or
+//!   the first attract segment): the app needn't load anything by itself. Every later scene
+//!   change is a `LoadScene` too (title after attract or Quit to Title, chapters, training).
+//! - `dt` is real wall-clock time; large steps (2 s at 0.5 fps) are fine: every timer
+//!   accumulates (idle → attract 10 s + 0.5 s fade, kiosk 60 s, segment time, 3 s card).
+//! - Attract segments count time only after [`FrontEnd::on_scene_loaded`] (a 30 s watchdog
+//!   carries on if it never comes). A segment ends on `frame.ui.demo.done` or its `seconds`.
+//! - `UiInput.any` from a real device in attract mode returns to the title on that same
+//!   update, consumed. On a phone (`Platform::mobile`) touch never exits; a keyboard or pad
+//!   does, and the front end then behaves as desktop.
+//! - Esc should send `[Nav::Back, Nav::Start]`: after an input changes the screen the rest
+//!   of that frame's input is dropped, so it acts once (pause in play, back elsewhere).
+//! - In `Play`, only `Nav::Start` is used (pause); everything else is game input. The game's
+//!   own overlays (`UiModel::overlay`) are drawn by the HUD and driven by the game.
+//! - `UiRequest::Title` / `Replay` from the game are handled; `UiRequest::Save` is the app's.
+//! - [`FrontEnd::mode`]`().name()` gives snake_case names ("mobile_menu", "attract_card");
+//!   [`FrontEnd::menu_button`] is the ☰ button's centre on phones; [`FrontEnd::focus_id`] /
+//!   [`FrontEnd::focusables`] describe focus for tests and tools; [`FrontEnd::family`] is the
+//!   glyph family in use (the prompts setting, else the last device).
+//! - Layers: the HUD and screens paint on one `Order::Background` egui layer
+//!   ([`hud::layer`]), so app debug windows stay on top.
 //!
 //! ## Headless
 //! [`raster::render`] runs an egui frame and rasterises it on the CPU (RGBA8);

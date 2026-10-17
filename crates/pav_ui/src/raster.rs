@@ -2,12 +2,21 @@
 //! (triangles with UVs into the font atlas and vertex colours, premultiplied alpha blending,
 //! clip rects), so tools and tests see exactly what the window shows, without a GPU.
 //!
+//! A UI layer at any size: `pixels_per_point = height / 1080` keeps the 1080p layout.
+//! Composite it over a scene capture with [`composite_over`].
+//!
 //! ```no_run
-//! let theme = pav_ui::Theme::default();
-//! let rgba = pav_ui::raster::render([1920, 1080], 1.0, |ctx| pav_ui::theme::install(ctx, &theme), |ctx| {
-//!     pav_ui::hud::draw_sample(ctx, &theme);
+//! use pav_ui::{Bindings, GlyphFamily, HudEnv, Settings, Theme};
+//! let (theme, bindings, settings) = (Theme::default(), Bindings::default(), Settings::default());
+//! let ui = pav_ui::sample_ui_model();
+//! let (w, h) = (3840u32, 2160u32);
+//! let ppp = h as f32 / 1080.0;
+//! let rgba = pav_ui::raster::render([w, h], ppp, |ctx| pav_ui::theme::install(ctx, &theme), |ctx| {
+//!     let proj = pav_ui::sample_projector(egui::vec2(w as f32 / ppp, 1080.0));
+//!     let env = HudEnv { theme: &theme, bindings: &bindings, family: GlyphFamily::Xbox, settings: &settings, proj, time: 0.0 };
+//!     pav_ui::hud::draw(ctx, &ui, &env);
 //! });
-//! std::fs::write("hud.png", pav_ui::raster::encode_png(1920, 1080, &rgba)).unwrap();
+//! std::fs::write("hud.png", pav_ui::raster::encode_png(w, h, &rgba)).unwrap();
 //! ```
 
 use std::collections::BTreeMap;

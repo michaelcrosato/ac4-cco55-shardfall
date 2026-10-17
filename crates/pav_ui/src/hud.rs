@@ -117,7 +117,7 @@ pub fn draw_on(p: &Painter, scr: Rect, ui: &UiModel, env: &HudEnv) {
             overlay(p, scr, safe, o, ui, &env);
         }
         // Subtitles stay readable above the overlay and its hint bar.
-        subtitles(p, safe.with_max_y(safe.bottom() - 70.0), &ui.subtitles, &env);
+        subtitles(p, safe.with_max_y(safe.bottom() - 62.0), &ui.subtitles, &env);
     } else {
         let sub_top = subtitles(p, safe, &ui.subtitles, &env);
         if !wheel {
@@ -530,7 +530,7 @@ fn bottom_left(p: &Painter, safe: Rect, items: &[HudItem], env: &HudEnv) {
     }
     for it in items {
         if let HudItem::Tool { name, count } = it {
-            let y = if ship_drawn { safe.bottom() - 330.0 } else { safe.bottom() - 40.0 };
+            let y = if ship_drawn { safe.bottom() - 372.0 } else { safe.bottom() - 40.0 };
             let c = pos2(safe.left() + 40.0, y);
             p.circle_filled(c, 40.0, alpha(theme.ink, 0.7));
             p.circle_stroke(c, 37.0, Stroke::new(2.5, alpha(theme.gold, 0.8)));
@@ -801,7 +801,7 @@ fn bars(p: &Painter, safe: Rect, bottom: f32, items: &[HudItem], env: &HudEnv) {
 fn edge_point(scr: Rect, safe: Rect, dir: Vec2) -> (Pos2, f32) {
     let c = scr.center();
     let d = if dir.length() < 1e-4 { vec2(0.0, 1.0) } else { dir.normalized() };
-    let (rx, ry) = (safe.width() * 0.44, scr.height() * 0.34);
+    let (rx, ry) = (safe.width() * 0.40, scr.height() * 0.27);
     let k = 1.0 / ((d.x / rx).powi(2) + (d.y / ry).powi(2)).sqrt();
     let q = c + d * k;
     let ang = d.x.atan2(-d.y);
@@ -1058,14 +1058,7 @@ fn overlay(p: &Painter, scr: Rect, safe: Rect, o: &Overlay, ui: &UiModel, env: &
                 theme,
                 Some(*cursor),
             );
-            hint_bar(
-                p,
-                scr,
-                safe,
-                &nav_hints(&[(Nav::Up, "Pan"), (Nav::Context, "Legend"), (Nav::Back, "Close")], env.family),
-                env.family,
-                theme,
-            );
+            hint_bar(p, scr, safe, &map_hints(env.family, false, "Close"), env.family, theme);
         }
         Overlay::Cinematic { skip } => {
             let g = glyph::glyph_for_action(env.bindings, "drop", env.family);
@@ -1210,7 +1203,9 @@ fn wheel(p: &Painter, scr: Rect, safe: Rect, slots: &[Tile], selected: usize, en
             paint::text_wrapped(p, c + vec2(-90.0, 14.0), 180.0, &t.desc, theme.body(24.0), theme.parchment_dark);
         }
     }
-    hint_bar(p, scr, safe, &nav_hints(&[(Nav::Up, "Choose"), (Nav::Back, "Release")], env.family), env.family, theme);
+    let choose = if env.family == GlyphFamily::Keyboard { Glyph::MouseMove } else { Glyph::RightStick };
+    let release = glyph::glyph_for_action(env.bindings, "tools", env.family);
+    hint_bar(p, scr, safe, &[Hint::new(vec![choose], "Choose"), Hint::new(vec![release], "Release")], env.family, theme);
 }
 
 fn results(p: &Painter, scr: Rect, safe: Rect, r: &Results, env: &HudEnv) {
@@ -1218,7 +1213,7 @@ fn results(p: &Painter, scr: Rect, safe: Rect, r: &Results, env: &HudEnv) {
     p.rect_filled(scr, 0.0, alpha(Color32::BLACK, 0.7));
     let panel = Rect::from_min_max(
         pos2(safe.left() + safe.width() * 0.06, safe.top()),
-        pos2(safe.right() - safe.width() * 0.06, safe.bottom() - 70.0),
+        pos2(safe.right() - safe.width() * 0.06, safe.bottom() - 168.0),
     );
     paint::panel(p, panel, theme, 0x9e5);
     let title_r = p.text(
@@ -1234,7 +1229,7 @@ fn results(p: &Painter, scr: Rect, safe: Rect, r: &Results, env: &HudEnv) {
         Stroke::new(2.0, alpha(theme.rope_dark, 0.6)),
     );
     // Pour % ring (left).
-    let rc = pos2(panel.left() + panel.width() * 0.2, panel.top() + 420.0);
+    let rc = pos2(panel.left() + panel.width() * 0.2, panel.top() + 370.0);
     let rr = 140.0;
     p.circle_filled(rc, rr + 24.0, alpha(theme.ink, 0.9));
     paint::ring(p, rc, rr, 22.0, r.pour / 100.0, theme.amber_bright, alpha(theme.parchment_dark, 0.35));
@@ -1251,7 +1246,7 @@ fn results(p: &Painter, scr: Rect, safe: Rect, r: &Results, env: &HudEnv) {
     }
     // Checklist (middle).
     let cx = panel.left() + panel.width() * 0.38;
-    let mut y = panel.top() + 230.0;
+    let mut y = panel.top() + 190.0;
     p.text(pos2(cx, y), Align2::LEFT_TOP, "Full Pour", theme.display(48.0), theme.ink);
     y += 70.0;
     for (text, done) in r.checklist.iter().take(6) {
@@ -1272,7 +1267,7 @@ fn results(p: &Painter, scr: Rect, safe: Rect, r: &Results, env: &HudEnv) {
     // Stats (right).
     let sx = panel.left() + panel.width() * 0.7;
     let sw = panel.right() - 70.0 - sx;
-    let mut y = panel.top() + 250.0;
+    let mut y = panel.top() + 210.0;
     for (label, value) in r.stats.iter().take(7) {
         p.text(pos2(sx, y + 18.0), Align2::LEFT_CENTER, label, theme.body(30.0), theme.ink_soft);
         p.text(pos2(sx + sw, y + 18.0), Align2::RIGHT_CENTER, value, theme.bold(32.0), theme.ink);
@@ -1281,7 +1276,7 @@ fn results(p: &Painter, scr: Rect, safe: Rect, r: &Results, env: &HudEnv) {
     }
     // Choices.
     if !r.tiles.is_empty() {
-        choice_buttons(p, pos2(panel.center().x, panel.bottom() - 90.0), &r.tiles, r.focus, env);
+        choice_buttons(p, pos2(panel.center().x, panel.bottom() - 84.0), &r.tiles, r.focus, env);
     }
     hint_bar(p, scr, safe, &nav_hints(&[(Nav::Left, "Choose"), (Nav::Confirm, "Select")], env.family), env.family, theme);
 }
@@ -1303,6 +1298,12 @@ fn choice_buttons(p: &Painter, center: Pos2, list: &[Tile], focus: usize, env: &
 
 /// A big button: ink on darker parchment with a rope edge; focused = amber glow and fill.
 pub fn button(p: &Painter, r: Rect, label: &str, focused: bool, theme: &Theme, seed: u32) {
+    let _ = seed;
+    button_sized(p, r, label, focused, theme, if focused { 36.0 } else { 34.0 });
+}
+
+/// [`button`] with a given text size (touch screens want bigger text).
+pub fn button_sized(p: &Painter, r: Rect, label: &str, focused: bool, theme: &Theme, text: f32) {
     if focused {
         paint::glow(p, r.expand(6.0), 16.0, 30.0, alpha(theme.amber_bright, 0.75));
     }
@@ -1311,9 +1312,7 @@ pub fn button(p: &Painter, r: Rect, label: &str, focused: bool, theme: &Theme, s
     p.rect_filled(r, 12.0, fill);
     let pts = paint::rounded_rect_points(r.shrink(7.0), 9.0, 4);
     paint::rope(p, &pts, true, if focused { 6.0 } else { 5.0 }, theme);
-    let _ = seed;
-    let font = theme.bold(quantize(if focused { 36.0 } else { 34.0 }));
-    p.text(r.center(), Align2::CENTER_CENTER, label, font, theme.ink);
+    p.text(r.center(), Align2::CENTER_CENTER, label, theme.bold(quantize(text)), theme.ink);
 }
 
 // ---------------------------------------------------------------- hint bar
@@ -1338,6 +1337,24 @@ impl Hint {
     pub fn new(glyphs: Vec<Glyph>, label: &str) -> Hint {
         Hint { glyphs, label: label.to_string() }
     }
+}
+
+/// The map's hints: pan with the left stick, zoom with the triggers, legend, back.
+pub fn map_hints(family: GlyphFamily, legend: bool, back: &str) -> Vec<Hint> {
+    use crate::bindings::PadButton;
+    let kb = family == GlyphFamily::Keyboard;
+    let pan = if kb { vec![Glyph::key("WASD")] } else { vec![Glyph::LeftStick] };
+    let zoom = if kb {
+        vec![Glyph::MouseWheel]
+    } else {
+        vec![Glyph::Pad(PadButton::LeftTrigger2), Glyph::Pad(PadButton::RightTrigger2)]
+    };
+    vec![
+        Hint::new(pan, "Pan"),
+        Hint::new(zoom, "Zoom"),
+        Hint::nav(Nav::Context, if legend { "Hide Legend" } else { "Legend" }, family),
+        Hint::nav(Nav::Back, back, family),
+    ]
 }
 
 /// Hints from (menu action, label) pairs.

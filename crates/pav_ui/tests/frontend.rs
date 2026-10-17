@@ -117,6 +117,29 @@ fn starts_on_the_title_and_loads_its_scene() {
 }
 
 #[test]
+fn a_boot_card_moves_on_to_the_start_screen() {
+    let mut fe = common::desktop(false);
+    fe.show(Mode::Boot);
+    assert_eq!(fe.mode(), Mode::Boot);
+    let c = fe.update(DT, &UiInput::default(), None);
+    assert_eq!(fe.mode(), Mode::Title);
+    assert_eq!(loads(&c), vec![("blacktap/title".to_string(), 0, false)]);
+    let mut k = FrontEnd::new(common::info(), Settings::default(), Platform { kiosk: true, ..Default::default() }, false);
+    k.show(Mode::Boot);
+    let c = k.update(DT, &UiInput::default(), None);
+    assert_eq!(k.mode(), Mode::Attract);
+    assert!(loads(&c)[0].2, "autopilot");
+}
+
+#[test]
+fn mode_names_are_snake_case_and_unique() {
+    let names: BTreeSet<&str> = Mode::ALL.iter().map(|m| m.name()).collect();
+    assert_eq!(names.len(), Mode::ALL.len());
+    assert!(names.contains("mobile_menu") && names.contains("attract_card") && names.contains("pause_settings"));
+    assert!(names.iter().all(|n| n.chars().all(|c| c.is_ascii_lowercase() || c == '_')));
+}
+
+#[test]
 fn title_any_input_opens_the_menu_and_is_consumed() {
     let mut fe = common::desktop(true);
     fe.update(DT, &UiInput::default(), None);
