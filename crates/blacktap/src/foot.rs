@@ -901,8 +901,8 @@ pub fn post(g: &mut BlackTap, sim: &mut Sim, dt: f32, events: &mut Vec<SimEvent>
     // Fall damage from landings.
     if let Some(pid) = sim.state.player {
         for e in events.iter() {
-            if let SimEvent::Land { speed, .. } = e {
-                let rolled = g.land.sprinting;
+            if let SimEvent::Land { speed, roll, .. } = e {
+                let rolled = *roll || g.land.sprinting;
                 let feet = sim.feet(pid).unwrap_or_default();
                 let soft =
                     g.world().hide_at(feet).is_some_and(|h| matches!(h.kind.as_str(), "hay" | "haystack" | "cart" | "awning"));

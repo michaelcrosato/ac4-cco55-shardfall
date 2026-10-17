@@ -204,6 +204,10 @@ pub fn build(sim: &mut Sim, rest: Option<&str>) -> Result<()> {
     let world = crate::world::load(&crate::data("tab1.toml").ok_or_else(|| anyhow!("games/blacktap/tab1.toml is missing"))?)?;
     crate::foot::build_world(sim, &world, &content)?;
     sim.config.bombs.weapon = CharWeapon::None;
+    // Free-running and climbing everything vertical; ledges grab; swimmers climb out.
+    sim.config.movement.parkour = true;
+    sim.config.movement.climb_all = true;
+    sim.config.movement.ledge_grab = true;
     sim.config.history_seconds = 10.0;
     let mut game = BlackTap {
         mode,

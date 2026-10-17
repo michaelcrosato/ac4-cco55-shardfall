@@ -82,7 +82,7 @@ fn sea(g: &BlackTap, sim: &Sim, skill: &str) -> InputFrame {
     let mut want_sail = 2u8;
     let mut want: Option<f32> = None;
     // Repair when hurt.
-    if me.frac() < 0.4 && g.sea.timber > 0 && g.sea.repair_cd <= 0.0 && tap(sim, 10) {
+    if me.frac() < 0.55 && g.sea.timber > 0 && g.sea.repair_cd <= 0.0 && tap(sim, 10) {
         i.pressed |= b::HEAL;
         i.held |= b::HEAL;
     }
@@ -187,14 +187,12 @@ fn sea(g: &BlackTap, sim: &Sim, skill: &str) -> InputFrame {
                     want = Some(heading_of(to_spot));
                     want_sail = if to_spot.length() > 160.0 { 2 } else { 1 };
                 } else {
-                    // A racetrack round the spot, beam-on to the target: of the two beam
-                    // headings, the one that leads back toward the spot.
+                    // A racetrack round the spot, beam-on to the target: keep whichever beam
+                    // heading is nearer the current one (the 70 m leash turns her back).
                     let bearing = heading_of(tp - me.pos);
                     let a = (bearing + 90.0).rem_euclid(360.0);
                     let b2 = (bearing + 270.0).rem_euclid(360.0);
-                    let dir = |hd: f32| Vec2::new(hd.to_radians().sin(), -hd.to_radians().cos());
-                    let back = if to_spot.length() > 1.0 { to_spot.normalize() } else { dir(me.heading) };
-                    want = Some(if dir(a).dot(back) >= dir(b2).dot(back) { a } else { b2 });
+                    want = Some(if angle_diff(a, me.heading).abs() <= angle_diff(b2, me.heading).abs() { a } else { b2 });
                     want_sail = 1;
                 }
             }

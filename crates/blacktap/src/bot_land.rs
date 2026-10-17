@@ -85,7 +85,7 @@ pub fn follow(g: &BlackTap, sim: &Sim, name: &str) -> Option<InputFrame> {
     let target = pts[k];
     let action = h.actions.get(k).map(|s| s.as_str()).unwrap_or("walk");
     let ch = sim.state.player.and_then(|id| sim.state.entities.get(id)).and_then(|e| e.character.as_ref());
-    let climbing = ch.is_some_and(|c| c.hang.is_some() || c.climbing.is_some());
+    let climbing = ch.is_some_and(|c| c.hang.is_some() || c.climbing.is_some() || c.climb.is_some());
     let mut i = go(g, sim, target, matches!(action, "run" | "climb" | "jump" | "dive"));
     match action {
         "climb" => {

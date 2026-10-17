@@ -196,9 +196,9 @@ pub fn act(g: &mut BlackTap, sim: &mut Sim, name: &str) {
                 let wb = w.marker("battery_west").unwrap_or_default();
                 let nb = w.marker("battery_north").unwrap_or_default();
                 let mt = w.marker("mortar_tower").unwrap_or_default();
-                g.sea.add_battery("west", BatteryKind::Guns, wb, 4, 600.0, 180.0);
-                g.sea.add_battery("north", BatteryKind::Guns, nb, 4, 600.0, 180.0);
-                g.sea.add_battery("mortar", BatteryKind::Mortar, mt, 1, 900.0, 260.0);
+                g.sea.add_battery("west", BatteryKind::Guns, wb, 4, 450.0, 180.0);
+                g.sea.add_battery("north", BatteryKind::Guns, nb, 4, 450.0, 180.0);
+                g.sea.add_battery("mortar", BatteryKind::Mortar, mt, 1, 650.0, 260.0);
             }
         }
         "storm" => {

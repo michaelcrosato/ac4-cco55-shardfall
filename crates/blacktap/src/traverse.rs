@@ -138,14 +138,13 @@ pub fn camera_override(g: &BlackTap, sim: &Sim) -> Option<(&'static str, Vec3, O
     let pid = sim.state.player?;
     let ch = sim.state.entities.get(pid)?.character.as_ref()?;
     let feet = BlackTap::player_feet(sim)?;
-    let ctx = if ch.swimming {
-        "swim"
-    } else if ch.hang.is_some() || ch.climbing.is_some() {
-        "climb"
-    } else if g.land.sprinting && Vec2::new(ch.vel.x, ch.vel.z).length() > 4.0 {
-        "freerun"
-    } else {
-        return None;
+    use pav_core::character::TraversalState as T;
+    let ctx = match ch.traversal_state() {
+        T::Swim | T::Dive => "swim",
+        T::WallClimb | T::Hang | T::Mantle => "climb",
+        T::FreeRun | T::Vault => "freerun",
+        _ => return None,
     };
+    let _ = g;
     Some((ctx, feet, Some(pid)))
 }
