@@ -41,6 +41,7 @@ game-agnostic. `git diff 79061e4 -- crates/pav_* scripts web` shows the exact ch
 | Puppet gear: `tricorne`, `bicorne`, `bandana`, `straw_hat`, `beaked_hood` helms; trim, coat skirts, hair, stripes, belt strap, bracer, holsters; `pistol`, `musket`, `cutlass` weapons; `bulk`. Additive (old looks unchanged). | `src/puppet.rs`, `anim/moves.toml` (`aim`, `aim_musket`) |
 | `Sim::raycast_block` (hit plus the static block hit). | `src/world.rs` |
 | `Mesh.cull` category for draw-list meshes. | `src/play.rs` |
+| `DrawItem::Emitter { key, def, pos, drift }` (particle emitters that live while the game draws them; `drift` leans smoke downwind) and `DrawItem::Distortion` (heat haze, spray). | `src/play.rs` |
 
 ## `pav_view` and `pav_render`
 
@@ -51,6 +52,7 @@ game-agnostic. `git diff 79061e4 -- crates/pav_* scripts web` shows the exact ch
 | Frustum culling and distance culling classes (small 120 m, vegetation 180 m, structures 600 m; tunable). | `pav_render/src/cull.rs`, `pav_view/src/build.rs` |
 | FX bank: cue names → particle bursts, shockwaves, water dents, flashes from data (`fx.toml`). | `pav_view/src/cue_fx.rs`, `src/fx.rs`, `pav_render/src/fx.rs` |
 | Terrain chunk meshes keyed by `pav_core::terrain::render_key`. | `pav_view/src/build.rs` |
+| Draw-list emitters and distortions tracked by key; the game's wind reaches cue particles; `fx.toml` particle layers take `wind`, `drag`, `gravity`, `floor`. | `pav_view/src/play_view.rs`, `src/build.rs`, `src/cue_fx.rs` |
 | **Performance and quality** (PLAN §9.18): hook-game quality presets Low/Medium/High (`view.quality`: render scale, shadow map size `Sun::shadow_map` and reach, ocean grid, plant share, terrain LOD, effects); half-resolution terrain LOD past 160 m with skirts; camera-fitted sun shadows; distance classes on statics and puppet details; plants thinned with distance plus a sparse far forest; screen-size culling (`Scene::cull_pixels`); static batching of plain pieces per region; per-class render stats (`capture stats`, `tour stats=true`). | `pav_render/src/{renderer,scene,cull}.rs`, `pav_view/src/{quality,batch,build,atmos}.rs`, `pav_view/tests/quality.rs` |
 | Looks *Painted Seas* (low-radius Kuwahara on the environment, characters crisp), *Memory Mist*, *Storm*; a look's grade stacks on the game's atmosphere; Settings → Display → Visual Style. | `pav_view/src/looks.toml`, `pav_view/src/atmos.rs`, `pav_ui/src/settings.rs`, `pav_app/src/app/play.rs` |
 
@@ -64,13 +66,15 @@ game-agnostic. `git diff 79061e4 -- crates/pav_* scripts web` shows the exact ch
 
 | Change | Files |
 |---|---|
+| **Haptics**: each tick's `FrameEffects.rumble` cues are collected once by the sim host and played while the game is being played (not menus, pause or attract) when Vibration is on: `gilrs::ff` natively (low → strong motor, high → weak), the Gamepad API's `vibrationActuator.playEffect("dual-rumble")` in the browser (called through `js_sys::Reflect`; web-sys `Navigator` feature). | `src/rumble.rs`, `src/simhost.rs`, `src/app/play.rs`, `Cargo.toml` |
 | Hook games get a front end (`pav_ui`), settings pushed to the game, HUD, audio v2, cue FX, touch (taps reach the front end; the phone ☰), Continue/New Game with saved progress, checkpoint saves, localStorage persistence on the web, developer/kiosk gating, Assassin's Keg branding when it is the start scene. | `src/app.rs`, `src/app/play.rs`, `src/settings.rs`, `src/simhost.rs`, `src/store.rs`, `src/main.rs` |
 
 ## `pav_tools`
 
 | Change | Files |
 |---|---|
-| Kit tools: `ui` (any front-end screen or the HUD to PNG at any size and glyph family), `attract` (headless attract runs with stall and exit checks), `ship`, `mission`, `perception`, `fighters`, `ocean`, `level_check`, `tour`, `markers`, `ray`; `capture ui=true`; `player` shows the traversal state; game commands via `Sim::game_command`. | `src/kit_tools.rs`, `src/tools.rs`, `src/session.rs`, `tests/attract.rs` |
+| Kit tools: `ui` (any front-end screen or the HUD to PNG at any size and glyph family), `attract` (headless attract runs with stall and exit checks), `tour` (contact sheet, `stats=true`), `ray`, `ocean`, and `gcmd` — the running game's commands (`ship`, `mission`, `perception`, `fighters`, `level_check`, `markers`), which also answer by their own names; `capture ui=true family= stats=`; `player` shows the traversal state. The `tools/list` budget test is 51,500 chars (was 48,000). | `src/kit_tools.rs`, `src/tools.rs`, `src/session.rs`, `tests/attract.rs`, `tests/asset_errors.rs` |
+| Store index regenerated for the new core materials and props (`pav assets reindex=store`). | `store/STORE.tsv` |
 
 ## Scripts and web
 
