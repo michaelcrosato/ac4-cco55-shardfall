@@ -6,6 +6,111 @@ compactions: after any restart read §14, then the top of this file, then `git l
 
 ---
 
+## 2026-10-17 — Final verification: the gate, the browser build, the Definition of Done
+
+**Built** (since the last entry)
+- **Bodies stop blocking** (found by the full-level gate: seed 2 stood still in the fort for an
+  hour of game time). Two escorts' corpses wedged the bot against Drye's guard: a dead character
+  stayed a standing capsule, and steering ignores entity hits. Engine: `Sim::set_ghost` turns a
+  character's capsule into a sensor (`Character.ghost`, kept through sleep and snapshots); every
+  kill ghosts its body (`rounds::on_kill`). Test `ghosts_let_the_living_walk_through`
+  (`pav_core/tests/movement.rs`). The bot trace can save states (`BT_SAVE_AT=600,700`) for
+  `pav snapshot_load`, which is how the stall was found.
+- Phone ☰: the front end took taps only as "any input", which phone taps deliberately aren't, so
+  the button never opened the overlay; it now reads the tap first, and the app publishes the
+  button's rectangle after drawing, in CSS pixels. Test
+  `a_phone_tap_on_the_button_opens_the_menu_as_the_app_sends_it` (`pav_ui/tests/frontend.rs`).
+- Buoyancy: `ships_ride_the_waves` (`pav_kit` naval) — hulls heave, pitch and roll on a sea and
+  sit level on a flat one. Free roam's first convoy sails 30 s in.
+- The engine's own demos follow the new core assets: store index and Library Hall regenerated
+  (26 materials), the Store Showcase shows the eight new materials; `pav_tools` store tests.
+- Docs: `README.md` (Source Information, how to play, controls, build and test, features,
+  credits), `docs/ENGINE_ANALYSIS.md`, `docs/CONTENT_GUIDE.md` (every content kind with a worked
+  example), `ENGINE_UPSTREAM.md` (every engine change, by crate).
+
+**Verified**
+- **`scripts/check.sh --full` on `a0c43f3`: "check.sh: all green (full)", exit 0, 21.7 min.**
+  fmt; clippy `-D warnings` on the nine crates (native) and `pav_app` (wasm32); WGSL through
+  Tint (every module 0 errors); tests: **612 passed, 0 failed** (14 ignored: the long runs and
+  opt-in suites); long runs: `rounds` 6 passed (each Round × 5 seeds, 178 s), `full_level` 3
+  passed (111 s), `attract_thirty_minutes_no_stalls` passed (≥ 5 seed sets, 0 stalls, 0 load
+  errors, every segment ≥ 3 mechanics; 110 s). The run before it, on `c54c4f8`, failed on
+  `full_level_seed_2` — the stall fixed above.
+- `scripts/check.sh` (the quick gate) is the first half of the same run, green: fmt, clippy
+  `-D warnings` on the nine crates (native) and `pav_app` (wasm32), WGSL through Tint (every
+  module 0 errors), the tests of `pav_core pav_kit pav_ui blacktap pav_audio pav_tools pav_view`.
+- Full level after the fix (`cargo test -p blacktap --test full_level -- --ignored`): seed 1
+  **874 s**, seed 2 **782 s**, seed 3 **746 s** (Round 6 at 692 / 596 / 560 s).
+- **dist** (`scripts/build-game.sh` on `a0c43f3`, committed in `c7976c3`):
+  `dist/Assassins-Creed-IV-Black-Flag-AssassinsKegBlackTap-W9-2026-10-17-Claude-Opus-5.5.html`,
+  13.5 MB (13,452,628 bytes; the wasm is 33.8 MB, 10.0 MB gzipped), one file:
+  `<title>Assassin's Keg — Black Tap</title>`, the description and theme-color metas, an
+  inline SVG keg-tap favicon, the wasm and glue inlined (no other loads).
+- **Browser** (`node scripts/browser_check.mjs dist/…html out/browser`, Chromium 1194, WebGPU on
+  SwiftShader, `file://`): **10/10 PASS** — desktop boots to the title; 11 s idle → attract
+  (DEMO PLAY); a key in attract → the title; no console errors; settings saved to localStorage
+  (`blacktap.settings`); after a reload the app finds settings and progress; phone boots into
+  attract; a tap on the game stays in attract; tap ☰ → the minimal overlay; no console errors.
+  SwiftShader drew 0.05 fps here (the gate was running beside it), so the script waits on
+  wall-clock frames and now allows 3 minutes for a page load; the exit on the same frame is the
+  front-end test's job (`any_input_leaves_attract_on_the_same_update_and_is_consumed`).
+  Screenshots: `out/browser/desktop_title.png` (the title, the build ID, the browser's sound
+  hint), `desktop_attract.png` (DEMO PLAY over the Second Round broadside, "PRESS ANY BUTTON"),
+  `desktop_back_to_title.png`, `phone_attract.png` (only ☰ over the demo), `phone_menu.png`
+  (Sound, Quality, About, Close). Looked at all five: no engine overlays, no placeholder text.
+
+### §14 evidence map
+
+| Box | Evidence |
+|---|---|
+| A1 Title, ID, naming | README header; HTML `<title>` and file name (above); About screen (`games/blacktap/credits.toml`, `crates/blacktap/tests/data.rs::front_end_info_is_complete` checks name, tagline and `AssassinsKegBlackTap-W9`); PR title "Assassin's Keg: Black Tap [AssassinsKegBlackTap-W9]" |
+| A2 README | `README.md`: Source Information (model and effort from `get_session`, Phase 0 entry), how to play, controls, building and testing, features, credits, documents |
+| A3 Engine analysis | `docs/ENGINE_ANALYSIS.md`: used, not used, built (ranked, files in `ENGINE_UPSTREAM.md`), source read, wrong docs and bugs, the one change (the `PlayFrame` data contract), `FEEDBACK.md` row |
+| A4 Content guide | `docs/CONTENT_GUIDE.md`: every §16.3 kind, each example applied, checked with the tools and reverted (Performance entry) |
+| A5 dist HTML | this entry: 1 file, 13.5 MB (≤ 25 MB), `file://` in Chromium, desktop and phone screenshots |
+| A6 Final message | the session's closing message (§16.4: built, how to play, Source Information, engine analysis, limits, PR) |
+| B1 Vendored, upstream list | Phase 0 entry (`79061e4` = shardfall `0098196`); `ENGINE_UPSTREAM.md` |
+| B2 Registration, crates | `pav_core::games::register` (blacktap registers at runtime: `data.rs::every_scene_builds`, `pav play scene=blacktap/...`); `crates/blacktap`, `crates/pav_kit`, `crates/pav_ui` |
+| B3 Hook v2; starter | Phases 1–3 entry (PlayFrame reaches view, app, tools); `pav_core/tests/games.rs::the_starter_bot_wins_on_ten_seeds`, `standing_still_gets_caught`, `snapshots_rewind_and_replays_are_exact` |
+| B4 Input, bindings, glyphs | `InputFrame.look/triggers` (Phases 1–3); `pav_ui/tests/data.rs::blacktap_bindings_match_the_plan`, `glyphs_follow_the_device`; `out/ui/glyphs.png`, HUD sheets for DualSense/Xbox/keyboard |
+| B5 Cues and banks | `pav_audio/tests/bank.rs::sound_bank_parses_with_every_cue`, `render.rs::every_cue_is_audible`; `blacktap/tests/vfx.rs::visual_cues_have_a_look` |
+| B6 Zones, bombs | `games.rs::zone_events_reach_the_games_post`, `hook_games_can_turn_the_bombs_off` (Tab entry) |
+| B7 Persistence | `blacktap/tests/persist.rs`, `pav_ui/tests/data.rs::settings_round_trip`; browser: "settings saved to localStorage" (`blacktap.settings`), "after a reload the app finds settings and progress" |
+| B8 Checkpoints | `games.rs::checkpoints_live_outside_the_state` |
+| B9 Dev/kiosk, branding | `pav_app` `--dev`/`?dev=1` and `--kiosk`/`?kiosk=1`; `frontend.rs::kiosk_starts_in_attract_and_returns_after_a_minute`; window title, log and storage keys say Assassin's Keg (`blacktap.*` in the browser check) |
+| B10 Culling, LOD, shadows, presets | Performance entry (`tour stats=true` table, `out/tour/seam_lod60.png`); `pav_view/tests/quality.rs`, `atmos.rs::the_far_plane_reaches_the_horizon` |
+| C1 Ocean, buoyancy, swimming | `atmos.rs::the_gpu_ocean_moves_like_the_simulation`; `naval.rs::ships_ride_the_waves`; `traversal.rs::swimmer_rides_the_waves`, `swimmer_dives_and_resurfaces` |
+| C2 Atmosphere | `atmos.rs::the_atmosphere_reaches_the_scene`, `a_setting_sun_lights_from_above_the_horizon_and_lightning_flashes`, `sea_and_sky_render`; `vfx.rs::lightning_strikes_on_a_schedule_in_heavy_rain_only`; storm finale capture (`out/vfx/storm_escape.png`) |
+| C3 Islands | `pav_core/tests/island.rs` (5); the tour sheet (`out/tour/tour.png`) |
+| C4 Structures, materials | `structures.rs::every_kind_builds_with_flags_and_walkable_roofs`, `the_yard_has_every_kind_and_lines_rest_on_roofs`; 26 core materials (store test) |
+| C5 Tab I layout | Phases 2–5 entry; `data.rs::level_check_passes` (every mission's markers, dialog lines and routes resolve) and `pav level_check` on `blacktap/round/6` clean; the full level by the bot |
+| C6 2.5D nav | `pav_core/tests/nav25.rs` (9); guards and the bot path with it (Tab entry) |
+| D1–D7 Sea | Rounds 2–3 by the bot × 5 seeds (gunboats, Restraint, boarding, fort, mortar); `naval.rs` (`beam_reach_is_fastest_and_irons_slowest`, `ships_ground_on_shallows`, `weapon_by_bearing`), `ballistics.rs` (2); `determinism.rs::sea_battle_is_exact`, `boarding_is_exact`; Drydock `sea_pads`, `boarding_the_hulk_with_dummies_about`; attract segments log brace, telegraph, disabled, boarding_won |
+| E1–E2 Traversal, perches | `traversal.rs` (16 + swimming); Drydock `traversal_and_combat_pads`; Rounds 4 and 6 (survey, Leap of Spirits, dive) |
+| E3 Combat, tools | `combat.rs` (tokens, counters, the assassination matrix, falls, pistol); Drydock pads; attract logs counter, finisher, nightcap_dart |
+| E4 Perception, heat | `perception.rs` (3); `determinism.rs::stealth_section_is_exact`; Round 5 × 5 seeds |
+| E5 Brains, crowds | Phases 2–5 entry; Round 5–6 crowds; `pav perception` |
+| E6 Gull Sight | x-ray silhouettes (Phases 1–3); `gull_palette` follows Settings → Accessibility → Colour-blind; `vfx.rs::gull_sight_pulses_a_ring` |
+| F1 Six Rounds | `rounds.rs` × 5 seeds each; `full_level.rs` × 3 |
+| F2 Collectibles, free roam | `data.rs::the_tab_holds_every_collectible`; survey reveals on the map (Tab entry); free roam convoys, contract, tavern; Replay a Round and Continue/New Game (`frontend.rs::new_game_continue_and_quit`, `chapters_load_their_scene`) |
+| F3 Difficulties | `data.rs::three_difficulties` |
+| F4 Drydock | `blacktap/tests/drydock.rs` (8) |
+| G1 Characters, art | Tab entry (gear); Performance entry (art checklist on `out/tour/tour.png`) |
+| G2 VFX | VFX entry, `vfx.rs` (8) |
+| G3 Audio, haptics | `pav_audio` suites (abc 15, bank 5, dsp 7, render 12: every song, state, cue and ambience layer renders); 6 shanties + title theme; `vfx.rs::rumble_lives_for_one_tick` |
+| G4 10-foot UI | `pav_ui/tests/raster.rs::every_screen_rasterises`, `spot_checks_at_other_sizes`; `frontend.rs::focus_graphs_reach_every_item`, `back_always_returns`; `out/ui/*-720.png`, `*-1080.png`, `*-2160.png` |
+| H1 Attract | `frontend.rs::idle_on_the_title_starts_attract_mode`, `any_input_leaves_attract_on_the_same_update_and_is_consumed`, `after_the_last_segment_a_card_then_the_next_seed`, `an_hour_of_attract_mode_does_not_grow`; browser desktop checks |
+| H2 30-min attract | `pav_tools/tests/attract.rs::attract_thirty_minutes_no_stalls` (= `pav attract minutes=30`; in `--full`), passed on `a0c43f3`; the detailed run in the Tab entry: 30 segments, 5 seed sets, 0 stalls (`out/attract30.log`) |
+| H3 Mobile | `frontend.rs::mobile_stays_in_attract_and_touch_does_not_exit`, `mobile_menu_opens_from_the_button`; browser phone checks and screenshots |
+| H4 Kiosk | `frontend.rs::kiosk_starts_in_attract_and_returns_after_a_minute`; `--kiosk` / `?kiosk=1` |
+| I1 `check.sh` | this entry: the quick half of the `--full` run on `a0c43f3`, green |
+| I2 `check.sh --full` | this entry: all green (full) on `a0c43f3` |
+| I3 Determinism | `determinism.rs` (3), Drydock `a_run_is_exact` |
+| I4 Performance | Performance entry (budgets table) |
+| I5 Release build | browser: no console errors on desktop or phone; screenshots show no engine overlays (developer tools only with `--dev`); no placeholder text in `games/blacktap` or the UI strings |
+
+---
+
 ## 2026-10-17 — The VFX list, ambient life, haptics
 
 **Built** (agent, merged `6dd7900`; `crates/blacktap/src/vfx.rs`, `games/blacktap/fx.toml`, 50 cues)

@@ -1661,89 +1661,92 @@ mesh generators. Integrate each with tests and captures before merging it.
 Tick each box only with evidence (test name, tool output, capture path) recorded in BUILD_LOG.
 The goal is complete when every box is ticked.
 
+**Status (2026-10-17): every box ticked.** The evidence for each, box by box, is the table
+"§14 evidence map" in `docs/BUILD_LOG.md` (entry "Final verification").
+
 **A. Identity and deliverables**
-- [ ] Title, ID and naming per §2 in the README, the HTML `<title>`, the About screen and the PR.
-- [ ] README complete: Source Information (§1, with the executor's confirmed model and effort),
+- [x] Title, ID and naming per §2 in the README, the HTML `<title>`, the About screen and the PR.
+- [x] README complete: Source Information (§1, with the executor's confirmed model and effort),
       how to play, controls, build/run, features, credits, links to the docs.
-- [ ] `docs/ENGINE_ANALYSIS.md`: used, not used, what was added (files), source you had to read
+- [x] `docs/ENGINE_ANALYSIS.md`: used, not used, what was added (files), source you had to read
       and why, wrong or missing docs, bugs found, **the one change**.
-- [ ] `docs/CONTENT_GUIDE.md`: how to add each content kind (§16.3).
-- [ ] `dist/<name>.html` (§2): one self-contained file (aim ≤ 25 MB) that opens from `file://` in
+- [x] `docs/CONTENT_GUIDE.md`: how to add each content kind (§16.3).
+- [x] `dist/<name>.html` (§2): one self-contained file (aim ≤ 25 MB) that opens from `file://` in
       Chrome/Edge; desktop and phone-emulation screenshots referenced in BUILD_LOG.
-- [ ] The final chat message per §16.4.
+- [x] The final chat message per §16.4.
 
 **B. Engine platform**
-- [ ] Engine vendored at `0098196`; `ENGINE_UPSTREAM.md` lists every engine change.
-- [ ] Runtime game registration; the game in `crates/blacktap`; kit in `crates/pav_kit`; UI kit in
+- [x] Engine vendored at `0098196`; `ENGINE_UPSTREAM.md` lists every engine change.
+- [x] Runtime game registration; the game in `crates/blacktap`; kit in `crates/pav_kit`; UI kit in
       `crates/pav_ui`.
-- [ ] Hook v2 (camera, ui, draw, atmosphere, audio, effects, tunables, front_end,
+- [x] Hook v2 (camera, ui, draw, atmosphere, audio, effects, tunables, front_end,
       progress/restore) reaches view, app and tools; the starter still passes its tests.
-- [ ] `InputFrame.look/triggers`; data-driven bindings; DualSense, Xbox and keyboard glyphs.
-- [ ] `SimEvent::Cue` with data-driven sound and FX banks.
-- [ ] Zone events reach games; `bombs.weapon = "none"`.
-- [ ] Persistence API (native file + browser localStorage) for settings and progress.
-- [ ] Checkpoint save/load outside `SimState`.
-- [ ] Developer/kiosk gating; branding.
-- [ ] Culling, LOD, far plane, camera-following shadows, quality presets.
+- [x] `InputFrame.look/triggers`; data-driven bindings; DualSense, Xbox and keyboard glyphs.
+- [x] `SimEvent::Cue` with data-driven sound and FX banks.
+- [x] Zone events reach games; `bombs.weapon = "none"`.
+- [x] Persistence API (native file + browser localStorage) for settings and progress.
+- [x] Checkpoint save/load outside `SimState`.
+- [x] Developer/kiosk gating; branding.
+- [x] Culling, LOD, far plane, camera-following shadows, quality presets.
 
 **C. World**
-- [ ] Ocean (CPU function + GPU renderer), buoyancy, swimming in waves.
-- [ ] Atmosphere presets and transitions: sky, clouds, fog, rain, lightning, wind.
-- [ ] Islands: heightfield, collider, terrain shading, vegetation incl. palms and stalk grass.
-- [ ] Structure generators (every kind in §9.4) and the new materials.
-- [ ] The full Tab I layout (every location in §5.1).
-- [ ] 2.5D navigation.
+- [x] Ocean (CPU function + GPU renderer), buoyancy, swimming in waves.
+- [x] Atmosphere presets and transitions: sky, clouds, fog, rain, lightning, wind.
+- [x] Islands: heightfield, collider, terrain shading, vegetation incl. palms and stalk grass.
+- [x] Structure generators (every kind in §9.4) and the new materials.
+- [x] The full Tab I layout (every location in §5.1).
+- [x] 2.5D navigation.
 
 **D. Sea**
-- [ ] Sailing (wind, sails, turning, grounding, collisions); helm, seat, deck; leave and return.
-- [ ] Broadside, chain shot, swivel, Keg Drop, ram; aim arcs and assist; ballistics with impacts.
-- [ ] Damage, fire, disabled, sinking, repair; brace and telegraphs.
-- [ ] AI captains: gunboat, schooner, frigate, convoy.
-- [ ] Forts: batteries and the mortar tower with telegraph rings.
-- [ ] Boarding: transition, arena, victory, plunder and upgrade.
-- [ ] Spyglass and tagging; flotsam.
+- [x] Sailing (wind, sails, turning, grounding, collisions); helm, seat, deck; leave and return.
+- [x] Broadside, chain shot, swivel, Keg Drop, ram; aim arcs and assist; ballistics with impacts.
+- [x] Damage, fire, disabled, sinking, repair; brace and telegraphs.
+- [x] AI captains: gunboat, schooner, frigate, convoy.
+- [x] Forts: batteries and the mortar tower with telegraph rings.
+- [x] Boarding: transition, arena, victory, plunder and upgrade.
+- [x] Spyglass and tagging; flotsam.
 
 **E. Land**
-- [ ] Free-run, climb (walls, cliffs, poles), corners, mantle, back-eject, ledge safety, jump
+- [x] Free-run, climb (walls, cliffs, poles), corners, mantle, back-eject, ledge safety, jump
       assist, beams.
-- [ ] Perches and survey (map reveal), Leap of Spirits, fall damage, diving.
-- [ ] Vitals; melee with tokens, tells, counters and finishers; the five assassinations; pistols;
+- [x] Perches and survey (map reveal), Leap of Spirits, fall damage, diving.
+- [x] Vitals; melee with tokens, tells, counters and finishers; the five assassinations; pistols;
       tools (wheel, both darts, Smoke Keg, Bung Line).
-- [ ] Perception (sight, hearing, concealment, states, alerts, bells, bodies); heat and posters.
-- [ ] Brains for every archetype; civilians and crowds.
-- [ ] Gull Sight with through-wall highlights and colour-blind palettes.
+- [x] Perception (sight, hearing, concealment, states, alerts, bells, bodies); heat and posters.
+- [x] Brains for every archetype; civilians and crowds.
+- [x] Gull Sight with through-wall highlights and colour-blind palettes.
 
 **F. Content**
-- [ ] Six Rounds playable start to finish: objectives, optional objectives, checkpoints, dialog
+- [x] Six Rounds playable start to finish: objectives, optional objectives, checkpoints, dialog
       and subtitles, cinematics.
-- [ ] Collectibles placed (4 sheets, 5 bottles, 8 chests, 3 Keg Taps, 6 flotsam); survey reveals;
+- [x] Collectibles placed (4 sheets, 5 bottles, 8 chests, 3 Keg Taps, 6 flotsam); survey reveals;
       map; upgrades; results; free roam (convoys, contract, tavern); Replay a Round; Continue and
       New Game.
-- [ ] Three difficulties.
-- [ ] The Drydock with every station.
+- [x] Three difficulties.
+- [x] The Drydock with every station.
 
 **G. Presentation**
-- [ ] Characters and gear (§9.17); ships, buildings, terrain, sky and ocean pass the art checklist
+- [x] Characters and gear (§9.17); ships, buildings, terrain, sky and ocean pass the art checklist
       in the tour sheet.
-- [ ] The VFX list (§9.17) complete.
-- [ ] Audio: sound bank, ambience, music (≥ 6 shanties + an original title theme + state music),
+- [x] The VFX list (§9.17) complete.
+- [x] Audio: sound bank, ambience, music (≥ 6 shanties + an original title theme + state music),
       voice blips, UI sounds; haptics.
-- [ ] 10-foot UI: every screen (§11.3), the HUD (§11.4), onboarding, accessibility, checked in UI
+- [x] 10-foot UI: every screen (§11.3), the HUD (§11.4), onboarding, accessibility, checked in UI
       captures at three resolutions.
 
 **H. Attract mode and platforms**
-- [ ] Attract per §12.1: 10 s idle on the front end, any input exits the same frame, loops forever;
+- [x] Attract per §12.1: 10 s idle on the front end, any input exits the same frame, loops forever;
       the 5-segment playlist; the watchdog.
-- [ ] `pav attract minutes=30`: zero stalls on 5 seed sets.
-- [ ] Mobile: attract-only with the ☰ overlay, verified in phone emulation.
-- [ ] Kiosk flag.
+- [x] `pav attract minutes=30`: zero stalls on 5 seed sets.
+- [x] Mobile: attract-only with the ☰ overlay, verified in phone emulation.
+- [x] Kiosk flag.
 
 **I. Quality gates**
-- [ ] `scripts/check.sh` green (fmt, clippy `-D warnings` on touched crates, tests, wasm clippy).
-- [ ] `scripts/check.sh --full` green (each Round 5 seeds, full level 3 seeds, attract run).
-- [ ] Determinism: snapshot/rewind/replay exact in a sea battle, a stealth section and a boarding.
-- [ ] Performance budgets (§9.18) met and recorded.
-- [ ] Release build: no placeholder text, no engine debug overlays, no browser console errors.
+- [x] `scripts/check.sh` green (fmt, clippy `-D warnings` on touched crates, tests, wasm clippy).
+- [x] `scripts/check.sh --full` green (each Round 5 seeds, full level 3 seeds, attract run).
+- [x] Determinism: snapshot/rewind/replay exact in a sea battle, a stealth section and a boarding.
+- [x] Performance budgets (§9.18) met and recorded.
+- [x] Release build: no placeholder text, no engine debug overlays, no browser console errors.
 
 ---
 
