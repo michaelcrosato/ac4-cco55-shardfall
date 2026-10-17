@@ -350,7 +350,8 @@ pub fn melee(g: &BlackTap, sim: &Sim) -> InputFrame {
     if let Some((_, tp)) = target {
         let d = Vec2::new(tp.x - me.x, tp.z - me.z);
         if d.length() > 1.8 {
-            i.move_dir = d.normalize() * 0.8;
+            // Round the stocks, a cart or a wall between us.
+            i.move_dir = crate::paths::steer(sim, &g.world().geometry, me, tp, 3.0) * 0.8;
         }
         if d.length() < 2.6 && g.land.hero.attack.is_none() && tap(sim, 20) {
             i.pressed |= b::ATTACK;

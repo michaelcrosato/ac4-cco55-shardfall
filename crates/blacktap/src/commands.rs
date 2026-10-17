@@ -21,6 +21,21 @@ pub fn command(g: &mut BlackTap, sim: &mut Sim, name: &str, args: &Value) -> Rep
         "ocean" => ocean(g, args),
         "level_check" => Ok(level_check(g)),
         "tour" => tour(g, sim, args),
+        "fighters" => {
+            let me = sim.state.player.and_then(|id| sim.feet(id)).unwrap_or_default();
+            Ok(json!({
+                "hero": { "hp": round2(g.land.hero.vitals.hp), "attack": g.land.hero.attack.as_ref().map(|a| (a.0.0, round2(a.1), round2(a.2), a.3.clone())) },
+                "fighters": g.land.fighters.iter().filter_map(|(id, f)| {
+                    let p = sim.feet(*id)?;
+                    Some(json!({
+                        "id": id.0, "kind": f.kind, "team": f.team, "hp": round2(f.vitals.hp), "dead": f.vitals.dead,
+                        "idle": f.idle, "target": f.target.map(|t| t.0), "swing": f.swing.is_some(), "cooldown": round2(f.cooldown),
+                        "stagger": round2(f.vitals.stagger), "pos": [round2(p.x), round2(p.y), round2(p.z)],
+                        "distance": round2(p.distance(me)),
+                    }))
+                }).collect::<Vec<_>>(),
+            }))
+        }
         "markers" => {
             let w = g.world();
             let f = arg_str(args, "name").unwrap_or("");

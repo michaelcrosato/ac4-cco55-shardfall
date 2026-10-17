@@ -34,10 +34,11 @@ fn look_at(g: &BlackTap, yaw: f32, rate: f32) -> Vec2 {
 fn go(g: &BlackTap, sim: &Sim, to: Vec3, run: bool) -> InputFrame {
     let mut i = InputFrame::default();
     let Some(p) = BlackTap::player_feet(sim) else { return i };
-    let d = flat(to - p);
-    let l = d.length();
+    let l = flat(to - p).length();
+    // A wall or a house in the way: round it on the level's walking grid.
+    let d = crate::paths::steer(sim, &g.world().geometry, p, to, 10.0) * l;
     if l > 0.3 {
-        i.move_dir = d / l * if l < 1.5 { 0.5 } else { 1.0 };
+        i.move_dir = d.normalize_or_zero() * if l < 1.5 { 0.5 } else { 1.0 };
         i.look = look_at(g, heading_of(d), 2.5);
     }
     if run && l > 3.0 {
@@ -51,8 +52,12 @@ fn go(g: &BlackTap, sim: &Sim, to: Vec3, run: bool) -> InputFrame {
         .and_then(|e| e.character.as_ref())
         .map(|c| flat(c.vel).length())
         .unwrap_or(0.0);
-    if l > 2.0 && speed < 0.25 && tap(sim, 75) {
-        press(&mut i, b::JUMP);
+    // Stuck (a ledge that walking won't step off, a lip): run, which skips ledge safety, and hop.
+    if l > 2.0 && speed < 0.25 {
+        i.held |= b::SPRINT;
+        if tap(sim, 75) {
+            press(&mut i, b::JUMP);
+        }
     }
     i
 }
@@ -348,7 +353,12 @@ pub fn land(g: &BlackTap, sim: &Sim, skill: &str) -> InputFrame {
             if let Some(i) = follow(g, sim, "r6_flag") {
                 let p = BlackTap::player_feet(sim).unwrap_or_default();
                 let fp = g.world().marker("flagpole").unwrap_or_default();
-                if flat(fp - p).length() < 3.5 {
+                // On the roof: step onto the battlement's perch (the flag rises there and the
+                // Leap of Spirits starts there), then raise it.
+                if flat(fp - p).length() < 3.5 && (fp.y - p.y).abs() < 2.0 {
+                    if flat(fp - p).length() > 1.0 {
+                        return go(g, sim, fp, false);
+                    }
                     let mut i = InputFrame::default();
                     i.held |= b::INTERACT;
                     return i;

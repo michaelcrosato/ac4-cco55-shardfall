@@ -148,6 +148,12 @@ pub static TOOLS: &[Tool] = &[
         run: crate::kit_tools::t_perception,
     },
     Tool {
+        name: "fighters",
+        help: "Melee state: the hero's hp and swing, each fighter's hp, target, swing, stagger.",
+        args: &[],
+        run: crate::kit_tools::t_fighters,
+    },
+    Tool {
         name: "ocean",
         help: "Sample the sea at a point, or set it (preset=storm, wind=deg).",
         args: &[

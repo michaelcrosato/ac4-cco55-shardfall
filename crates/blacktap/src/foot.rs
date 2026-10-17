@@ -855,7 +855,8 @@ fn fighters(g: &mut BlackTap, sim: &mut Sim, dt: f32, events: &mut Vec<SimEvent>
         let reach = f.profile.reach;
         let has_token = f.team == Team::Ally || tid != pid || g.land.tokens.take(id.0);
         if dist > reach * 0.9 {
-            let mut dir = to / dist.max(1e-3);
+            let target = me + Vec3::new(to.x, 0.0, to.y);
+            let mut dir = crate::paths::steer(sim, &g.world().geometry, me, target, 3.0);
             if !has_token && dist < 4.0 {
                 // Circle and taunt at a distance.
                 dir = Vec2::new(-dir.y, dir.x) * f.circle + dir * (dist - 3.5).clamp(-1.0, 1.0) * 0.5;

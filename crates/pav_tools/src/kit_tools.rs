@@ -397,6 +397,10 @@ pub fn t_mission(s: &mut Session, a: &Args) -> Result<Output> {
     Ok(Output::Json(game_command(s, "mission", a)?))
 }
 
+pub fn t_fighters(s: &mut Session, a: &Args) -> Result<Output> {
+    Ok(Output::Json(game_command(s, "fighters", a)?))
+}
+
 pub fn t_perception(s: &mut Session, a: &Args) -> Result<Output> {
     Ok(Output::Json(game_command(s, "perception", a)?))
 }

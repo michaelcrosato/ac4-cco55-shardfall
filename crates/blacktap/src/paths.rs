@@ -6,8 +6,9 @@ use std::collections::BTreeMap;
 use std::sync::Mutex;
 
 use glam::{Vec2, Vec3};
-use pav_core::nav25::NavGrid25;
+use pav_core::nav25::{FlowField, NavGrid25};
 use pav_core::sim::Sim;
+use std::sync::Arc;
 
 use crate::stealth::Npc;
 
@@ -64,4 +65,52 @@ pub fn walk(geometry: &str, n: &mut Npc, feet: Vec3, to: Vec3, speed: f32, dt: f
     }
     let next = n.path.first().copied().unwrap_or(to);
     crate::stealth::walk_to(feet, next, speed)
+}
+
+/// Flow fields toward goals (snapped to 1.5 m), cached: each is a pure function of the level and
+/// its goal, so whoever asks gets the same field and stays deterministic.
+static FIELDS: Mutex<BTreeMap<(String, [i32; 3]), Arc<FlowField>>> = Mutex::new(BTreeMap::new());
+
+/// Which way to walk from `from` toward `goal` round whatever is in the way (None off the grids
+/// or out of reach).
+pub fn flow_dir(geometry: &str, from: Vec3, goal: Vec3) -> Option<Vec2> {
+    let key =
+        (geometry.to_string(), [(goal.x / 1.5).round() as i32, (goal.y / 1.5).round() as i32, (goal.z / 1.5).round() as i32]);
+    let cached = FIELDS.lock().unwrap_or_else(|p| p.into_inner()).get(&key).cloned();
+    let field = match cached {
+        Some(f) => f,
+        None => {
+            let grid = grid_at(geometry, goal).or_else(|| grid_at(geometry, from))?;
+            let snapped = Vec3::new(key.1[0] as f32, key.1[1] as f32, key.1[2] as f32) * 1.5;
+            let f = Arc::new(grid.flow_field(Vec3::new(snapped.x, goal.y, snapped.z), 500.0));
+            let mut all = FIELDS.lock().unwrap_or_else(|p| p.into_inner());
+            if all.len() >= 48 {
+                all.clear();
+            }
+            all.insert(key, f.clone());
+            f
+        }
+    };
+    field.dir(from)
+}
+
+/// The way to walk from `from` toward `to` (a unit x, z direction): straight when nothing stands
+/// in the way, else round it by the level's flow field. Only goals at least `min` metres away
+/// detour (close ones are reached by the last steps); people's capsules don't count as walls.
+pub fn steer(sim: &Sim, geometry: &str, from: Vec3, to: Vec3, min: f32) -> Vec2 {
+    let d = Vec2::new(to.x - from.x, to.z - from.z);
+    let l = d.length();
+    let straight = d / l.max(1e-3);
+    if l < min.max(1.5) {
+        return straight;
+    }
+    let dir = Vec3::new(straight.x, 0.0, straight.y);
+    let reach = (l - 2.0).clamp(0.5, 8.0);
+    let blocked = [0.5f32, 1.1].iter().any(|h| {
+        sim.raycast(from + Vec3::Y * *h, dir, reach, None).is_some_and(|hit| hit.normal.y.abs() < 0.5 && hit.entity.is_none())
+    });
+    if !blocked {
+        return straight;
+    }
+    flow_dir(geometry, from, to).unwrap_or(straight)
 }
