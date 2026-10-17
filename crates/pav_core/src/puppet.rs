@@ -1932,15 +1932,17 @@ mod tests {
             d.weapon.kind = kind;
             looks.push(d);
         }
-        let mut d = PuppetDef::default();
-        d.gear = GearLook {
-            trim: "#e8e8ee".into(),
-            coat: 1.0,
-            hair: "#f2efe8".into(),
-            stripes: "#2c3e66".into(),
-            belt_strap: "#3a2a20".into(),
-            bracer: "#8a5a32".into(),
-            holsters: 4,
+        let d = PuppetDef {
+            gear: GearLook {
+                trim: "#e8e8ee".into(),
+                coat: 1.0,
+                hair: "#f2efe8".into(),
+                stripes: "#2c3e66".into(),
+                belt_strap: "#3a2a20".into(),
+                bracer: "#8a5a32".into(),
+                holsters: 4,
+                ..Default::default()
+            },
             ..Default::default()
         };
         looks.push(d);

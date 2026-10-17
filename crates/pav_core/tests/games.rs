@@ -139,9 +139,8 @@ fn hook_games_can_turn_the_bombs_off() {
     let fired = |weapon: Weapon| {
         let mut sim = Sim::new("starter", 1).expect("starter builds");
         sim.config.bombs.weapon = weapon;
-        let mut press = InputFrame::default();
-        press.held = pav_core::input::buttons::PRIMARY | pav_core::input::buttons::USE;
-        press.pressed = press.held;
+        let fire = pav_core::input::buttons::PRIMARY | pav_core::input::buttons::USE;
+        let press = InputFrame { held: fire, pressed: fire, ..Default::default() };
         let mut n = 0;
         for _ in 0..60 {
             sim.step(&press);
@@ -163,8 +162,7 @@ fn checkpoints_live_outside_the_state() {
     let saved_at = sim.feet(pid).unwrap();
     sim.checkpoint_save();
     let snapshot_after_save = sim.snapshot();
-    let mut walk = InputFrame::default();
-    walk.move_dir = pav_core::glam::Vec2::new(1.0, 0.0);
+    let walk = InputFrame { move_dir: pav_core::glam::Vec2::new(1.0, 0.0), ..Default::default() };
     for _ in 0..90 {
         sim.step(&walk);
     }

@@ -499,7 +499,7 @@ mod tests {
         let a = hull_mesh(&c, &s, 1, 0.3, 7);
         let b = hull_mesh(&c, &s, 1, 0.3, 7);
         assert_eq!(a, b);
-        assert!(a.indices.len() > 3000 && a.indices.len() % 3 == 0);
+        assert!(a.indices.len() > 3000 && a.indices.len().is_multiple_of(3));
         assert!(a.positions.iter().all(|p| p.iter().all(|x| x.is_finite())));
         let sails = sails_mesh(&c, &s, 2.0, 120.0, 1.0, 0.0, true);
         assert!(!sails.is_empty());
