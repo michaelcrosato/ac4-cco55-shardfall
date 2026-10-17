@@ -171,6 +171,72 @@ fn main() {
         }
         return;
     }
+    if what == "scenes" {
+        // Whole scenes: music + ambience + effects + dialog, as the game would mix them.
+        use glam::Vec3;
+        type Scene<'a> = (&'a str, &'a str, f32, Vec<(&'a str, f32)>, Vec<(f64, &'a str, Vec3)>);
+        let p = |x: f32, z: f32| Vec3::new(x, 0.0, z);
+        let mut scenes: Vec<Scene> = vec![
+            (
+                "voyage",
+                "sailing",
+                0.5,
+                vec![("sea", 0.8), ("wind", 0.5), ("creak", 0.6), ("sails", 0.5), ("gulls", 0.4)],
+                vec![(4.0, "ship_bell", p(0.0, -6.0)), (9.0, "bow_spray", p(0.0, -8.0))],
+            ),
+            ("naval_battle", "sea_combat", 0.9, vec![("sea", 0.9), ("wind", 0.6), ("creak", 0.5)], vec![]),
+            ("town_stealth", "stealth", 0.4, vec![("town", 0.7), ("harbour", 0.5), ("gulls", 0.3)], vec![]),
+            ("storm", "storm", 0.8, vec![("sea", 1.0), ("wind", 1.0), ("rain", 0.9), ("thunder", 0.8), ("creak", 0.8)], vec![]),
+        ];
+        // The battle: broadsides both ways.
+        for i in 0..12 {
+            let t = 2.0 + i as f64 * 1.3;
+            scenes[1].4.push((t, if i % 3 == 0 { "cannon_fire_heavy" } else { "cannon_fire" }, p(-12.0, -20.0)));
+            scenes[1].4.push((t + 0.6, "splash_big", p(30.0, -60.0)));
+            if i % 2 == 1 {
+                scenes[1].4.push((t + 0.4, "hull_hit", p(4.0, -3.0)));
+                scenes[1].4.push((t + 0.45, "splinters", p(4.0, -3.0)));
+            }
+        }
+        for i in 0..20 {
+            scenes[2].4.push((1.0 + i as f64 * 0.42, "footstep_stone", p(0.0, -1.0)));
+        }
+        scenes[2].4.push((6.0, "guard_suspicious", p(6.0, -10.0)));
+        scenes[2].4.push((12.0, "assassinate", p(0.0, -1.5)));
+        scenes[2].4.push((12.5, "body_drop", p(0.0, -1.5)));
+        for (name, song, intensity, amb_levels, cues) in scenes {
+            let mut r = Renderer::new();
+            r.mixer.load_bank(bank.clone());
+            r.mixer.load_music(music.clone());
+            r.mixer.load_ambience(amb.clone());
+            let st = pav_core::play::AudioState {
+                music: Some(pav_core::play::MusicCue { song: song.into(), intensity }),
+                ambience: amb_levels.iter().map(|(n, l)| (n.to_string(), *l)).collect(),
+                listener: None,
+            };
+            r.at(0.0, Cmd::Apply(Box::new(st), Listener::default()));
+            for (t, c, pos) in cues {
+                r.at(t, Cmd::Cue { name: c.into(), pos, gain: 1.0, pitch: 1.0, listener: Listener::default() });
+            }
+            for i in 0..16 {
+                r.at(3.0 + i as f64 * 0.1, Cmd::Blip(if name == "storm" { "pip".into() } else { "bung".into() }));
+            }
+            let t = Instant::now();
+            let s = r.render(secs.min(20.0));
+            report(&format!("scene_{name}"), &r, &s, t.elapsed().as_secs_f32(), secs.min(20.0));
+            let st = r.stats();
+            println!(
+                "    peaks dB: master {:.1} music {:.1} sfx {:.1} amb {:.1} voice {:.1}",
+                st.peak_db(Bus::Master),
+                st.peak_db(Bus::Music),
+                st.peak_db(Bus::Sfx),
+                st.peak_db(Bus::Ambience),
+                st.peak_db(Bus::Voice)
+            );
+            save(&format!("scene_{name}"), &s, secs.min(20.0));
+        }
+        return;
+    }
     if what == "voices" {
         // Each speaker says a "line" (14 blips), one after another.
         let mut r = Renderer::new();

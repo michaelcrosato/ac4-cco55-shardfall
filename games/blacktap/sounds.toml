@@ -3,7 +3,7 @@
 # voice) -> optional formant (ah eh ee oh oo uh mm) -> filter (lp bp hp notch) -> drive ->
 # envelope (attack decay sustain hold release; decay/release are times to about -48 dB).
 # freq_end/glide sweep pitch, cutoff_end sweeps the filter, pitch_curve = [[s, semitones]...],
-# lfo = [{ to = pitch|amp|cutoff|pan|fm, rate, depth, shape = sine|triangle|square|saw|random|hold }].
+# lfo = [{ to = pitch|amp|cutoff|pan|fm|formant, rate, depth, shape = sine|triangle|square|saw|random|hold }].
 # Per play: pitch_rand (semitones), gain_rand (dB), delay_rand (s), spread (pan); repeat and
 # repeat_gap play a layer several times; variant = n picks one variant per play.
 # Cue fields: range (m to -6 dB), bus (sfx music ambience voice ui), positional, reverb, echo,
@@ -470,6 +470,7 @@ gain = 0.45
 [cue.ship_creak]
 about = "timbers working (stick-slip pulses through a wooden resonance)"
 range = 22
+gain = 1.6
 reverb = 0.2
 pitch_rand = 3
 gain_rand = 3
@@ -1113,6 +1114,7 @@ gain = 0.06
 # ================================================================== moving about
 
 [cue.footstep_stone]
+gain = 0.5
 about = "a boot on cobbles"
 range = 12
 pitch_rand = 2
@@ -1148,6 +1150,7 @@ decay = 0.06
 gain = 0.3
 
 [cue.footstep_sand]
+gain = 0.5
 about = "a boot in soft sand"
 range = 10
 pitch_rand = 2
@@ -1169,6 +1172,7 @@ decay = 0.13
 gain = 0.35
 
 [cue.footstep_wood]
+gain = 0.5
 about = "a boot on deck planks"
 range = 12
 pitch_rand = 2
@@ -1242,6 +1246,7 @@ decay = 0.12
 gain = 0.35
 
 [cue.climb_grab]
+gain = 0.7
 about = "hands catching a ledge"
 range = 10
 pitch_rand = 2
@@ -1345,6 +1350,7 @@ gain = 0.1
 lfo = [{ to = "pitch", rate = 14, depth = 10, shape = "hold" }, { to = "amp", rate = 14, depth = 0.9, shape = "square" }]
 
 [cue.swim_stroke]
+gain = 0.7
 about = "an arm through the water"
 range = 12
 pitch_rand = 2

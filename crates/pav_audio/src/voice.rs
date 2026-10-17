@@ -327,6 +327,7 @@ impl Voice {
         let dtb = m as f32 / sr;
         let t = self.t;
         let (mut lp, mut la, mut lc, mut lpan, mut lfm) = (0.0f32, 1.0f32, 0.0f32, 0.0f32, 1.0f32);
+        let mut lform: Option<f32> = None;
         for k in 0..3 {
             let lfo = self.l.lfo[k];
             if lfo.to == LfoTo::None || lfo.depth == 0.0 {
@@ -339,6 +340,7 @@ impl Voice {
                 LfoTo::Cutoff => lc += v * lfo.depth,
                 LfoTo::Pan => lpan += v * lfo.depth,
                 LfoTo::Fm => lfm *= (1.0 + v * lfo.depth).max(0.0),
+                LfoTo::Formant => lform = Some((0.5 + 0.5 * v * lfo.depth).clamp(0.0, 1.0)),
                 LfoTo::None => {}
             }
         }
@@ -402,8 +404,13 @@ impl Voice {
             self.coef = SvfCoef::new(c, self.q, sr);
         }
         if self.has_formant {
-            let k = (t / self.form_time).clamp(0.0, 1.0);
-            let k = k * k * (3.0 - 2.0 * k);
+            let k = match lform {
+                Some(k) => k,
+                None => {
+                    let k = (t / self.form_time).clamp(0.0, 1.0);
+                    k * k * (3.0 - 2.0 * k)
+                }
+            };
             if self.form_k < 0.0 || (self.vowel.0 != self.vowel.1 && (k - self.form_k).abs() > 0.004) {
                 self.form_k = k;
                 self.formants.set(self.vowel.0, self.vowel.1, k, self.shift, sr);

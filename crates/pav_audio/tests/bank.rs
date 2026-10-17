@@ -166,6 +166,10 @@ fn music_parses_with_every_state_and_song() {
     // The sailing rotation is the shanties.
     let sailing = &music.states["sailing"];
     assert!(sailing.songs.len() >= 6);
+    // Songs can be passed as the game embeds them: "shanties/<name>.abc".
+    let embedded: Vec<(String, String)> = songs.iter().map(|(n, t)| (format!("shanties/{n}.abc"), t.clone())).collect();
+    let m2 = MusicBank::parse(common::MUSIC, &embedded).expect("music.toml with embedded paths");
+    assert_eq!(m2.songs.len(), music.songs.len());
     // The title theme is original, stately and long enough.
     let t = music.song("the_black_tap").unwrap();
     assert!(t.song.bars.len() >= 16 && t.song.key.mode.is_minor());

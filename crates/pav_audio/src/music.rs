@@ -304,10 +304,17 @@ pub struct MusicBank {
 }
 
 impl MusicBank {
-    /// `songs` = (name, ABC text). Songs without an entry in `music.toml` get a default
-    /// arrangement (accordion, bass, chords, bodhrán).
+    /// `songs` = (name, ABC text); a name may carry a folder and the extension
+    /// ("shanties/drunken_sailor.abc" is "drunken_sailor"). Songs without an entry in
+    /// `music.toml` get a default arrangement (accordion, bass, chords, bodhrán).
     pub fn parse(music_toml: &str, songs: &[(String, String)]) -> anyhow::Result<MusicBank> {
         let f: MusicFile = toml::from_str(music_toml).context("music.toml")?;
+        let stem = |n: &str| {
+            let n = n.rsplit(['/', '\\']).next().unwrap_or(n);
+            n.strip_suffix(".abc").unwrap_or(n).to_string()
+        };
+        let songs: Vec<(String, String)> = songs.iter().map(|(n, t)| (stem(n), t.clone())).collect();
+        let songs = &songs[..];
         let mut specs = f.song.clone();
         for (name, _) in songs {
             if !specs.contains_key(name) && !f.song.values().any(|s| s.abc.as_deref() == Some(name)) {

@@ -18,7 +18,7 @@ sustain = 1.0
 release = 2.0
 stereo = true
 gain = 0.9
-lfo = [{ to = "amp", rate = 0.11, depth = 0.55 }, { to = "cutoff", rate = 0.11, depth = 0.5 }]
+lfo = [{ to = "amp", rate = 0.11, depth = 0.7 }, { to = "cutoff", rate = 0.11, depth = 0.5 }]
 [[layer.sea.bed]]
 wave = "pink"
 filter = "bp"
@@ -44,7 +44,7 @@ attack = 1.5
 sustain = 1.0
 release = 1.5
 stereo = true
-gain = 0.8
+gain = 1.3
 lfo = [{ to = "cutoff", rate = 0.3, depth = 0.8, shape = "random" }, { to = "amp", rate = 0.25, depth = 0.6, shape = "random" }]
 [[layer.wind.bed]]
 wave = "noise"
@@ -54,7 +54,7 @@ q = 9
 attack = 1.5
 sustain = 1.0
 release = 1.5
-gain = 0.22
+gain = 0.35
 pan = 0.3
 lfo = [{ to = "cutoff", rate = 0.2, depth = 0.6, shape = "random" }, { to = "amp", rate = 0.3, depth = 0.8, shape = "random" }]
 
@@ -107,7 +107,7 @@ about = "the ship's timbers working"
 cue = "ship_creak"
 every = [1.5, 5.0]
 spread = 0.6
-gain = 0.8
+gain = 1.0
 
 [layer.sails]
 about = "canvas fluttering and the odd crack of a loose sail"
@@ -120,7 +120,7 @@ attack = 1.0
 sustain = 1.0
 release = 1.0
 stereo = true
-gain = 0.22
+gain = 0.38
 lfo = [{ to = "amp", rate = 6, depth = 0.55, shape = "random" }]
 [[layer.sails.event]]
 cue = "sail_flap"
@@ -194,40 +194,43 @@ spread = 0.9
 gain = 0.8
 
 [layer.town]
-about = "townsfolk murmuring (babbling formant voices)"
+about = "townsfolk murmuring: breathy voices babbling between vowels"
 fade = 1.5
 [[layer.town.bed]]
 wave = "voice"
-freq = 128
-unison = 4
-detune = 320
-drift = 60
-noise = 0.08
+freq = 125
+unison = 3
+detune = 500
+drift = 80
+noise = 0.3
 formant = "eh"
+formant_end = "oh"
 attack = 1.5
 sustain = 1.0
 release = 1.5
 pan = -0.4
 filter = "lp"
-cutoff = 2500
-gain = 0.3
-lfo = [{ to = "amp", rate = 5, depth = 0.85, shape = "random" }, { to = "pitch", rate = 3, depth = 3, shape = "random" }]
+cutoff = 2200
+gain = 0.36
+lfo = [{ to = "amp", rate = 6, depth = 0.95, shape = "random" }, { to = "formant", rate = 5, depth = 1.0, shape = "random" }, { to = "pitch", rate = 2.5, depth = 4, shape = "random" }]
 [[layer.town.bed]]
 wave = "voice"
-freq = 175
-unison = 4
-detune = 320
-drift = 60
-noise = 0.08
+freq = 180
+unison = 3
+detune = 500
+drift = 80
+noise = 0.3
 formant = "ah"
+formant_end = "ee"
+formant_shift = 1.15
 attack = 1.5
 sustain = 1.0
 release = 1.5
 pan = 0.4
 filter = "lp"
-cutoff = 2500
-gain = 0.25
-lfo = [{ to = "amp", rate = 4.3, depth = 0.85, shape = "random" }, { to = "pitch", rate = 2.5, depth = 3, shape = "random" }]
+cutoff = 2600
+gain = 0.28
+lfo = [{ to = "amp", rate = 5.2, depth = 0.95, shape = "random" }, { to = "formant", rate = 4.4, depth = 1.0, shape = "random" }, { to = "pitch", rate = 2, depth = 4, shape = "random" }]
 [[layer.town.event]]
 cue = "repair"
 every = [6.0, 15.0]

@@ -376,6 +376,8 @@ pub enum LfoTo {
     Pan,
     /// FM index multiplier.
     Fm,
+    /// Morph between `formant` and `formant_end` (0..1 around the middle): babble.
+    Formant,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
