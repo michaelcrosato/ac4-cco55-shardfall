@@ -6,6 +6,30 @@ compactions: after any restart read §14, then the top of this file, then `git l
 
 ---
 
+## 2026-10-18 — A new session: the container re-checked, the session docs point at the game
+
+**Verified**
+- Container: Rust 1.98.1 with the wasm32 and x86_64-pc-windows-gnu targets, mingw-w64, Wine
+  9.0 (`wine64`), Xvfb, `xwd` and ImageMagick (for `scripts/smoke-windows.sh`), lavapipe
+  (`pav gpu` → llvmpipe), wasm-bindgen 0.2.129, Playwright 1.56.1 with Chromium 1194 at
+  `/opt/pw-browsers`, crates.io reachable through the proxy; the session hook had built `pav`.
+- **`scripts/check.sh` on `main` (`514fc6f`) + these docs: "check.sh: all green", 12 m 24 s**
+  (4 cores, cold clippy): fmt, clippy `-D warnings` native (nine crates) and wasm32, WGSL through
+  Tint (every module 0 errors), tests **612 passed, 0 failed, 14 ignored** (91 suites; the same
+  counts as `a0c43f3`), `docs_limits.rs` included.
+- `main` is PR #1's head `e11f663` squashed (identical tree). `dist/` was built from `a0c43f3`;
+  only `PLAN.md`, this log and `scripts/browser_check.mjs` changed after it, so it is current.
+
+**Changed**
+- `docs/PROGRESS.md` rewritten for this repository (it still described Shardfall), which
+  Phase 10 asked for; a "This repository" section at the top of `AGENTS.md` and a pointer in
+  `CLAUDE.md`, which §8.1 asked for. Both had been missed.
+
+**Open**
+- The Windows `.exe` (Phase 10, optional) has never been built or smoked.
+
+---
+
 ## 2026-10-17 — Final verification: the gate, the browser build, the Definition of Done
 
 **Built** (since the last entry)

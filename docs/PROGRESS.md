@@ -1,56 +1,48 @@
 # Progress
 
-The current state, kept to one page because every session reads it (Claude Code loads it through
-`CLAUDE.md`). The full journal (what was built, how it works, every decision) is
-`docs/HISTORY.md`, newest first: search it when you need the background on something.
+The current state of this repository, kept to one page because every session reads it (Claude
+Code loads it through `CLAUDE.md`). This repository is the game **Assassin's Keg: Black Tap**
+(`README.md`) on the Pavilion engine, vendored from shardfall @ `0098196` and extended. The
+game's journal is `docs/BUILD_LOG.md`, newest first; `docs/HISTORY.md` is shardfall's journal up
+to the vendoring (search it for engine background; don't add to it).
 
-## Where things stand (2026-10-16)
-- All engine milestones (M1–M10) and Shardfall milestones (G1–G6) are done. Shardfall is the
-  hack-and-slash showcase built on the engine (`docs/GAME.md`); the pavilion is the engine's
-  tech demo (`docs/DESIGN.md`).
-- Since then: the doctrine (`docs/DOCTRINE.md`; `AGENTS.md` says how it applies); mobile touch
-  controls; moves and clips as data from open libraries, with the **Animation**, **Object** and
-  **Creature Studios** (`docs/*_STUDIO.md`); looks (filters per part, painterly, volumetric
-  light, water, wind); three playable characters (`game/heroes.toml`); the asset system
-  (format-2 props, procedural materials, glTF/OBJ import behind a licence gate, `LIB/core`).
-- **Agent asset store** (`docs/AGENT_ASSET_STORE.md`): stages S0–S5 built (2026-10-15). A fresh
-  agent searches and places store entries (`assets find=`, `shelf=`); 59 core props, 18
-  materials, 437 clips, five KayKit characters as rigid figures. Measured: a library pays only
-  where it holds the asset (S1 no; S3 props met 0.29 of needs against 0.8).
-- **Game makers' handoff** (2026-10-16): an agent making a new game reads one page,
-  `docs/MAKE_A_GAME.md`, and copies the starter game (`load scene=starter`): the game hook
-  `pav_core::games` (rules, HUD text, status, a bot), its level a room file, `play bot=true
-  seeds=10`. `START_HERE.md` routes and prompts; `scripts/check-handoff.sh` checks the archive.
-- **On show in the world demo:** the Workshop wing's Library Hall, Limits, Catalogue and Store
-  Showcase, and the animation wing's Clip Browser (every clip on the puppet and the five figures).
-  The figures ship in every build (`props::store::SHIPPED`).
-- Builds: the Windows `.exe` (cross-compiled here, played by the user) and the browser build on
-  Vercel (https://shardfall-eight.vercel.app). Pavilion Lite (`pavilion-lite/`) is frozen.
+## Where things stand (2026-10-18)
+- **Shipped** (PR #1, merged 2026-10-17): one polished level, Tab I (a 1.2 km sea, three islands,
+  six Rounds, free roam, 26 collectibles, three difficulties, the Drydock), a 10-foot front end
+  with attract mode, phones attract-only, a kiosk flag. Every `PLAN.md` §14 box is ticked; the
+  evidence, box by box, is BUILD_LOG's "§14 evidence map".
+- **Verified on `a0c43f3`**: `scripts/check.sh --full` all green (612 tests; each Round x 5
+  seeds, the whole Tab x 3, 30 min of attract); the single-file HTML in `dist/` was built from
+  that commit (only docs and `scripts/browser_check.mjs` changed after it); browser check 10/10.
+- **Re-checked 2026-10-18** in a fresh container: the toolchain and `scripts/check.sh` (BUILD_LOG).
+- Code: the game is `crates/blacktap` with its data in `games/blacktap/`; the reusable kit is
+  `crates/pav_kit` and `crates/pav_ui`; every engine change is listed in `ENGINE_UPSTREAM.md`.
+  Adding content: `docs/CONTENT_GUIDE.md`. Engine evaluation: `docs/ENGINE_ANALYSIS.md`.
 
 ## Next
-- **Gameplay and content:** add data (themes, levels, families, affixes, uniques, tree clusters,
-  characters) and check it with the tools (`levelmap`, `see`, `campaign`, `turntable`,
-  `animsheet`).
-- **On hold (the user's call, 2026-10-17): co-op** (`docs/COOP_PLAN.md`), up to four players
-  roaming one world. Planned in stages C0-C6 and kept for later; don't start it until the user
-  says.
-- **Test games** (`docs/FEEDBACK.md`): fresh agents build a classic's vertical slice on the
-  engine from `START_HERE.md`'s "Make a game" prompt; each goes to `michaelcrosato/ai-hub` as
-  one HTML file. One so far (Capital Strike, before the hook).
-- **Waiting on the user:** S3b's rigid-or-skinned verdict
-  (https://claude.ai/artifact/VjP2RUbwaSJ3ggXkrJJnQs); S4's and S5's other halves run as
-  sessions in my-3dge and riftlight from `docs/handoffs/` when the user starts them.
-- **Armed, not run** (`docs/AGENT_ASSET_STORE.md` §13): S6 phase-out at each change of the
-  benchmark agent, and the triggers listed there, each with a small plan when it fires.
+- **Not done from the plan:** the Windows `.exe` (Phase 10, optional): `scripts/build-windows.sh`
+  then `scripts/smoke-windows.sh`; the app's default scene is already the game's title.
+- **The user's call:** sending the engine changes upstream to shardfall (`ENGINE_UPSTREAM.md`,
+  the `docs/ENGINE_ANALYSIS.md` row for shardfall's `docs/FEEDBACK.md`), and anything past the
+  scope guards (`PLAN.md` §17.2: more Tabs, co-op, imported assets, touch controls).
+- More content inside Tab I goes through `docs/CONTENT_GUIDE.md`; run `scripts/check.sh` (and
+  `--full` after Round or level changes), then `scripts/build-game.sh` to refresh `dist/`.
 
-## Open issues
-- The HUD, inventory, passive tree and touch controls (egui in `pav_app`) are invisible to the
-  tools and headless captures (doctrine 2, 3); game actions are reachable through `game_cmd`.
-- The `campaign` bot stalls on level 4, the Rift Gates (seed 1: the boss's seal stays shut).
-- Copies of one asset patched to different materials under one key draw the same material.
-- Older known issues and limits: "Known issues and limits" in `docs/HISTORY.md`.
+## Known limits
+- No GPU here: 60 fps on the user's cards is unmeasured; instance, triangle and particle counts
+  and the quality presets are the proxy (BUILD_LOG "Performance budgets"). The slowest scene,
+  `blacktap/round/6`, simulates at 389 ticks/s in the dev build.
+- The browser check proves boot, attract, exits and the phone menu only: SwiftShader draws
+  under 0.1 fps. Browser audio starts after the first input (the title says so).
+- Some data files ignore unknown fields and some references aren't checked: CONTENT_GUIDE,
+  "What no check catches". The art checklist's one note: the barracks' back wall is plain.
+- PR #1 had no code review (Codex hit its usage limit).
+- Engine (shardfall's open issues at the vendoring): its egui HUD and menus are invisible to the
+  tools (the game's own UI isn't: `pav ui`); the `campaign` bot stalls on Shardfall's level 4;
+  copies of one asset patched to different materials under one key draw one material.
 
 ## Keeping this page current
-When you finish something, write it up as a dated entry at the top of `docs/HISTORY.md` (what
-changed, how it works, the decisions), then update the sections above. Keep this page under 60
-lines: `pav_tools/tests/docs_limits.rs` fails past that, so move detail to HISTORY.
+When you finish something, add a dated entry at the top of `docs/BUILD_LOG.md` (what changed,
+how to verify it, the decisions), list any engine change in `ENGINE_UPSTREAM.md`, then update
+the sections above. Keep this page under 60 lines: `pav_tools/tests/docs_limits.rs` fails past
+that.
