@@ -1,5 +1,21 @@
 # AGENTS.md — rulebook for coding agents
 
+## This repository
+This repository is a game, **Assassin's Keg: Black Tap** (`README.md`), on the Pavilion engine
+vendored from shardfall @ `0098196` and extended. The rules below are the engine's and apply
+here; read their Shardfall workflow this way:
+- The game is `crates/blacktap` (data in `games/blacktap/`), the reusable kit `crates/pav_kit`
+  and `crates/pav_ui`. Adding content: `docs/CONTENT_GUIDE.md`. Scope and settled decisions:
+  `PLAN.md` §17 (its §14 Definition of Done is complete).
+- Journal: a dated entry at the top of `docs/BUILD_LOG.md`, not `docs/HISTORY.md` (shardfall's,
+  frozen at the vendoring). List every engine change in `ENGINE_UPSTREAM.md`.
+- The gate is `scripts/check.sh` (`--full` adds each Round x 5 seeds, the whole Tab x 3 and 30
+  min of attract). The browser build is `scripts/build-game.sh` into `dist/`, checked with
+  `node scripts/browser_check.mjs dist/<file>.html out/browser`.
+- Scenes: `blacktap` (the title; the app's default), `blacktap/round/N[@step]`,
+  `blacktap/freeroam`, `blacktap/drydock`. Game commands answer by name through `gcmd`
+  (`pav ship`, `pav mission`, `pav level_check` ...).
+
 Making a new game on the engine? Read `docs/MAKE_A_GAME.md`: the "Key rules" below apply to
 your game, the maintainers' workflow (HISTORY, PROGRESS, PRs, escalations) doesn't.
 
