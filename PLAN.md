@@ -1648,7 +1648,8 @@ mesh generators. Integrate each with tests and captures before merging it.
 ### Phase 10 — Ship it
 - `check.sh` and `check.sh --full` green; the single-file HTML built into `dist/` and
   browser-verified (desktop + phone emulation, no console errors); optional Windows `.exe`
-  (`scripts/build-windows.sh`, `scripts/smoke-windows.sh`) if time allows.
+  (`scripts/build-windows.sh`, `scripts/smoke-windows.sh`) if time allows. *(Done 2026-10-19:
+  built and smoked under Wine; BUILD_LOG.)*
 - README complete; `docs/ENGINE_ANALYSIS.md`; `docs/CONTENT_GUIDE.md`; `docs/PROGRESS.md`
   rewritten for this repository (≤ 60 lines, `docs_limits.rs`); `ENGINE_UPSTREAM.md` complete;
   BUILD_LOG final; PR description final (summary, how to play, how to verify).
