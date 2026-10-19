@@ -6,6 +6,43 @@ compactions: after any restart read §14, then the top of this file, then `git l
 
 ---
 
+## 2026-10-19 — The Windows `.exe`: built and smoked under Wine (Phase 10's last item)
+
+**Built**
+- `scripts/build-windows.sh` on `main` (`f71af5e`): `cargo build --profile dist --target
+  x86_64-pc-windows-gnu -p pav_app -p pav_tools`, cold, **5 m 45 s, 0 warnings**.
+  `target/x86_64-pc-windows-gnu/dist/shardfall.exe` 84,300,680 bytes (sha256 `62eab9b8…19d`),
+  `pav.exe` 72,953,747 bytes. The `.exe` was handed to the user as a file, not committed.
+
+**Verified**
+- `scripts/smoke-windows.sh 40` (Wine 9.0 `wine64`, Xvfb 1600×900, Vulkan on llvmpipe / Mesa
+  25.2.8): `out/smoke/shardfall.log` — all 13 boot stages `ok`, `scene 'blacktap'`, `frontend:
+  title` at 5.7 s, boot complete 13.7 s (cold: the Wine prefix's first Vulkan instance took
+  3.4 s), `frontend: attract` at 20.5 s after the idle timeout; **0 ERROR, 0 CRASH, 0 WARN**.
+  `out/smoke/screen.png` (at 40 s): DEMO PLAY over the Second Round broadside — the HUD, compass,
+  objective, sail gauge, the Ballast bark, "PRESS ANY BUTTON", the Assassin's Keg badge.
+- `scripts/smoke-windows.sh 7` (kept in `out/smoke_title/`): warm boot 3.0 s, title at 1.7 s,
+  attract at 10.7 s, 0 errors; the screenshot is the title: logo, "Black Tap", "Press any key to
+  start", the build ID `AssassinsKegBlackTap-W9`, keyboard glyphs (no gamepad under Wine).
+- Native saves work on the Windows path: `blacktap_settings.json` and `shardfall.toml` are
+  written next to the `.exe`.
+- `stdout.txt`'s only error lines are Wine's ALSA layer finding no sound card in the container;
+  the game logs "no sound output device; continuing silently", as designed.
+
+**Decisions**
+- No Windows-only fault turned up, so nothing changed in code: `scripts/check.sh` and a `dist/`
+  rebuild weren't needed (the HTML is still current from `a0c43f3`).
+- The `.exe` keeps the engine's file names (`shardfall.exe`, `shardfall.log`, `shardfall.toml`
+  with a "Shardfall startup settings" header); the window, the title, the storage keys and the
+  saves say Assassin's Keg. Renaming them touches the engine app, its scripts and docs for a
+  cosmetic gain; left as is.
+
+**Open**
+- Wine + lavapipe proves boot, the front end, attract and saving; real Windows on the user's
+  RTX cards (frame rate, DX12, gamepads, audio) is still unmeasured.
+
+---
+
 ## 2026-10-18 — A new session: the container re-checked, the session docs point at the game
 
 **Verified**

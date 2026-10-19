@@ -15,13 +15,16 @@ to the vendoring (search it for engine background; don't add to it).
   seeds, the whole Tab x 3, 30 min of attract); the single-file HTML in `dist/` was built from
   that commit (only docs and `scripts/browser_check.mjs` changed after it); browser check 10/10.
 - **Re-checked 2026-10-18** in a fresh container: the toolchain and `scripts/check.sh` (BUILD_LOG).
+- **Windows `.exe`** (2026-10-19, from `f71af5e`): `scripts/build-windows.sh`, then
+  `scripts/smoke-windows.sh 40` under Wine + lavapipe: boots to the title, idles into attract,
+  saves next to the `.exe`, 0 errors. Not committed; the build script remakes it.
 - Code: the game is `crates/blacktap` with its data in `games/blacktap/`; the reusable kit is
   `crates/pav_kit` and `crates/pav_ui`; every engine change is listed in `ENGINE_UPSTREAM.md`.
   Adding content: `docs/CONTENT_GUIDE.md`. Engine evaluation: `docs/ENGINE_ANALYSIS.md`.
 
 ## Next
-- **Not done from the plan:** the Windows `.exe` (Phase 10, optional): `scripts/build-windows.sh`
-  then `scripts/smoke-windows.sh`; the app's default scene is already the game's title.
+- **The plan is done**, Phase 10's optional Windows `.exe` included. Next for it: the user plays
+  it on real Windows (frame rate, DX12, gamepads, audio) and reports what they see.
 - **The user's call:** sending the engine changes upstream to shardfall (`ENGINE_UPSTREAM.md`,
   the `docs/ENGINE_ANALYSIS.md` row for shardfall's `docs/FEEDBACK.md`), and anything past the
   scope guards (`PLAN.md` §17.2: more Tabs, co-op, imported assets, touch controls).
@@ -31,7 +34,8 @@ to the vendoring (search it for engine background; don't add to it).
 ## Known limits
 - No GPU here: 60 fps on the user's cards is unmeasured; instance, triangle and particle counts
   and the quality presets are the proxy (BUILD_LOG "Performance budgets"). The slowest scene,
-  `blacktap/round/6`, simulates at 389 ticks/s in the dev build.
+  `blacktap/round/6`, simulates at 389 ticks/s in the dev build. The `.exe` is smoked only under
+  Wine, and keeps the engine's file names (`shardfall.exe`, `.log`, `.toml`).
 - The browser check proves boot, attract, exits and the phone menu only: SwiftShader draws
   under 0.1 fps. Browser audio starts after the first input (the title says so).
 - Some data files ignore unknown fields and some references aren't checked: CONTENT_GUIDE,
