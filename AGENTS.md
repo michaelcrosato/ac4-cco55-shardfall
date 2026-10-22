@@ -106,8 +106,8 @@ recorded; it never stops, skips or reverts planned work.
   - After a rebase or a small fix, run only the tests of what changed. A docs-only PR needs none.
   - Merge as soon as the checks pass; don't wait for a review (Codex has posted none since #45 on
     2026-10-12). A review that arrives later: fix its real findings in a follow-up PR.
-  - The Vercel status is only the browser preview, and the user pauses deployments while not
-    testing: a blocked or paused Vercel status never holds up a PR.
+  - Vercel never deploys on a push (`CLAUDE.md`, "Deploying to Vercel"): a missing or blocked
+    Vercel status never holds up a PR.
 
 ## Architecture
 Crates (the full map, module by module: `docs/REFERENCE.md`, "Code map"):

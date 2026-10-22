@@ -7,7 +7,15 @@
   "headers": [
     {
       "source": "/(.*).wasm",
-      "headers": [{ "key": "Content-Type", "value": "application/wasm" }]
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/wasm"
+        }
+      ]
     }
-  ]
+  ],
+  "git": {
+    "deploymentEnabled": false
+  }
 }

@@ -6,6 +6,20 @@ compactions: after any restart read §14, then the top of this file, then `git l
 
 ---
 
+## 2026-10-22 — Vercel deploys only on request
+
+**Built**
+- `vercel.json`: `"git": { "deploymentEnabled": false }`, so a push to GitHub never deploys.
+- `CLAUDE.md`, "Deploying to Vercel": the rules, and the one way to deploy (the Vercel
+  connector's `create_deployment` from `main`, production). `AGENTS.md`'s PR rule no longer
+  mentions pausing deployments.
+
+**Decisions**
+- The Vercel project name `ac4-cco55-shardfall` is Vercel's default, the repo's name. This
+  session had no Vercel connector to confirm it, so check it the first time you deploy.
+
+---
+
 ## 2026-10-19 — The Windows `.exe`: built and smoked under Wine (Phase 10's last item)
 
 **Built**
