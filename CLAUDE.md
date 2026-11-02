@@ -14,22 +14,16 @@ two files. -->
   (a benchmark author or judge, a blind brief writer) sets `omitClaudeMd: true` in its
   `.claude/agents/` definition, as the two asset-bench agents do.
 
-## Deploying to Vercel
-Vercel does NOT auto-deploy from GitHub, on purpose. Pushing to GitHub never deploys.
-Why: every Vercel build costs build minutes, and every deployment is stored and billed
-daily. I only look at a tiny fraction of builds, so building on every push wasted money
-on deployments nobody saw. The last deployment stays live until I ask for a new one.
+## Distribution: the self-contained HTML (no Vercel)
+We no longer deploy to Vercel (2026-11-02). Distribution and testing use one self-contained
+HTML file, committed in `dist/` (`README.md` links it), that runs from `file://` in Chrome/Edge.
 
 Rules:
-- Never deploy unless I explicitly ask in this session.
-- Never re-enable automatic deployments or change "deploymentEnabled" in vercel.json.
-- Never use the pause button, deploy hooks, or the Vercel CLI to deploy.
-
-How to deploy (the only method):
-Call the Vercel connector's create_deployment with:
-- team: michaelcrosato-1122's projects
-- project: ac4-cco55-shardfall
-- gitSource: type "github", org "michaelcrosato", repo "ac4-cco55-shardfall", ref "main"
-- target: "production"
-
-Then wait for the build to finish and report the result and the live URL.
+- Never deploy to Vercel: no connector deployments, deploy hooks or Vercel CLI.
+- Keep `dist/` current: a PR that changes what the browser build runs (code, game data, `web/`,
+  the pack script) rebuilds it with `scripts/build-game.sh`, checks it with
+  `node scripts/browser_check.mjs dist/<file>.html out/browser`, and commits it in the same PR.
+  Docs-only and test-only PRs leave it alone. The script keeps one file and drops older ones;
+  update `README.md`'s link when the dated name changes.
+- `vercel.json` stays only as a guard (`"git": { "deploymentEnabled": false }`), so a push never
+  deploys while the Vercel project is still linked; don't change it.

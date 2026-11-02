@@ -6,6 +6,26 @@ compactions: after any restart read §14, then the top of this file, then `git l
 
 ---
 
+## 2026-11-02 — No more Vercel: the self-contained HTML is the distribution
+
+**Built**
+- The user's call: distribution and testing use the committed single-file HTML in `dist/`, not
+  Vercel. `CLAUDE.md`'s "Deploying to Vercel" became "Distribution": no Vercel deploys, and a PR
+  that changes what the browser build runs rebuilds `dist/` (`scripts/build-game.sh`), runs the
+  browser check and commits it. `AGENTS.md`'s PR rule and `docs/PROGRESS.md` say the same.
+- `vercel.json` cut to the guard alone (`"git": { "deploymentEnabled": false }`);
+  `scripts/build-vercel.sh` (its build command) removed.
+
+**Verify**: docs only. The `dist/` file (2026-10-17) is still current: every commit after the
+one that built it changed only docs and `vercel.json`.
+
+**Decisions**
+- `vercel.json` stays while the Vercel project may still be linked to the repo: without it,
+  Vercel's default would deploy every push. Delete it once the project is removed on Vercel.
+- `docs/ENGINE_README.md` (shardfall's README, vendored) keeps its Vercel section: history.
+
+---
+
 ## 2026-10-22 — Vercel deploys only on request
 
 **Built**
