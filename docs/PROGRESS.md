@@ -14,6 +14,8 @@ to the vendoring (search it for engine background; don't add to it).
 - **Verified on `a0c43f3`**: `scripts/check.sh --full` all green (612 tests; each Round x 5
   seeds, the whole Tab x 3, 30 min of attract); the single-file HTML in `dist/` was built from
   that commit (only docs and `scripts/browser_check.mjs` changed after it); browser check 10/10.
+- **Distribution** (from 2026-11-02): the single-file HTML in `dist/`, kept current with every
+  PR that changes the browser build (`CLAUDE.md`, "Distribution"). No Vercel deploys.
 - **Re-checked 2026-10-18** in a fresh container: the toolchain and `scripts/check.sh` (BUILD_LOG).
 - **Windows `.exe`** (2026-10-19, from `f71af5e`): `scripts/build-windows.sh`, then
   `scripts/smoke-windows.sh 40` under Wine + lavapipe: boots to the title, idles into attract,
